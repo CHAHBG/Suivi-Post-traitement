@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Cadastre Sénégal | PROCASSEF</title>
+    <title>Suivi Opérations | BETPLUSAUDETAG</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🗺️</text></svg>">
     
     <!-- CSS Libraries -->
@@ -34,8 +34,8 @@
                         </div>
                     </div>
                     <div class="flex flex-col">
-                        <h1 class="text-2xl font-bold text-gradient">Cadastre Sénégal</h1>
-                        <span class="text-sm text-slate-600 font-medium">PROCASSEF Monitoring</span>
+                        <h1 class="text-2xl font-bold text-gradient">BETPLUSAUDETAG</h1>
+                        <span class="text-sm text-slate-600 font-medium">Suivi des Opérations</span>
                     </div>
                 </div>
 
@@ -88,7 +88,7 @@
         <div class="tab-navigation mb-8">
             <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
                 <div class="flex flex-col space-y-2">
-                    <h2 class="dashboard-title">Tableau de bord PROCASSEF</h2>
+                    <h2 class="dashboard-title">Suivi PROCASEF BOUNDOU</h2>
                     <p class="dashboard-subtitle">Surveillance en temps réel des opérations cadastrales</p>
                 </div>
                 
@@ -103,7 +103,7 @@
                     </button>
                     <button class="nav-tab" data-tab="process">
                         <i class="fas fa-cogs"></i>
-                        <span>Analytics Processus</span>
+                        <span>Analyse des processus</span>
                     </button>
                     <button class="nav-tab" data-tab="temporal">
                         <i class="fas fa-chart-line"></i>
@@ -186,7 +186,7 @@
                         <div class="gauge-card">
                             <canvas id="processingEfficiencyGauge" width="200" height="200"></canvas>
                             <div class="gauge-label">
-                                <h4 class="gauge-title">Efficacité Processing</h4>
+                                <h4 class="gauge-title">Efficacité du traitement</h4>
                                 <p class="gauge-subtitle">Vitesse de traitement</p>
                             </div>
                         </div>
@@ -416,7 +416,7 @@
 
             <div class="chart-card">
                             <div class="chart-header">
-                                <h3 class="chart-title">Timeline Projet</h3>
+                                <h3 class="chart-title">Chronologie du projet</h3>
                 <p class="chart-subtitle">Début/fin par lot pour le suivi global</p>
                             </div>
                             <div class="chart-content">
@@ -431,7 +431,7 @@
             <div data-panel="process" class="panel">
                 <section class="process-section">
                     <div class="section-intro mb-8">
-                        <h2 class="section-title">Analytics Processus</h2>
+                        <h2 class="section-title">Analyse des processus</h2>
                         <p class="section-description">Analyse détaillée des flux de traitement et performances</p>
                     </div>
                     
@@ -482,7 +482,7 @@
 
                         <div class="chart-card">
                             <div class="chart-header">
-                                <h3 class="chart-title">Timeline Projet</h3>
+                                <h3 class="chart-title">Chronologie du projet</h3>
                             </div>
                             <div class="chart-content">
                                 <canvas id="projectTimelineChart"></canvas>
@@ -517,8 +517,8 @@
                         
             <div class="chart-card">
                             <div class="chart-header">
-                                <h3 class="chart-title">Qualité Affichage Public</h3>
-                <p class="chart-subtitle">Part des affichages sans erreurs</p>
+                                <h3 class="chart-title">Qualité de l'affichage public</h3>
+                <p class="chart-subtitle">Part des affichages sans erreur</p>
                                 <div id="qualityTrendHeader" class="chart-trend">
                                     <i id="qualityTrendIcon" class="fas fa-minus"></i>
                                     <span id="qualityTrendValue">--%</span>
@@ -545,7 +545,7 @@
                         
             <div class="chart-card">
                             <div class="chart-header">
-                                <h3 class="chart-title">Performance Post-Processing</h3>
+                                <h3 class="chart-title">Performance du post-traitement</h3>
                 <p class="chart-subtitle">Évolution des volumes traités quotidiennement</p>
                                 <div id="postProcTrendHeader" class="chart-trend">
                                     <i id="postProcTrendIcon" class="fas fa-minus"></i>
@@ -565,7 +565,7 @@
         <!-- Data Tables Section -->
         <section class="tables-section mt-16">
             <div class="section-intro mb-8">
-                <h2 class="section-title">Données Détaillées</h2>
+                        <h2 class="section-title">Données détaillées</h2>
                 <p class="section-description">Accès aux données brutes et historiques</p>
             </div>
             
@@ -585,7 +585,7 @@
                     </button>
                     <button class="table-tab" data-tab="processing">
                         <i class="fas fa-cogs"></i>
-                        Processing
+                        Traitement
                     </button>
                 </div>
                 
@@ -662,7 +662,7 @@
                                         <th>Région</th>
                                         <th>Commune</th>
                                         <th>Reçues (Brutes)</th>
-                                        <th>Post traitées</th>
+                                        <th>Post-traitées</th>
                                         <th>Individuelles jointes</th>
                                         <th>Collectives jointes</th>
                                         <th>Sans jointure</th>
