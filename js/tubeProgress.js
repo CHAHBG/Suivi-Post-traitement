@@ -7,6 +7,7 @@ class TubeProgressService {
     constructor() {
         this.tubes = new Map();
         this.animationFrameId = null;
+    this.io = null; // IntersectionObserver (pause when offscreen)
         this.config = {
             animationDuration: 2000,
             waveFrequency: 3,
@@ -72,16 +73,20 @@ class TubeProgressService {
             elements: tubeElements,
             currentPercentage: 0,
             targetPercentage: config.percentage,
-            animationStart: Date.now()
+            animationStart: Date.now(),
+            isVisible: true
         });
         
         // Update tube display
         this.updateTubeDisplay(elementId);
         
         // Start animation if needed
-        if (config.animated && !this.animationFrameId) {
+    if (this.shouldAnimate(config) && !this.animationFrameId) {
             this.startAnimationLoop();
         }
+    // Observe visibility to pause animations when offscreen
+    this.ensureObserver();
+    if (this.io && tubeElements.tube) this.io.observe(tubeElements.tube);
         
         return true;
     }
@@ -97,24 +102,24 @@ class TubeProgressService {
         
         // Add tube structure
         const shortFmt = (v) => {
-            if (Math.abs(v) >= 1000000) return (v/1000000).toFixed(1)+'M';
-            if (Math.abs(v) >= 1000) return (v/1000).toFixed(1)+'K';
-            return config.formatter(v);
+            // Round to whole numbers for cleaner display
+            const roundedVal = Math.round(v);
+            if (Math.abs(roundedVal) >= 1000000) return (roundedVal/1000000).toFixed(1)+'M';
+            if (Math.abs(roundedVal) >= 1000) return (roundedVal/1000).toFixed(1)+'K';
+            return config.formatter(roundedVal);
         };
         const gapVal = config.gap;
         const gapDisplay = gapVal < 0 ? shortFmt(gapVal) : (gapVal>0? '+'+shortFmt(gapVal): '0');
         container.innerHTML = `
-            <div class="tube-progress" title="${config.formatter(config.currentValue)} / ${config.formatter(config.targetValue)} (écart ${gapDisplay})">
+            <div class="tube-progress" role="meter" aria-label="${config.title}" aria-valuemin="0" aria-valuemax="${config.targetValue}" aria-valuenow="${config.currentValue}" tabindex="0" title="${config.formatter(config.currentValue)} / ${config.formatter(config.targetValue)} (écart ${gapDisplay})">
                 <div class="tube-liquid" data-percentage="0">
                     <div class="tube-wave"></div>
                 </div>
                 <div class="tube-label">
-                    <div class="tube-title text-sm">${config.title}</div>
-                    <div class="flex items-end gap-2 mt-1">
-                        <div class="tube-percentage text-lg font-semibold">0%</div>
-                        <div class="text-[11px] text-gray-500 font-medium">${shortFmt(config.currentValue)} / ${shortFmt(config.targetValue)}</div>
-                    </div>
-                    ${config.showGap ? `<div class="tube-gap text-[11px] mt-0.5 ${gapVal<0?'text-red-500':gapVal>0?'text-green-600':'text-gray-500'}">${gapDisplay}</div>` : ''}
+                    <div class="tube-title text-sm" title="${config.title}">${config.title}</div>
+                    <div class="tube-percentage text-lg font-semibold">0%</div>
+                    <div class="tube-value text-[11px] text-contrast font-medium" title="${config.formatter(config.currentValue)} / ${config.formatter(config.targetValue)}">${shortFmt(config.currentValue)} / ${shortFmt(config.targetValue)}</div>
+                    ${config.showGap ? `<div class="tube-gap text-[11px] mt-0.5 ${gapVal<0?'text-contrast-red':gapVal>0?'text-contrast-green':'text-contrast-gray'}">${gapDisplay}</div>` : ''}
                 </div>
             </div>`;
         
@@ -183,13 +188,13 @@ class TubeProgressService {
         
         // Update text content
         if (elements.title) elements.title.textContent = config.title;
-        // Abbreviated values already baked into structure; update title attribute for detailed view
         if (elements.tube) {
             const gapVal = config.gap;
             const gapDisplay = gapVal < 0 ? config.formatter(gapVal) : (gapVal>0? '+'+config.formatter(gapVal): '0');
             elements.tube.parentElement.setAttribute('title', `${config.formatter(config.currentValue)} / ${config.formatter(config.targetValue)} (écart ${gapDisplay})`);
         }
         if (elements.percentage) elements.percentage.textContent = `${Math.round(config.percentage)}%`;
+        if (elements.value) elements.value.textContent = `${config.formatter(config.currentValue)} / ${config.formatter(config.targetValue)}`;
         
         // Update gap display
         if (elements.gap) {
@@ -227,7 +232,9 @@ class TubeProgressService {
         
         // Apply color to elements
         if (elements.liquid) elements.liquid.style.background = color;
-        if (elements.percentage) elements.percentage.style.color = color;
+        if (elements.percentage) elements.percentage.style.color = this.config.colors.neutral; // Contrast text
+        if (elements.value) elements.value.style.color = this.config.colors.neutral;
+        if (elements.gap) elements.gap.style.color = this.config.colors.neutral;
     }
     
     /**
@@ -255,6 +262,7 @@ class TubeProgressService {
         this.tubes.forEach((tube, elementId) => {
             const { elements, config, animationStart, targetPercentage } = tube;
             if (!elements.liquid) return;
+            if (!tube.isVisible || !this.shouldAnimate(config)) return; // respect reduced motion & visibility
             
             // Calculate progress based on elapsed time
             const elapsed = now - animationStart;
@@ -292,9 +300,10 @@ class TubeProgressService {
         if (!wave) return;
         
         // Create subtle wave movement
-        const timeSeconds = time * 0.001; // Convert to seconds
-        const offsetX = Math.sin(timeSeconds * this.config.waveFrequency) * 10;
-        const offsetY = Math.sin(timeSeconds * (this.config.waveFrequency * 0.7)) * 5;
+    const timeSeconds = time * 0.001; // Convert to seconds
+    const f = this.config.waveFrequency;
+    const offsetX = Math.sin(timeSeconds * f) * 12;
+    const offsetY = Math.cos(timeSeconds * (f * 0.6)) * 6;
         
         wave.style.transform = `translate(${offsetX}px, ${offsetY}px)`;
     }
@@ -380,6 +389,30 @@ class TubeProgressService {
     destroy() {
         this.stopAnimations();
         this.tubes.clear();
+        if (this.io) { this.io.disconnect(); this.io = null; }
+    }
+
+    // Respect user motion preferences
+    shouldAnimate(cfg) {
+        try {
+            const mq = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)');
+            if (mq && mq.matches) return false;
+        } catch(_) {}
+        return cfg.animated !== false;
+    }
+
+    // Setup IntersectionObserver to pause animation when offscreen
+    ensureObserver() {
+        if (this.io || typeof IntersectionObserver === 'undefined') return;
+        this.io = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                this.tubes.forEach((t) => {
+                    if (t.elements && t.elements.tube === entry.target) {
+                        t.isVisible = entry.isIntersecting;
+                    }
+                });
+            });
+        }, { threshold: 0.1 });
     }
 }
 

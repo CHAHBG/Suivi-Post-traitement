@@ -177,11 +177,17 @@ class EnhancedDashboard {
             // Update quality and other rate displays
             this.updateRateDisplays(kpis);
             
+            // Update progress indicators
+            this.updateProgressIndicators(kpis);
+            
             // Initialize charts
             await this.initializeCharts(this.rawData, kpis);
             
             // Update regional data
             this.updateRegionalData(this.rawData);
+
+            // Populate detailed tables using current filters
+            this.populateDataTables(this.filterData(this.rawData));
             
         } catch (error) {
             console.error('Error loading dashboard data:', error);
@@ -335,6 +341,174 @@ class EnhancedDashboard {
     }
     
     /**
+     * Update progress indicators in the overview section
+     * @param {Object} kpis - KPI data
+     */
+    updateProgressIndicators(kpis) {
+    console.log('🔄 Updating overview metrics from Commune Analysis');
+    // Aggregate Commune Analysis sheet for overview
+    const commData = this.rawData['Commune Analysis'] || [];
+    // Helper: parse number
+    const parseNumOverview = v => Number(String(v).replace(/\s+/g, '').replace(/,/g, '.')) || 0;
+    // Robust per-row lookup: try exact column names (French first), then case-insensitive key match
+    const getValueForRow = (row, candidates = []) => {
+        for (const cand of candidates) {
+            if (!cand) continue;
+            // direct property (exact)
+            if (row[cand] != null && row[cand] !== '') return parseNumOverview(row[cand]);
+            // case-insensitive match of existing keys
+            const foundKey = Object.keys(row).find(k => k && k.toLowerCase() === cand.toLowerCase());
+            if (foundKey && row[foundKey] != null && row[foundKey] !== '') return parseNumOverview(row[foundKey]);
+        }
+        return 0;
+    };
+
+    // Sum candidates across all communes. Accepts multiple fallbacks: French first, English second.
+    const sumCol = (...candidates) => commData.reduce((sum, r) => sum + getValueForRow(r, candidates), 0);
+
+    // NOTE: Historically some dashboard numbers were derived from other sheets (yields/processing) or placeholders.
+    // Now we explicitly sum columns from the 'Commune Analysis' sheet using the exact French column names you provided
+    // (with English fallbacks only if French keys are missing).
+    const totalParcelsOverview = sumCol('Total Parcelles', 'Total Parcels');
+    const nicadOverview = sumCol('NICAD');
+    const ctasfOverview = sumCol('CTASF');
+    const deliberatedOverview = sumCol('Délibérées', 'Deliberated');
+    // Update Total Parcels
+    // Total Parcels (display absolute sum)
+    this.updateProgressBar('totalParcelsOverviewProgress', 100);
+    this.updateProgressValue('totalParcelsOverviewValue', `${totalParcelsOverview.toLocaleString()}`);
+    // Update NICAD
+    const nicadPct = totalParcelsOverview > 0 ? (nicadOverview / totalParcelsOverview) * 100 : 0;
+    this.updateProgressBar('nicadOverviewProgress', nicadPct);
+    this.updateProgressValue('nicadOverviewValue', `${nicadOverview.toLocaleString()}`);
+    // Update CTASF
+    const ctasfPct = totalParcelsOverview > 0 ? (ctasfOverview / totalParcelsOverview) * 100 : 0;
+    this.updateProgressBar('ctasfOverviewProgress', ctasfPct);
+    this.updateProgressValue('ctasfOverviewValue', `${ctasfOverview.toLocaleString()}`);
+    // Update Délibérées
+    const delibPct = totalParcelsOverview > 0 ? (deliberatedOverview / totalParcelsOverview) * 100 : 0;
+    this.updateProgressBar('deliberatedOverviewProgress', delibPct);
+    this.updateProgressValue('deliberatedOverviewValue', `${deliberatedOverview.toLocaleString()}`);
+        
+        // Update Processing Phases Progress using sheet data
+        const proc1 = this.rawData['Processing Phase 1'] || [];
+        const proc2 = this.rawData['Processing Phase 2'] || [];
+        const parseNum = val => Number(String(val).replace(/\s+/g, '').replace(/,/g, '.')) || 0;
+        const getNum = (arr, phase) => {
+            const row = arr.find(r => (r['Phase'] === phase || r['phase'] === phase));
+            return row ? parseNum(row['Total'] || row['total']) : 0;
+        };
+        const sumArr = arr => arr.reduce((sum, r) => sum + parseNum(r['Total'] || r['total']), 0);
+        const total1 = sumArr(proc1);
+        const total2 = sumArr(proc2);
+    // Phase Pilote
+    const pp = getNum(proc1, 'Phase Pilote');
+    this.updateProgressBar('phasePiloteProgress', total1 > 0 ? (pp / total1) * 100 : 0);
+    this.updateProgressValue('phasePiloteValue', `${Math.round(pp).toLocaleString()} / ${Math.round(total1).toLocaleString()}`);
+    // QField
+    const qf = getNum(proc1, 'QField');
+    this.updateProgressBar('qfieldProgress', total1 > 0 ? (qf / total1) * 100 : 0);
+    this.updateProgressValue('qfieldValue', `${Math.round(qf).toLocaleString()} / ${Math.round(total1).toLocaleString()}`);
+        // Total Parcels (combined phases)
+        const combinedTotal = total1 + total2;
+        const combinedCurrent = total1;
+    this.updateProgressBar('totalParcelsProgress', combinedTotal > 0 ? (combinedCurrent / combinedTotal) * 100 : 0);
+    this.updateProgressValue('totalParcelsValue', `${Math.round(combinedCurrent).toLocaleString()} / ${Math.round(combinedTotal).toLocaleString()}`);
+        // Phase KoboCollect
+    const kc = getNum(proc2, 'Phase KoboCollect');
+    this.updateProgressBar('koboCollectProgress', total2 > 0 ? (kc / total2) * 100 : 0);
+    this.updateProgressValue('koboCollectValue', `${Math.round(kc).toLocaleString()} / ${Math.round(total2).toLocaleString()}`);
+        
+        // Update Progress Cards
+        if (kpis.ctasf && typeof kpis.ctasf.rate !== 'undefined') {
+            console.log('📊 CTASF Rate:', kpis.ctasf.rate + '%');
+            this.updateProgressBar('ctasfRateBar', kpis.ctasf.rate);
+            this.updateProgressValue('ctasfRate', `${Math.round(kpis.ctasf.rate)}%`);
+        } else {
+            console.warn('⚠️ CTASF KPI data is missing');
+        }
+        
+        if (kpis.processing && typeof kpis.processing.rate !== 'undefined') {
+            console.log('📊 Processing Rate:', kpis.processing.rate + '%');
+            this.updateProgressBar('processingRateBar', kpis.processing.rate);
+            this.updateProgressValue('processingRate', `${Math.round(kpis.processing.rate)}%`);
+        } else {
+            console.warn('⚠️ Processing KPI data is missing');
+        }
+        
+        // Compute additional gauges using existing communeData
+        // Sum across all communes, supporting exact French column names (with sensible fallbacks)
+        const sumField = (...fields) => fields.reduce((sum, field) => {
+            if (!field) return sum;
+            // accept both straight and curly apostrophe variants to match sheet headers
+            const altField = field.replace(/[’']/g, "'");
+            const altFieldCurly = field.replace(/'/g, '’');
+            return sum + commData.reduce((s, r) => {
+                // try exact key, lowercased key, and alternate apostrophe forms
+                const candidates = [field, field.toLowerCase(), altField, altFieldCurly];
+                let v = null;
+                for (const c of candidates) {
+                    if (r && Object.prototype.hasOwnProperty.call(r, c) && r[c] !== '') { v = r[c]; break; }
+                }
+                // Also try case-insensitive lookup of keys
+                if (v == null && r) {
+                    const key = Object.keys(r).find(k => k && k.toLowerCase() === String(field).toLowerCase());
+                    if (key) v = r[key];
+                }
+                const num = v != null && v !== '' ? parseNum(v) : 0;
+                return s + num;
+            }, 0);
+        }, 0);
+
+        // Use the exact Commune Status (Commune Analysis) columns provided by the user
+        const rawParcels = sumField('Parcelles brutes', 'Raw Parcels');
+        const collectedNoDup = sumField('Parcelles collectées (sans doublon géométrique)', 'Parcelles collectees (sans doublon geometrique)', 'Collected Parcels (No Duplicates)');
+        const retainedAfterPost = sumField('Parcelles retenues après post-traitement', 'Parcelles retenues apres post traitement', 'Parcelles retenues après post traitement');
+        // Note: the sheet may use either curly ’ or straight ' in the header; include both variants when searching
+        const validatedByURM = sumField('Parcelles validées par l’URM', "Parcelles validées par l'URM", 'Validated by URM');
+
+        // Update deduplication rate gauge (Taux de dédoublonnage)
+        const dedupRate = rawParcels > 0 ? (collectedNoDup / rawParcels) * 100 : 0;
+        this.updateProgressBar('dedupRateBar', dedupRate);
+        this.updateProgressValue('dedupRate', `${dedupRate.toFixed(1)}%`);
+
+        // Update post-traitement retention gauge (reuse existing surveyRateBar for retained after post-traitement)
+        const retentionRate = rawParcels > 0 ? (retainedAfterPost / rawParcels) * 100 : 0;
+        this.updateProgressBar('surveyRateBar', retentionRate);
+        this.updateProgressValue('surveyRate', `${retentionRate.toFixed(1)}%`);
+
+        // Update URM validation gauge
+        const urmPct = rawParcels > 0 ? (validatedByURM / rawParcels) * 100 : 0;
+        this.updateProgressBar('urmValidationRateBar', urmPct);
+        this.updateProgressValue('urmValidationValue', `${urmPct.toFixed(1)}%`);
+    console.log('✅ Progress indicators update completed');
+    }
+    
+    /**
+     * Update a progress bar element
+     * @param {string} elementId - ID of the progress bar element
+     * @param {number} percentage - Percentage value (0-100)
+     */
+    updateProgressBar(elementId, percentage) {
+        const element = document.getElementById(elementId);
+        if (element) {
+            element.style.width = `${Math.max(0, Math.min(100, percentage))}%`;
+        }
+    }
+    
+    /**
+     * Update a progress value text element
+     * @param {string} elementId - ID of the value element
+     * @param {string} value - Value to display
+     */
+    updateProgressValue(elementId, value) {
+        const element = document.getElementById(elementId);
+        if (element) {
+            element.textContent = value;
+        }
+    }
+    
+    /**
      * Initialize all charts
      * @param {Object} data - Raw data
      */
@@ -372,6 +546,8 @@ class EnhancedDashboard {
             timeFilter.addEventListener('change', () => {
                 this.currentFilters.timeframe = timeFilter.value;
                 this.refreshDashboard();
+                // Refresh tables immediately on filter change
+                this.populateDataTables(this.filterData(this.rawData));
             });
         }
         
@@ -500,6 +676,9 @@ class EnhancedDashboard {
                 // Update rate displays
                 this.updateRateDisplays(kpis);
                 
+                // Update progress indicators
+                this.updateProgressIndicators(kpis);
+                
                 // Update charts with filtered data
                 if (window.chartService) {
                     await chartService.updateCharts(filteredData, kpis, this.rawData);
@@ -507,6 +686,9 @@ class EnhancedDashboard {
                 
                 // Update regional data with filtered data
                 this.updateRegionalData(filteredData);
+
+                // Update data tables
+                this.populateDataTables(filteredData);
             }
             
             // Update last refresh time
@@ -549,6 +731,122 @@ class EnhancedDashboard {
         
         return filteredData;
     }
+
+    /**
+     * Populate detailed data tables for all sections
+     */
+    populateDataTables(data) {
+        if (!data) return;
+
+        // Helper to safely get a field by multiple header candidates (French first)
+        const get = (row, candidates = []) => {
+            for (const c of candidates) {
+                if (c in row && row[c] !== '') return row[c];
+                const k = Object.keys(row).find(k => k && k.toLowerCase() === String(c).toLowerCase());
+                if (k && row[k] !== '') return row[k];
+            }
+            return '';
+        };
+
+        const fmtDMY = (val) => {
+            try {
+                if (window.dataAggregationService) {
+                    const d = dataAggregationService.parseDate(val);
+                    return d ? d.toLocaleDateString('fr-FR') : String(val || '');
+                }
+            } catch(_) {}
+            return UTILS.formatDate(val);
+        };
+
+        // Yields table
+        try {
+            const tbody = document.getElementById('yieldsTableBody');
+            if (tbody) {
+                const rows = (data['Yields Projections'] || []).slice(0, 200);
+                tbody.innerHTML = '';
+                rows.forEach(r => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${fmtDMY(get(r, ['Date','date']))}</td>
+                        <td>${get(r, ['Région','Region','region'])}</td>
+                        <td>${get(r, ['Commune','commune'])}</td>
+                        <td>${get(r, ['Nombre de levées','Nombre de Levees','Nombre de levees','levées','levees'])}</td>
+                        <td></td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+        } catch(e) { console.warn('Yields table render error', e); }
+
+        // Public Display Follow-up table
+        try {
+            const tbody = document.getElementById('displayTableBody');
+            if (tbody) {
+                const rows = (data['Public Display Follow-up'] || []).slice(0, 200);
+                tbody.innerHTML = '';
+                rows.forEach(r => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${fmtDMY(get(r, ['Date','date']))}</td>
+                        <td>${get(r, ['Région','Region','region'])}</td>
+                        <td>${get(r, ['Commune','commune'])}</td>
+                        <td>${get(r, ['Nombre de parcelles affichées sans erreurs'])}</td>
+                        <td>${get(r, ['Nombre Parcelles avec erreur'])}</td>
+                        <td>${get(r, ['Motif retour','Motif'])}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+        } catch(e) { console.warn('Display table render error', e); }
+
+        // CTASF Follow-up table
+        try {
+            const tbody = document.getElementById('ctasfTableBody');
+            if (tbody) {
+                const rows = (data['CTASF Follow-up'] || []).slice(0, 200);
+                tbody.innerHTML = '';
+                rows.forEach(r => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${fmtDMY(get(r, ['Date','date']))}</td>
+                        <td>${get(r, ['Région','Region','region'])}</td>
+                        <td>${get(r, ['Commune','commune'])}</td>
+                        <td>${get(r, ['Nombre parcelles emmenées au CTASF'])}</td>
+                        <td>${get(r, ['Nombre parcelles retenues CTASF'])}</td>
+                        <td>${get(r, ['Nombre parcelles à délibérer','Nombre parcelles a deliberer'])}</td>
+                        <td>${get(r, ['Nombre parcelles délibérées','Nombre parcelles deliberees'])}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+        } catch(e) { console.warn('CTASF table render error', e); }
+
+        // Post Process Follow-up table
+        try {
+            const tbody = document.getElementById('processingTableBody');
+            if (tbody) {
+                const rows = (data['Post Process Follow-up'] || []).slice(0, 200);
+                tbody.innerHTML = '';
+                rows.forEach(r => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${fmtDMY(get(r, ['Date','date']))}</td>
+                        <td>${get(r, ['Région','Region','region'])}</td>
+                        <td>${get(r, ['Commune','commune'])}</td>
+                        <td>${get(r, ['Parcelles reçues (Brutes)','Parcelles recues (Brutes)','Parcelles reçues'])}</td>
+                        <td>${get(r, ['Parcelles post traitées (Sans Doublons et topoplogie correcte)','Parcelles post traitees'])}</td>
+                        <td>${get(r, ['Parcelles individuelles Jointes'])}</td>
+                        <td>${get(r, ['Parcelles collectives Jointes'])}</td>
+                        <td>${get(r, ['Parcelles sans jointure'])}</td>
+                        <td>${get(r, ['Parcelles retournées aux topos','Parcelles retournees aux topos'])}</td>
+                        <td>${get(r, ['Geomaticien','Géomaticien'])}</td>
+                        <td>${get(r, ['Motif'])}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+        } catch(e) { console.warn('Processing table render error', e); }
+    }
     
     /**
      * Update quality rate display
@@ -577,6 +875,196 @@ class EnhancedDashboard {
      * @param {number} rate - CTASF rate percentage
      */
     updateCTASFRate(rate) {
+        const ctasfRateElement = document.getElementById('ctasfRate');
+        if (ctasfRateElement) {
+            ctasfRateElement.textContent = `${rate}%`;
+            
+            // Update color based on rate
+            if (rate >= 90) {
+                ctasfRateElement.className = 'text-2xl font-bold text-green-600';
+            } else if (rate >= 75) {
+                ctasfRateElement.className = 'text-2xl font-bold text-blue-600';
+            } else if (rate >= 60) {
+                ctasfRateElement.className = 'text-2xl font-bold text-yellow-500';
+            } else {
+                ctasfRateElement.className = 'text-2xl font-bold text-red-600';
+            }
+        }
+    }
+    
+    /**
+     * Handle real-time data update 
+     * This method can be called with new data to update the dashboard without a full reload
+     * @param {Object} newData - New data to update the dashboard with
+     * @param {boolean} isPartialUpdate - Whether this is a partial update (true) or full data refresh (false)
+     */
+    handleRealTimeUpdate(newData, isPartialUpdate = true) {
+        try {
+            if (!newData) {
+                console.warn('No data provided for real-time update');
+                return false;
+            }
+            
+            console.log('Processing real-time data update...');
+            
+            // For partial updates, merge with existing data
+            let updatedData = newData;
+            if (isPartialUpdate && this.rawData) {
+                updatedData = this._mergeData(this.rawData, newData);
+            } else {
+                // For full data replacement
+                this.rawData = newData;
+            }
+            
+            // Mark data as streaming update for optimized chart rendering
+            updatedData.streamingUpdate = true;
+            
+            // Apply current filters
+            const filteredData = this.applyFilters(updatedData);
+            
+            // Compute KPIs with updated data
+            let kpis = {};
+            if (window.dataAggregationService) {
+                kpis = dataAggregationService.computeMainKPIs(filteredData);
+                
+                // Update KPI displays
+                if (kpis.qualityScore !== undefined) {
+                    this.updateQualityRate(kpis.qualityScore);
+                }
+                if (kpis.ctasfRate !== undefined) {
+                    this.updateCTASFRate(kpis.ctasfRate);
+                }
+            }
+            
+            // Update tube progress indicators
+            if (window.tubeProgressService) {
+                tubeProgressService.updateTubes({
+                    'dailyTube': {
+                        currentValue: kpis.dailyCompletion || 0,
+                        targetValue: kpis.dailyTarget || 100,
+                        percentage: kpis.dailyCompletionRate || 0
+                    },
+                    'weeklyTube': {
+                        currentValue: kpis.weeklyCompletion || 0,
+                        targetValue: kpis.weeklyTarget || 500,
+                        percentage: kpis.weeklyCompletionRate || 0
+                    },
+                    'monthlyTube': {
+                        currentValue: kpis.monthlyCompletion || 0,
+                        targetValue: kpis.monthlyTarget || 2000,
+                        percentage: kpis.monthlyCompletionRate || 0
+                    }
+                });
+            }
+            
+            // Update charts with streaming data
+            if (window.chartService) {
+                chartService.updateCharts(filteredData, kpis, updatedData);
+            }
+            
+            // Update last refresh time
+            this.updateLastRefreshTime();
+            
+            console.log('Real-time update completed successfully');
+            return true;
+        } catch (error) {
+            console.error('Error processing real-time update:', error);
+            return false;
+        }
+    }
+    
+    /**
+     * Helper method to merge new data with existing data
+     * @private
+     * @param {Object} existingData - Existing dashboard data
+     * @param {Object} newData - New data to merge
+     * @returns {Object} - Merged data object
+     */
+    _mergeData(existingData, newData) {
+        if (!existingData) return newData;
+        if (!newData) return existingData;
+        
+        const result = { ...existingData };
+        
+        // Merge arrays from each sheet
+        Object.keys(newData).forEach(key => {
+            const newSheet = newData[key];
+            
+            // If we have a new array for a sheet
+            if (Array.isArray(newSheet)) {
+                const existingSheet = result[key];
+                
+                // If we don't have this sheet yet, just use the new data
+                if (!existingSheet || !Array.isArray(existingSheet)) {
+                    result[key] = newSheet;
+                    return;
+                }
+                
+                // For existing sheets, we need to merge items
+                // First build a map of existing items by ID or other unique field
+                const idField = this._getSheetIdField(key);
+                const existingMap = new Map();
+                
+                existingSheet.forEach((item, index) => {
+                    // Use the ID field if available, otherwise position index
+                    const itemId = idField && item[idField] ? item[idField] : `index_${index}`;
+                    existingMap.set(itemId, item);
+                });
+                
+                // Update existing items and add new ones
+                newSheet.forEach(newItem => {
+                    if (!newItem) return;
+                    
+                    const itemId = idField && newItem[idField] ? newItem[idField] : null;
+                    
+                    if (itemId && existingMap.has(itemId)) {
+                        // Update existing item
+                        const existingItem = existingMap.get(itemId);
+                        Object.assign(existingItem, newItem);
+                    } else {
+                        // Add new item
+                        existingSheet.push(newItem);
+                    }
+                });
+            } else if (typeof newSheet === 'object' && newSheet !== null) {
+                // For non-array objects, do a shallow merge
+                result[key] = { ...(result[key] || {}), ...newSheet };
+            } else {
+                // For primitive values, just replace
+                result[key] = newSheet;
+            }
+        });
+        
+        return result;
+    }
+    
+    /**
+     * Helper to determine the ID field for a given sheet
+     * @private
+     * @param {string} sheetName - Name of the sheet
+     * @returns {string|null} - Name of the ID field, or null if not identified
+     */
+    _getSheetIdField(sheetName) {
+        const normalizedName = String(sheetName).toLowerCase();
+        
+        // Map common sheet names to their ID fields
+        if (normalizedName.includes('daily') || normalizedName.includes('quotidien')) return 'Date';
+        if (normalizedName.includes('parcels') || normalizedName.includes('parcelle')) return 'ParcelID';
+        if (normalizedName.includes('geomatician') || normalizedName.includes('geometre')) return 'GeomaticianID';
+        if (normalizedName.includes('commune')) return 'CommuneID';
+        if (normalizedName.includes('region')) return 'RegionName';
+        
+        // Default ID fields to try
+        const commonIdFields = ['ID', 'Id', 'id', '_id', 'UUID', 'Uuid', 'uuid'];
+        
+        return null; // If no specific mapping, let the caller use index
+    }
+    
+    /**
+     * Update CTASF rate display
+     * @param {number} rate - The CTASF rate percentage
+     */
+    updateCtasfRateDisplay(rate) {
         const ctasfRateElement = document.getElementById('ctasfRate');
         const ctasfRateBarElement = document.getElementById('ctasfRateBar');
         
@@ -885,3 +1373,6 @@ class EnhancedDashboard {
 
 // Dashboard initialization is now handled in index.html
 // No automatic initialization here to avoid duplication
+
+// Make EnhancedDashboard available globally
+window.EnhancedDashboard = EnhancedDashboard;

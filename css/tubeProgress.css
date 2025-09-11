@@ -23,13 +23,28 @@
     --tube-bottom-radius: 55px;
 }
 
+/* Dark mode variables */
+@media (prefers-color-scheme: dark) {
+    :root {
+        --color-primary: #60a5fa;
+        --color-secondary: #a5b4fc;
+        --color-success: #34d399;
+        --color-warning: #fb923c;
+        --color-danger: #f87171;
+        --color-info: #38bdf8;
+        --color-neutral: #9ca3af;
+        --text-contrast: #E5E7EB; /* Adjusted for dark mode */
+    }
+}
+
 /* Container styles */
 .tube-container {
     display: flex;
     flex-direction: column;
     align-items: center;
     padding: 1.5rem;
-    background-color: white;
+    background-color: rgba(255,255,255,0.75);
+    backdrop-filter: blur(12px) saturate(1.1);
     border-radius: 0.75rem;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
     transition: transform 0.2s, box-shadow 0.2s;
@@ -54,6 +69,7 @@
         inset 0 2px 4px rgba(0, 0, 0, 0.05),
         0 0 0 1px rgba(0, 0, 0, 0.03);
     margin-bottom: 1rem;
+    max-width: 100%;
 }
 
 /* Liquid fill effect */
@@ -110,7 +126,13 @@
 }
 
 .tube-wave {
-    animation: tubeWave 3s linear infinite;
+        animation: tubeWave 3s linear infinite;
+}
+
+/* Respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+    .tube-liquid { transition: none; animation: none; }
+    .tube-wave { animation: none; }
 }
 
 /* Label styling */
@@ -119,46 +141,62 @@
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    width: 100%;
+    width: 90%; /* Slightly narrower to avoid edge cutoff */
     text-align: center;
     z-index: 10;
     display: flex;
     flex-direction: column;
     align-items: center;
+    justify-content: center;
+    color: var(--text-contrast); /* Contrast with liquid */
+    padding: 0.25rem;
+    box-sizing: border-box;
 }
 
 .tube-title {
-    font-size: 0.875rem;
+    font-size: 0.75rem; /* Smaller size */
     font-weight: 600;
-    color: #475569;
-    margin-bottom: 0.5rem;
-    text-align: center;
-}
-
-.tube-value {
-    font-size: 0.95rem;
-    font-weight: 500;
-    color: #1e293b;
-    margin-bottom: 0.5rem;
+    color: var(--text-contrast);
+    margin-bottom: 0.5rem; /* Slightly increased spacing */
+    text-shadow: 0 0 3px rgba(0, 0, 0, 0.7), 0 0 1px rgba(255, 255, 255, 0.5); /* Enhanced readability */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    width: 100%;
     white-space: nowrap;
+    max-height: 1.2em; /* Ensure it doesn't take too much vertical space */
 }
 
 .tube-percentage {
-    font-size: 2.2rem;
+    font-size: 1.6rem; /* Reduced size for better fit */
     font-weight: 700;
-    color: var(--color-primary);
-    margin-top: 0.5rem;
+    color: var(--text-contrast);
+    margin: 0.25rem 0; /* Adjust spacing */
     line-height: 1;
+    text-shadow: 0 0 3px rgba(0, 0, 0, 0.7), 0 0 1px rgba(255, 255, 255, 0.5); /* Enhanced readability */
+}
+
+.tube-value {
+    font-size: 0.65rem; /* Even smaller for better fit */
+    font-weight: 500;
+    color: var(--text-contrast);
+    margin-bottom: 0.25rem; /* Reduce spacing */
+    white-space: nowrap;
+    text-shadow: 0 0 3px rgba(0, 0, 0, 0.7), 0 0 1px rgba(255, 255, 255, 0.5); /* Enhanced readability */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    width: 100%;
+    max-height: 1.2em; /* Ensure it doesn't take too much vertical space */
 }
 
 .tube-gap {
     font-size: 1.25rem;
     font-weight: 700;
     margin-top: 0.75rem;
-    color: var(--color-danger);
+    color: var(--text-contrast);
     animation: tubeFadeIn 0.8s ease-in forwards;
     animation-delay: 0.5s;
     opacity: 0;
+    text-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
 }
 
 /* Tube color variations */
@@ -166,32 +204,16 @@
     background: var(--color-primary);
 }
 
-.tube-primary .tube-percentage {
-    color: var(--color-primary);
-}
-
 .tube-success .tube-liquid {
     background: var(--color-success);
-}
-
-.tube-success .tube-percentage {
-    color: var(--color-success);
 }
 
 .tube-warning .tube-liquid {
     background: var(--color-warning);
 }
 
-.tube-warning .tube-percentage {
-    color: var(--color-warning);
-}
-
 .tube-danger .tube-liquid {
     background: var(--color-danger);
-}
-
-.tube-danger .tube-percentage {
-    color: var(--color-danger);
 }
 
 /* Tube reflections for realism */

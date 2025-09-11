@@ -35,6 +35,19 @@ const CONFIG = {
             warning: ['#F59E0B', '#F97316'],
             danger: ['#EF4444', '#F87171']
         }
+    },
+
+    // Work status per commune (used for coloring in Commune Status chart)
+    COMMUNE_STATUS: {
+        active: [
+            'Koar', 'Sinthiou Maleme', 'Ndoga Babacar', 'Missirah', 'Netteboulou', 'Bala'
+        ],
+        inProgress: [
+            'Tomboronkoto', 'Dindefello', 'Moudery', 'Gabou', 'Dimboli', 'Bembou'
+        ],
+        finished: [
+            'Fongolembi', 'Bandafassi', 'Dimboli'
+        ]
     }
 };
 
@@ -257,14 +270,35 @@ const UTILS = {
         }).format(num / 100);
     },
     
-    // Format date for display
+    // Robust day-first date parser returning a real Date or null
+    parseDateDMY: (val) => {
+        if (!val && val !== 0) return null;
+        // If it's already a Date
+        if (val instanceof Date && !isNaN(val)) return val;
+        const str = String(val).trim();
+        // Handle ISO quickly
+        const iso = new Date(str);
+        if (!isNaN(iso)) {
+            // Beware of MM/DD confusion: if original contains '/'
+            if (/^\d{4}-\d{2}-\d{2}/.test(str)) return iso;
+        }
+        // Accept DD/MM/YYYY, D/M/YYYY, DD-MM-YYYY
+        const m = /^([0-3]?\d)[/.-]([01]?\d)[/.-](\d{2}|\d{4})$/.exec(str);
+        if (m) {
+            let d = parseInt(m[1], 10); let mo = parseInt(m[2], 10); let y = parseInt(m[3], 10);
+            if (y < 100) y = 2000 + y; // 2-digit year -> 20xx
+            const dt = new Date(y, mo - 1, d);
+            return isNaN(dt) ? null : dt;
+        }
+        // Fallback: try Date again
+        return isNaN(iso) ? null : iso;
+    },
+    
+    // Format date for display (force fr-FR day-first)
     formatDate: (dateString) => {
-        const date = new Date(dateString);
-        return date.toLocaleDateString('fr-FR', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric'
-        });
+        const date = UTILS.parseDateDMY(dateString);
+        if (!date) return String(dateString || '');
+        return date.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
     },
     
     // Parse CSV data
@@ -299,7 +333,7 @@ const UTILS = {
 
             return data;
         } catch (err) {
-            console.error('parseCSV error:', err);
+            // Suppressed parseCSV error log
             return [];
         }
     },
@@ -332,7 +366,8 @@ const UTILS = {
     // Filter data by date range
     filterByDateRange: (data, startDate, endDate, dateColumn = 'Date') => {
         return data.filter(row => {
-            const rowDate = new Date(row[dateColumn]);
+            const rowDate = UTILS.parseDateDMY(row[dateColumn]);
+            if (!rowDate) return false;
             return rowDate >= startDate && rowDate <= endDate;
         });
     },

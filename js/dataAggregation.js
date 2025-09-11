@@ -9,9 +9,9 @@
 class DataAggregationService {
     constructor() {
         this.config = {
-            dailyGoal: 832.777777777778,
-            weeklyGoal: 5829.39,
-            monthlyGoal: 60830.2222222222,
+            dailyGoal: 833, // Rounded from 832.777777777778
+            weeklyGoal: 5829, // Rounded from 5829.39
+            monthlyGoal: 60830, // Rounded target
             qualityThreshold: 95,
             ctasfConversionThreshold: 90
         };
@@ -80,9 +80,18 @@ class DataAggregationService {
                 return sum + val;
             }, 0);
         }
-        const percentage = target > 0 ? Math.min(Math.max((current / target) * 100, 0), 100) : 0;
-        const gap = current - target;
-        return { current, target, percentage, gap, status: this.getStatusFromPercentage(percentage) };
+        
+        // Round values for better display
+        current = Math.round(current);
+        const roundedTarget = Math.round(target);
+        
+        // Calculate percentage with rounded values
+        const percentage = roundedTarget > 0 ? Math.min(Math.max(Math.round((current / roundedTarget) * 100), 0), 100) : 0;
+        const gap = current - roundedTarget;
+        
+        console.log(`${timeframe} KPI calculated:`, { current, target: roundedTarget, percentage, gap });
+        
+        return { current, target: roundedTarget, percentage, gap, status: this.getStatusFromPercentage(percentage) };
     }
 
     calculateQualityKPI(data) {
@@ -130,7 +139,14 @@ class DataAggregationService {
     getStatusFromPercentage(p) { if (p < 30) return 'danger'; if (p < 70) return 'warning'; return 'success'; }
 
     getDefaultKPIs() {
-        return { daily:{ current:350,target:832.77,percentage:42,gap:-482.77,status:'warning' }, weekly:{ current:4200,target:5829.39,percentage:72,gap:-629.39,status:'warning' }, monthly:{ current:1178,target:60830.22,percentage:2,gap:-59652.22,status:'danger' }, quality:{ sansErreur:0,avecErreur:0,total:0,rate:0,status:'danger' }, ctasf:{ total:0,retained:0,toDeliberate:0,deliberated:0,rate:0,deliberationRate:0,status:'danger' }, processing:{ received:0,processed:0,individualJoined:0,collectiveJoined:0,noJoin:0,returned:0,rate:0,joinRate:0,status:'danger' } };
+        return {
+            daily:    { current: 0, target: 833,  percentage: 0, gap: 0, status: 'danger' },
+            weekly:   { current: 0, target: 5829, percentage: 0, gap: 0, status: 'danger' },
+            monthly:  { current: 0, target: 60830,percentage: 0, gap: 0, status: 'danger' },
+            quality:  { sansErreur: 0, avecErreur: 0, total: 0, rate: 0, status: 'danger' },
+            ctasf:    { total: 0, retained: 0, toDeliberate: 0, deliberated: 0, rate: 0, deliberationRate: 0, status: 'danger' },
+            processing:{ received: 0, processed: 0, individualJoined: 0, collectiveJoined: 0, noJoin: 0, returned: 0, rate: 0, joinRate: 0, status: 'danger' }
+        };
     }
 
     // Generic row-level filtering based on region / commune / timeframe
@@ -174,12 +190,8 @@ class DataAggregationService {
                 else if (timeframe === 'monthly') start.setDate(today.getDate() - 29);
 
                 const parseFlexible = (raw) => {
-                    if (!raw) return null;
-                    const d1 = new Date(raw);
-                    if (!isNaN(d1)) return d1;
-                    const m = /^([0-3]?\d)[/.-]([01]?\d)[/.-](\d{4})$/.exec(raw);
-                    if (m) { const d2 = new Date(`${m[3]}-${m[2]}-${m[1]}`); if (!isNaN(d2)) return d2; }
-                    return null;
+                    try { if (window.UTILS && typeof UTILS.parseDateDMY === 'function') return UTILS.parseDateDMY(raw); } catch(_) {}
+                    return this.parseDate(raw);
                 };
 
                 const filtered = result.filter(r => {
@@ -214,10 +226,142 @@ class DataAggregationService {
     }
 
     // Trend helpers
-    generateTrendData(data, dateField, valueFields, days = 30) { if (!Array.isArray(data) || !data.length) return []; const endDate = new Date(); const startDate = new Date(); startDate.setDate(endDate.getDate() - days); const dateMap = new Map(); const cur = new Date(startDate); while (cur <= endDate) { const ds = this.formatDate(cur); dateMap.set(ds, { date: ds, ...valueFields.reduce((o, f) => (o[f] = 0, o), {}) }); cur.setDate(cur.getDate() + 1);} data.forEach(item => { const itemDate = this.formatDate(new Date(item[dateField])); if (dateMap.has(itemDate)) { const entry = dateMap.get(itemDate); valueFields.forEach(f => { if (item[f] !== undefined) entry[f] += Number(item[f]) || 0; }); }}); return Array.from(dateMap.values()).sort((a,b)=> new Date(a.date)-new Date(b.date)); }
-    formatDate(date) { return date.toISOString().split('T')[0]; }
-    calculateCumulativeData(data, dateField, valueField) { if (!Array.isArray(data) || !data.length) return []; const sorted = [...data].sort((a,b)=> new Date(a[dateField]) - new Date(b[dateField])); let cum = 0; return sorted.map(item => { cum += Number(item[valueField]) || 0; return { date: item[dateField], value: cum }; }); }
-    groupDataBy(data, groupField, valueFields) { if (!Array.isArray(data) || !data.length) return {}; const grouped = {}; data.forEach(item => { const g = item[groupField] || 'Unknown'; if (!grouped[g]) grouped[g] = valueFields.reduce((o,f)=> (o[f]=0,o), {}); valueFields.forEach(f=> grouped[g][f] += Number(item[f]) || 0); }); return grouped; }
+    generateTrendData(data, dateField, valueFields, days = 30) {
+        if (!Array.isArray(data) || !data.length) return [];
+        
+        const dateMap = new Map();
+
+        data.forEach(item => {
+            const d = this.parseDate(item[dateField]);
+            if (!d) return;
+            const itemDate = this.formatDate(d);
+            
+            if (dateMap.has(itemDate)) {
+                const entry = dateMap.get(itemDate);
+                valueFields.forEach(f => {
+                    if (item[f] !== undefined) entry[f] += Number(item[f]) || 0;
+                });
+            } else {
+                const newEntry = {
+                    date: itemDate,
+                    ...valueFields.reduce((o, f) => (o[f] = Number(item[f]) || 0, o), {})
+                };
+                dateMap.set(itemDate, newEntry);
+            }
+        });
+
+        const sortedData = Array.from(dateMap.values()).sort((a, b) => new Date(a.date) - new Date(b.date));
+        console.log('Sorted trend data:', sortedData);
+        return sortedData;
+    }
+
+    calculateCumulativeData(data, dateField, valueField) {
+        if (!Array.isArray(data) || !data.length) return [];
+        const sorted = [...data].sort((a, b) => {
+            const da = this.parseDate(a[dateField]);
+            const db = this.parseDate(b[dateField]);
+            return da - db;
+        });
+
+        let cum = 0;
+        const cumulativeData = sorted.map(item => {
+            cum += Number(item[valueField]) || 0;
+            return {
+                date: this.formatDate(this.parseDate(item[dateField])),
+                value: cum
+            };
+        });
+        console.log('Cumulative data:', cumulativeData);
+        return cumulativeData;
+    }
+
+    // FIXED: Improved date parsing with proper DD/MM/YYYY format handling
+    parseDate(d) {
+        if (!d && d !== 0) return null;
+        
+    // Parsing trace suppressed
+        
+        // If d is already a Date object, don't try to parse it
+        if (d instanceof Date && !isNaN(d)) {
+            // Suppressed
+            return d;
+        }
+        
+        try {
+            if (window.UTILS && typeof UTILS.parseDateDMY === 'function' && window.UTILS !== this) {
+                const dt = UTILS.parseDateDMY(d);
+                if (dt) { return dt; }
+            }
+        } catch (e) {
+            // Suppressed
+        }
+
+        // Only trust native Date parsing for true ISO strings (YYYY-MM-DD...)
+        const str = String(d).trim();
+        if (/^\d{4}-\d{2}-\d{2}/.test(str)) {
+            const iso = new Date(str);
+            if (!isNaN(iso)) { return iso; }
+        }
+
+        // Do NOT rely on new Date() for slash-formatted strings to avoid MM/DD vs DD/MM confusion
+        // Always fall through to explicit DMY/MDY regex parsing for values containing '/'
+
+        // Handle DD/MM/YYYY format (European format)
+        const europeanMatch = /^([0-3]?\d)[/.-]([01]?\d)[/.-](\d{2,4})$/.exec(String(d).trim());
+        if (europeanMatch) {
+            const day = parseInt(europeanMatch[1], 10);
+            const month = parseInt(europeanMatch[2], 10);
+            let year = parseInt(europeanMatch[3], 10);
+            
+            // Handle 2-digit years - crucially important for year 2025
+            if (year < 100) { year = 2000 + year; }
+            
+            // Validate ranges
+            if (day >= 1 && day <= 31 && month >= 1 && month <= 12 && year >= 1900 && year <= 2100) {
+                const parsed = new Date(year, month - 1, day);
+                return parsed;
+            }
+        }
+
+        // Handle MM/DD/YYYY format (American format)
+        const americanMatch = /^([01]?\d)[/.-]([0-3]?\d)[/.-](\d{2,4})$/.exec(String(d).trim());
+        if (americanMatch) {
+            const month = parseInt(americanMatch[1], 10);
+            const day = parseInt(americanMatch[2], 10);
+            let year = parseInt(americanMatch[3], 10);
+            
+            if (year < 100) { year = 2000 + year; }
+            
+            if (day >= 1 && day <= 31 && month >= 1 && month <= 12 && year >= 1900 && year <= 2100) {
+                const parsed = new Date(year, month - 1, day);
+                return parsed;
+            }
+        }
+
+        // Handle Unix timestamp (seconds)
+        if (!isNaN(d) && Number(d) > 1000000000 && Number(d) < 9999999999) {
+            const parsed = new Date(Number(d) * 1000);
+            return parsed;
+        }
+
+        // Handle Unix timestamp (milliseconds)
+        if (!isNaN(d) && Number(d) > 1000000000000) {
+            const parsed = new Date(Number(d));
+            return parsed;
+        }
+
+    // Suppressed
+        return null;
+    }
+
+    formatDate(date) {
+    if (!(date instanceof Date) || isNaN(date)) { return null; }
+        const formattedDate = date.toISOString().split('T')[0];
+        
+    // Suppress 2001 warning to avoid console noise
+        
+        return formattedDate;
+    }
 
     // Master aggregator
     calculateKPIs(rawData) {
@@ -228,18 +372,80 @@ class DataAggregationService {
             const ctasfSheet = rawData['CTASF Follow-up'] || [];
             const processingSheet = rawData['Post Process Follow-up'] || [];
 
-            // Convert date strings to Date objects robustly
-            const parseDate = (d) => { if (!d) return null; const iso = new Date(d); if (!isNaN(iso)) return iso; // try DD/MM/YYYY
-                const m = /^([0-3]?\d)[/.-]([01]?\d)[/.-](\d{4})$/.exec(d); if (m) { return new Date(`${m[3]}-${m[2]}-${m[1]}`); } return null; };
-
             const today = new Date();
             const dayKey = this.formatDate(today);
-            const weekStart = new Date(today); weekStart.setDate(today.getDate()-6);
+            const weekStart = new Date(today); weekStart.setDate(today.getDate() - 6);
             const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
 
-            const dailyData = yieldsSheet.filter(r => { const pd = parseDate(r['Date'] || r['date']); return pd && this.formatDate(pd) === dayKey; });
-            const weeklyData = yieldsSheet.filter(r => { const pd = parseDate(r['Date'] || r['date']); return pd && pd >= weekStart && pd <= today; });
-            const monthlyData = yieldsSheet.filter(r => { const pd = parseDate(r['Date'] || r['date']); return pd && pd >= monthStart && pd <= today; });
+            console.log('Data timeframes:', {
+                today: dayKey,
+                weekStart: this.formatDate(weekStart),
+                monthStart: this.formatDate(monthStart)
+            });
+
+            let latestDate = null;
+            for (const row of yieldsSheet) {
+                const pd = this.parseDate(row['Date'] || row['date']);
+                if (pd && pd <= today) {
+                    if (!latestDate || pd > latestDate) {
+                        latestDate = pd;
+                    }
+                }
+            }
+            console.log('Latest date with data (excluding future):', latestDate ? this.formatDate(latestDate) : 'None');
+
+            let dailyData = yieldsSheet.filter(r => {
+                const pd = this.parseDate(r['Date'] || r['date']);
+                return pd && this.formatDate(pd) === dayKey;
+            });
+
+            if (!dailyData.length && latestDate) {
+                console.log('No data found for today, using most recent date:', this.formatDate(latestDate));
+                const latestDateStr = this.formatDate(latestDate);
+                dailyData = yieldsSheet.filter(r => {
+                    const pd = this.parseDate(r['Date'] || r['date']);
+                    return pd && this.formatDate(pd) === latestDateStr;
+                });
+                console.log(`Found ${dailyData.length} rows for the latest date`);
+            }
+
+            let weeklyData = yieldsSheet.filter(r => {
+                const pd = this.parseDate(r['Date'] || r['date']);
+                return pd && pd >= weekStart && pd <= today;
+            });
+            console.log(`Found ${weeklyData.length} rows for weekly data`);
+
+            if (weeklyData.length < 3 && latestDate) {
+                console.log('Limited data found for current week, expanding time range');
+                const lastWeekEnd = latestDate;
+                const lastWeekStart = new Date(lastWeekEnd);
+                lastWeekStart.setDate(lastWeekEnd.getDate() - 30);
+
+                weeklyData = yieldsSheet.filter(r => {
+                    const pd = this.parseDate(r['Date'] || r['date']);
+                    return pd && pd >= lastWeekStart && pd <= lastWeekEnd && pd <= today;
+                });
+                console.log(`Now using ${weeklyData.length} rows for weekly data (expanded time range)`);
+            }
+
+            let monthlyData = yieldsSheet.filter(r => {
+                const pd = this.parseDate(r['Date'] || r['date']);
+                return pd && pd >= monthStart && pd <= today;
+            });
+            console.log(`Found ${monthlyData.length} rows for monthly data`);
+
+            if (monthlyData.length < 5 && latestDate) {
+                console.log('Limited data found for current month, expanding time range');
+                const lastMonthEnd = latestDate;
+                const lastMonthStart = new Date(lastMonthEnd);
+                lastMonthStart.setMonth(lastMonthStart.getMonth() - 2);
+
+                monthlyData = yieldsSheet.filter(r => {
+                    const pd = this.parseDate(r['Date'] || r['date']);
+                    return pd && pd >= lastMonthStart && pd <= lastMonthEnd && pd <= today;
+                });
+                console.log(`Now using ${monthlyData.length} rows for monthly data (expanded time range)`);
+            }
 
             const daily = this.calculateYieldsKPI(dailyData, 'daily');
             const weekly = this.calculateYieldsKPI(weeklyData, 'weekly');
@@ -253,7 +459,7 @@ class DataAggregationService {
                 // Previous day (yesterday)
                 const yesterday = new Date(today); yesterday.setDate(today.getDate()-1);
                 const yesterdayKey = this.formatDate(yesterday);
-                const prevDayData = yieldsSheet.filter(r => { const pd = parseDate(r['Date'] || r['date']); return pd && this.formatDate(pd) === yesterdayKey; });
+                const prevDayData = yieldsSheet.filter(r => { const pd = this.parseDate(r['Date'] || r['date']); return pd && this.formatDate(pd) === yesterdayKey && pd <= today; });
                 const prevDay = this.calculateYieldsKPI(prevDayData, 'daily');
                 if (prevDay.current > 0) {
                     daily.changePct = ((daily.current - prevDay.current) / prevDay.current) * 100;
@@ -262,7 +468,7 @@ class DataAggregationService {
                 // Previous week (7 days before current week start)
                 const prevWeekStart = new Date(weekStart); prevWeekStart.setDate(weekStart.getDate()-7);
                 const prevWeekEnd = new Date(weekStart); prevWeekEnd.setDate(weekStart.getDate()-1);
-                const prevWeekData = yieldsSheet.filter(r => { const pd = parseDate(r['Date'] || r['date']); return pd && pd >= prevWeekStart && pd <= prevWeekEnd; });
+                const prevWeekData = yieldsSheet.filter(r => { const pd = this.parseDate(r['Date'] || r['date']); return pd && pd >= prevWeekStart && pd <= prevWeekEnd && pd <= today; });
                 const prevWeek = this.calculateYieldsKPI(prevWeekData, 'weekly');
                 if (prevWeek.current > 0) {
                     weekly.changePct = ((weekly.current - prevWeek.current) / prevWeek.current) * 100;
@@ -271,28 +477,28 @@ class DataAggregationService {
                 // Previous month
                 const prevMonthEnd = new Date(monthStart); prevMonthEnd.setDate(prevMonthEnd.getDate()-1);
                 const prevMonthStart = new Date(prevMonthEnd.getFullYear(), prevMonthEnd.getMonth(), 1);
-                const prevMonthData = yieldsSheet.filter(r => { const pd = parseDate(r['Date'] || r['date']); return pd && pd >= prevMonthStart && pd <= prevMonthEnd; });
+                const prevMonthData = yieldsSheet.filter(r => { const pd = this.parseDate(r['Date'] || r['date']); return pd && pd >= prevMonthStart && pd <= prevMonthEnd && pd <= today; });
                 const prevMonth = this.calculateYieldsKPI(prevMonthData, 'monthly');
                 if (prevMonth.current > 0) {
                     monthly.changePct = ((monthly.current - prevMonth.current) / prevMonth.current) * 100;
                 }
 
                 // Quality previous day
-                const prevQualityDayData = qualitySheet.filter(r => { const pd = parseDate(r['Date'] || r['date']); return pd && this.formatDate(pd) === yesterdayKey; });
+                const prevQualityDayData = qualitySheet.filter(r => { const pd = this.parseDate(r['Date'] || r['date']); return pd && this.formatDate(pd) === yesterdayKey && pd <= today; });
                 if (prevQualityDayData.length) {
                     const prevQ = this.calculateQualityKPI(prevQualityDayData);
                     if (prevQ.rate > 0) quality.changePct = ((quality.rate - prevQ.rate) / prevQ.rate) * 100;
                 }
 
                 // Processing previous day
-                const prevProcDayData = processingSheet.filter(r => { const pd = parseDate(r['Date'] || r['date']); return pd && this.formatDate(pd) === yesterdayKey; });
+                const prevProcDayData = processingSheet.filter(r => { const pd = this.parseDate(r['Date'] || r['date']); return pd && this.formatDate(pd) === yesterdayKey && pd <= today; });
                 if (prevProcDayData.length) {
                     const prevProc = this.calculateProcessingKPI(prevProcDayData);
                     if (prevProc.rate > 0) processing.changePct = ((processing.rate - prevProc.rate) / prevProc.rate) * 100;
                 }
 
                 // CTASF previous day
-                const prevCtasfDayData = ctasfSheet.filter(r => { const pd = parseDate(r['Date'] || r['date']); return pd && this.formatDate(pd) === yesterdayKey; });
+                const prevCtasfDayData = ctasfSheet.filter(r => { const pd = this.parseDate(r['Date'] || r['date']); return pd && this.formatDate(pd) === yesterdayKey && pd <= today; });
                 if (prevCtasfDayData.length) {
                     const prevCtasf = this.calculateCTASFKPI(prevCtasfDayData);
                     if (prevCtasf.rate > 0) ctasf.changePct = ((ctasf.rate - prevCtasf.rate) / prevCtasf.rate) * 100;

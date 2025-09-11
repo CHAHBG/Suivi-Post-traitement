@@ -17,7 +17,11 @@ class DataService {
                 }
             }
 
-            const response = await fetch(url);
+            // Add timeout to fetch (10 seconds)
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 10000);
+            const response = await fetch(url, { signal: controller.signal });
+            clearTimeout(timeoutId);
             if (!response.ok) {
                 throw new Error(`Network response was not ok: ${response.status}`);
             }
@@ -35,7 +39,7 @@ class DataService {
             
             return data;
         } catch (error) {
-            console.error(`Error fetching CSV data from ${url}:`, error);
+            // Suppressed CSV fetch error log (parsing-related)
             throw error;
         }
     }
@@ -52,33 +56,30 @@ class DataService {
         for (const [key, sheet] of Object.entries(GOOGLE_SHEETS)) {
             // Use the explicit configured name when available, otherwise fallback to the config key
             sheetNames.push(sheet.name || key);
-            fetchPromises.push(this.fetchCSV(sheet.url)
-                .catch(error => {
-                    errors.push({sheet: key, error});
-                    return [];
-                }));
+            fetchPromises.push(this.fetchCSV(sheet.url));
         }
 
         // Add monitoring sheets to fetch
         for (const [key, sheet] of Object.entries(MONITORING_SHEETS)) {
             sheetNames.push(sheet.name || key);
-            fetchPromises.push(this.fetchCSV(sheet.url)
-                .catch(error => {
-                    errors.push({sheet: key, error});
-                    return [];
-                }));
+            fetchPromises.push(this.fetchCSV(sheet.url));
         }
 
-        // Wait for all fetches to complete
-        const results = await Promise.all(fetchPromises);
+        // Wait for all fetches to complete with Promise.allSettled for resilience
+        const results = await Promise.allSettled(fetchPromises);
         
         // Map results to data object with proper names
         results.forEach((result, index) => {
             const sheetName = sheetNames[index] || `sheet_${index}`;
-            data[sheetName] = result;
+            if (result.status === 'fulfilled') {
+                data[sheetName] = result.value;
+            } else {
+                errors.push({sheet: sheetName, error: result.reason});
+                data[sheetName] = [];
+            }
             // Debug: show how many rows were returned for each sheet
             try {
-                console.info(`Sheet loaded: ${sheetName} -> ${Array.isArray(result) ? result.length : 0} rows`);
+                console.info(`Sheet loaded: ${sheetName} -> ${Array.isArray(data[sheetName]) ? data[sheetName].length : 0} rows`);
             } catch (e) {
                 // ignore
             }
@@ -212,7 +213,7 @@ class DataService {
         return dates;
     }
 
-    // Get time series data
+    // Get time series data (aggregated by day)
     getTimeSeriesData(rawData, sheetName, dateColumn, valueColumns) {
         try {
             const data = rawData[sheetName] || [];
@@ -221,37 +222,46 @@ class DataService {
             // If valueColumns is a string, convert to array
             const columns = Array.isArray(valueColumns) ? valueColumns : [valueColumns];
             
-            // Robust date parsing that tolerates multiple formats (DD/MM/YYYY, DD-MM-YYYY, YYYY-MM-DD, DD/MM/YY)
+            // Centralized date parsing
             const parseDate = (dateStr) => {
                 if (dateStr === undefined || dateStr === null || dateStr === '') return null;
-                if (moment.isMoment(dateStr)) return dateStr.clone();
-                if (dateStr instanceof Date && !isNaN(dateStr)) return moment(dateStr);
-                // Excel serial number support (roughly > 40000 corresponds to year 2009+)
+                if (dateStr instanceof Date && !isNaN(dateStr)) return dateStr;
+                // Excel serial (approx range)
                 if (!isNaN(dateStr) && Number(dateStr) > 40000 && Number(dateStr) < 60000) {
-                    const base = moment('1899-12-30','YYYY-MM-DD');
-                    return base.add(Number(dateStr), 'days');
+                    return new Date((Number(dateStr) - 25569) * 86400 * 1000);
                 }
-                const formats = [
-                    'DD/MM/YYYY','DD-MM-YYYY','YYYY-MM-DD','YYYY/MM/DD',
-                    'DD/MM/YY','DD-MM-YY','MM/DD/YYYY','MM-DD-YYYY','D/M/YYYY','D/M/YY','DD.M.YYYY','D.M.YYYY'
-                ];
-                let m = moment(String(dateStr).trim(), formats, true);
-                if (!m.isValid()) {
-                    const cleaned = String(dateStr).trim().replace(/[.]/g,'/').replace(/-/g,'/');
-                    const parts = cleaned.split('/').map(p=>p.trim()).filter(Boolean);
-                    if (parts.length === 3) {
-                        let [a,b,c] = parts;
-                        if (c.length === 2) c = '20'+c; // 2-digit year assumption
-                        if (a.length === 1) a = a.padStart(2,'0');
-                        if (b.length === 1) b = b.padStart(2,'0');
-                        // If first >12 -> day first
-                        if (parseInt(a,10) > 12 && parseInt(b,10) <= 12) m = moment(`${c}-${b}-${a}`,'YYYY-MM-DD',true);
-                        else if (parseInt(b,10) > 12 && parseInt(a,10) <= 12) m = moment(`${c}-${a}-${b}`,'YYYY-MM-DD',true); // probably month/day
-                        else m = moment(`${c}-${b}-${a}`,'YYYY-MM-DD',true); // default day-first
+                // Prefer DataAggregationService for consistent parsing
+                try {
+                    if (window.dataAggregationService && typeof window.dataAggregationService.parseDate === 'function') {
+                        const d = window.dataAggregationService.parseDate(dateStr);
+                        if (d) return d;
                     }
+                } catch (_) {}
+                // Fallback: basic DMY parser
+                const cleaned = String(dateStr).trim();
+                // Only trust native Date for true ISO
+                if (/^\d{4}-\d{2}-\d{2}/.test(cleaned)) {
+                    const iso = new Date(cleaned);
+                    if (!isNaN(iso)) return iso;
                 }
-                if (!m.isValid()) return null;
-                return m;
+                const m = /^([0-3]?\d)[/.-]([01]?\d)[/.-](\d{2,4})$/.exec(cleaned);
+                if (m) {
+                    let d = parseInt(m[1],10), mo = parseInt(m[2],10), y = parseInt(m[3],10);
+                    if (y < 100) y = 2000 + y; // 2-digit year -> 20xx
+                    const dt = new Date(y, mo - 1, d);
+                    return isNaN(dt) ? null : dt;
+                }
+                return null;
+            };
+
+            const toNumber = (val) => {
+                if (val === undefined || val === null || val === '') return 0;
+                if (typeof val === 'number') return isNaN(val) ? 0 : val;
+                const s = String(val).trim().replace(/\u00A0/g,' ').replace(/\s+/g,'');
+                // Replace French decimal comma
+                const normalized = s.replace(/,/g,'.').replace(/[^0-9.+-]/g,'');
+                const n = parseFloat(normalized);
+                return isNaN(n) ? 0 : n;
             };
             
             // Group by date if single value column (aggregate multiple rows same date)
@@ -261,8 +271,9 @@ class DataService {
                 data.forEach(row => {
                     const rawVal = row[dateColumn];
                     rawDateSet.add(rawVal);
-                    const m = parseDate(rawVal);
-                    const key = m ? m.format('YYYY-MM-DD') : String(rawVal).trim();
+                    const dateObj = parseDate(rawVal);
+                    if (!dateObj) return;
+                    const key = dateObj.toISOString().split('T')[0]; // YYYY-MM-DD
                     const val = parseFloat(row[columns[0]]) || 0;
                     if (!byDate.has(key)) byDate.set(key, 0);
                     byDate.set(key, byDate.get(key) + val);
@@ -279,14 +290,21 @@ class DataService {
                 })).sort((a,b)=> a.date.localeCompare(b.date));
                 return result;
             } else {
-                // For multiple value columns, return data with all values
-                return data.map(row => {
-                    const m = parseDate(row[dateColumn]);
-                    if (!m) return null;
-                    const entry = { date: m.format('YYYY-MM-DD') };
-                    columns.forEach(col => { entry[col] = parseFloat(row[col]) || 0; });
-                    return entry;
-                }).filter(Boolean).sort((a,b)=> a.date.localeCompare(b.date));
+                // Multiple value columns: aggregate by date (sum per day per column)
+                const byDate = new Map();
+                data.forEach(row => {
+                    const dateObj = parseDate(row[dateColumn]);
+                    if (!dateObj) return;
+                    const key = dateObj.toISOString().split('T')[0];
+                    if (!byDate.has(key)) {
+                        const init = { date: key };
+                        columns.forEach(col => { init[col] = 0; });
+                        byDate.set(key, init);
+                    }
+                    const acc = byDate.get(key);
+                    columns.forEach(col => { acc[col] += toNumber(row[col]); });
+                });
+                return Array.from(byDate.values()).sort((a,b)=> a.date.localeCompare(b.date));
             }
         } catch (error) {
             console.error(`Error getting time series data for ${sheetName}:`, error);
@@ -322,7 +340,7 @@ class DataService {
 
     // Get commune status
     getCommuneStatus(totalPercentage, ctasfPercentage, deliberatedPercentage) {
-        const avgPercentage = (totalPercentage + ctasfPercentage + deliberatedPercentage) / 3;
+        const avgPercentage = (totalPercentage * 0.4 + ctasfPercentage * 0.3 + deliberatedPercentage * 0.3); // Weighted for improvement
         if (avgPercentage >= 80) return 'high';
         if (avgPercentage >= 50) return 'medium';
         if (avgPercentage >= 30) return 'low';
@@ -379,10 +397,11 @@ class DataService {
         if (!startDateStr || !endDateStr) return 0;
         
         try {
-            const startDate = new Date(startDateStr);
-            const endDate = new Date(endDateStr);
+            const startDate = (window.UTILS && UTILS.parseDateDMY) ? UTILS.parseDateDMY(startDateStr) : this.parseDateDMY(startDateStr);
+            const endDate = (window.UTILS && UTILS.parseDateDMY) ? UTILS.parseDateDMY(endDateStr) : this.parseDateDMY(endDateStr);
             const today = new Date();
             
+            if (!startDate || !endDate) return 0;
             if (today < startDate) return 0;
             if (today > endDate) return 100;
             
@@ -392,6 +411,26 @@ class DataService {
             return Math.round((elapsedDuration / totalDuration) * 100);
         } catch (error) {
             return 0;
+        }
+    }
+
+    // Dedicated date parser for DD/MM/YYYY format (added for consistency)
+    parseDateDMY(dateStr) {
+        if (!dateStr) return null;
+        try {
+            const parts = String(dateStr).trim().split(/[/.-]/);
+            if (parts.length !== 3) return null;
+            let day = parseInt(parts[0], 10);
+            let month = parseInt(parts[1], 10);
+            let year = parseInt(parts[2], 10);
+            if (isNaN(day) || isNaN(month) || isNaN(year)) return null;
+            if (year < 100) year += 2000;
+            const date = new Date(year, month - 1, day);
+            if (isNaN(date.getTime()) || date.getDate() !== day || date.getMonth() + 1 !== month) return null;
+            return date;
+        } catch (e) {
+            // Suppressed invalid date format warning (parsing-related)
+            return null;
         }
     }
 

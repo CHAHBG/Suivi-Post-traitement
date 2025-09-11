@@ -41,6 +41,45 @@ class ChartService {
             }
             return 0;
         };
+
+        // Use the centralized date parsing from dataAggregationService
+        this.parseDateDMY = (dateStr) => {
+            // First try with dataAggregationService if available
+            if (window.dataAggregationService && typeof window.dataAggregationService.parseDate === 'function') {
+                const result = window.dataAggregationService.parseDate(dateStr);
+                if (result) return result;
+            }
+            
+            // Fallback to original implementation if dataAggregationService is not available
+            if (!dateStr && dateStr !== 0) return null;
+            try {
+                const parts = String(dateStr).trim().split(/[/.\-]/);
+                if (parts.length !== 3) return null;
+                let day = parseInt(parts[0], 10);
+                let month = parseInt(parts[1], 10);
+                let year = parseInt(parts[2], 10);
+                if (isNaN(day) || isNaN(month) || isNaN(year)) return null;
+                if (year < 100) year += 2000; // normalize 2-digit year
+                const d = new Date(year, month - 1, day);
+                if (isNaN(d.getTime())) return null;
+                if (d.getFullYear() !== year || (d.getMonth() + 1) !== month || d.getDate() !== day) return null;
+                return d;
+            } catch (e) {
+                // Suppressed parsing fallback warning
+                return null;
+            }
+        };
+        
+        // Format date consistently using dataAggregationService
+        this.formatDate = (date) => {
+            if (window.dataAggregationService && typeof window.dataAggregationService.formatDate === 'function') {
+                return window.dataAggregationService.formatDate(date);
+            }
+            
+            // Fallback if dataAggregationService is not available
+            if (!(date instanceof Date) || isNaN(date)) return null;
+            return date.toISOString().split('T')[0];
+        };
         
         // Initialize modern Chart.js theme once
         this._initGlobalTheme();
@@ -90,11 +129,21 @@ class ChartService {
             return null;
         };
         
-        // Helper method to adjust a date by a specified number of days
-        this._adjustDateByDays = (dateStr, days) => {
+    // Helper method to adjust a date by a specified number of days (DMY aware)
+    this._adjustDateByDays = (dateStr, days) => {
             if (!dateStr) return '';
             try {
-                const date = new Date(dateStr);
+                // Prioritize dataAggregationService.parseDate if available
+                let date;
+                if (window.dataAggregationService && typeof window.dataAggregationService.parseDate === 'function') {
+                    date = window.dataAggregationService.parseDate(dateStr);
+                }
+                
+                // Fall back to other methods if dataAggregationService didn't parse successfully
+                if (!date) {
+                    date = (window.UTILS && UTILS.parseDateDMY) ? UTILS.parseDateDMY(dateStr) : (this.parseDateDMY ? this.parseDateDMY(dateStr) : new Date(dateStr));
+                }
+                
                 date.setDate(date.getDate() + days);
                 return date.toISOString().split('T')[0]; // Return YYYY-MM-DD format
             } catch (e) {
@@ -113,7 +162,7 @@ class ChartService {
 
             // Local fallback: try permissive parsing
             if (!row || typeof row !== 'object') return 0;
-            const normKey = (s) => String(s || '').trim().toLowerCase().replace(/\u00A0/g,' ').normalize('NFD').replace(/[\u0000-\u036f]/g,'').replace(/[^a-z0-9 ]/g,'').replace(/\s+/g,' ');
+            const normKey = (s) => String(s || '').trim().toLowerCase().replace(/\u00A0/g,' ').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9 ]/g,'').replace(/\s+/g,' ');
             const map = {};
             Object.keys(row).forEach(k => { map[normKey(k)] = row[k]; });
             const candidatesArr = Array.isArray(candidates) ? candidates : [candidates];
@@ -828,7 +877,6 @@ class ChartService {
         
         console.log(`Deferred charts initialized: ${successCount}/${chartMethods.length} successful`);
     }
-    }
 
     // Overview Metrics (Sheet: Overview Metrics) - simple bar
     createOverviewMetricsChart(rawData) {
@@ -1212,6 +1260,15 @@ class ChartService {
         if (!sheet.length) return;
 
         const communes = sheet.map(r => r.Commune || r.commune || '');
+        const statusMap = (name) => {
+            const n = String(name || '').trim().toLowerCase();
+            const inList = (arr) => arr.some(c => String(c).trim().toLowerCase() === n);
+            if (CONFIG.COMMUNE_STATUS?.finished && inList(CONFIG.COMMUNE_STATUS.finished)) return 'Terminé';
+            if (CONFIG.COMMUNE_STATUS?.inProgress && inList(CONFIG.COMMUNE_STATUS.inProgress)) return 'En cours';
+            if (CONFIG.COMMUNE_STATUS?.active && inList(CONFIG.COMMUNE_STATUS.active)) return 'Actif';
+            return '—';
+        };
+        const communeStatuses = communes.map(statusMap);
         const metrics = [
             { key: ['Total Parcels','Total','total parcels'], label: 'Total', color: CONFIG.COLORS.primary },
             { key: ['NICAD','nicad'], label: 'NICAD', color: CONFIG.COLORS.success },
@@ -1234,41 +1291,96 @@ class ChartService {
         this.charts.set('communeStatusChart', new Chart(ctx, {
             type: 'bar',
             data: { labels: communes, datasets },
-            options: { ...CHART_CONFIGS.defaultOptions, plugins: { ...CHART_CONFIGS.defaultOptions.plugins, title: { display: true, text: 'Statut par Commune' } }, responsive: true, interaction: { mode: 'index', intersect: false }, scales: { x: { stacked: false, ticks: { callback: v => this._shortenLabel(communes[v]) } }, y: { beginAtZero: true } } }
+            options: { 
+                ...CHART_CONFIGS.defaultOptions, 
+                plugins: { 
+                    ...CHART_CONFIGS.defaultOptions.plugins, 
+                    title: { display: true, text: 'Statut par Commune' },
+                    tooltip: {
+                        callbacks: {
+                            afterTitle: (items) => {
+                                if (!items || !items.length) return '';
+                                const idx = items[0].dataIndex;
+                                const s = communeStatuses[idx];
+                                return s && s !== '—' ? `Statut: ${s}` : '';
+                            }
+                        }
+                    }
+                }, 
+                responsive: true, 
+                interaction: { mode: 'index', intersect: false }, 
+                scales: { 
+                    x: { stacked: false, ticks: { callback: v => this._shortenLabel(communes[v]) } }, 
+                    y: { beginAtZero: true } 
+                }
+            }
         }));
+
+        // Color bars on first dataset by status (visual cue). Others keep defaults.
+        try {
+            const chart = this.charts.get('communeStatusChart');
+            if (chart && chart.data && chart.data.datasets && chart.data.datasets[0]) {
+                const baseColors = {
+                    'Actif': CONFIG.COLORS.info,
+                    'En cours': CONFIG.COLORS.warning,
+                    'Terminé': CONFIG.COLORS.success,
+                    '—': CONFIG.COLORS.primary
+                };
+                chart.data.datasets[0].backgroundColor = communeStatuses.map(s => baseColors[s] || CONFIG.COLORS.primary);
+                chart.update('none');
+            }
+        } catch(_) { /* no-op */ }
     }
 
-    // Projections Multi-Metric (Sheets: Collection Projections, Display Projections, CTASF Projections)
+    // Projections Multi-Metric (Sheets: NICAD Projection, Public Display, CTASF Projection)
     createProjectionsMultiMetricChart(rawData) {
         const ctx = document.getElementById('projectionsMultiMetricChart');
         if (!ctx) return;
-        const collection = this.findSheet('Collection Projections', rawData) || [];
-        const display = this.findSheet('Display Projections', rawData) || [];
-        const ctasf = this.findSheet('CTASF Projections', rawData) || [];
-        if (!collection.length && !display.length && !ctasf.length) return;
+        // Resolve sheets with flexible names
+        const nicad = this.findSheet('NICAD Projection', rawData) 
+                    || this.findSheet('NICAD Projections', rawData)
+                    || this.findSheet('NICAD', rawData)
+                    || this.findSheet('Collection Projections', rawData)
+                    || [];
+        const publicDisplay = this.findSheet('Public Display Projection', rawData)
+                           || this.findSheet('Public Display Projections', rawData)
+                           || this.findSheet('Display Projections', rawData)
+                           || [];
+        const ctasf = this.findSheet('CTASF Projection', rawData)
+                     || this.findSheet('CTASF Projections', rawData)
+                     || [];
+        if (!nicad.length && !publicDisplay.length && !ctasf.length) return;
 
-        // Detect month-like columns (Sept 2025 etc.) by regex for month names or YYYY-MM
+        // Preferred month columns and fallback detection
+        const preferredMonths = ['Sept 2025','Oct 2025','Nov 2025','Dec 2025'];
         const monthRegex = /(jan|feb|mar|apr|may|mai|jun|jul|aug|sep|sept|oct|nov|dec|déc)\s*20\d{2}/i;
-        const collectSample = collection[0] || display[0] || ctasf[0] || {};
-        const monthCols = Object.keys(collectSample).filter(k => monthRegex.test(k));
+        const collectSample = nicad[0] || publicDisplay[0] || ctasf[0] || {};
+        let monthCols = preferredMonths.filter(col => Object.prototype.hasOwnProperty.call(collectSample, col));
+        if (!monthCols.length) {
+            monthCols = Object.keys(collectSample).filter(k => monthRegex.test(k));
+        }
         if (!monthCols.length) return; // nothing to chart
 
         const datasets = [];
+        const toNumber = (v) => {
+            const n = Number(String(v ?? '').replace(/\s+/g,'').replace(/,/g,'.'));
+            return Number.isNaN(n) ? 0 : n;
+        };
         const addSheet = (sheet, label, color) => {
             if (!sheet.length) return;
             // Assume each row is one metric; sum metrics per column
-            const sums = monthCols.map(col => sheet.reduce((s,r)=> s + (Number(r[col])||0),0));
+            const sums = monthCols.map(col => sheet.reduce((s,r)=> s + toNumber(r[col]), 0));
             datasets.push({ label, data: sums, borderColor: color, backgroundColor: color + '40', tension: 0.3, fill: false });
         };
-        addSheet(collection, 'Collection', CONFIG.COLORS.primary);
-        addSheet(display, 'Display', CONFIG.COLORS.success);
+        addSheet(nicad, 'NICAD', CONFIG.COLORS.primary);
+        addSheet(publicDisplay, 'Public Display', CONFIG.COLORS.success);
         addSheet(ctasf, 'CTASF', CONFIG.COLORS.warning);
 
         this.destroyChart('projectionsMultiMetricChart');
         this.charts.set('projectionsMultiMetricChart', new Chart(ctx, {
             type: 'line',
             data: { labels: monthCols, datasets },
-            options: { ...CHART_CONFIGS.defaultOptions, plugins: { ...CHART_CONFIGS.defaultOptions.plugins, title: { display: true, text: 'Projections Multi-Métriques (Sept-Dec)' } }, scales: { y: { beginAtZero: true } } }
+            options: { ...CHART_CONFIGS.defaultOptions, plugins: { ...CHART_CONFIGS.defaultOptions.plugins, title: { display: true, text: 'Projections Multi-Métriques (NICAD / Public Display / CTASF)' } }, scales: { y: { beginAtZero: true } } }
         }));
     }
 
@@ -1280,7 +1392,9 @@ class ChartService {
         if (!sheet.length) return;
         // Expect columns: Order, Start Date, End Date OR similar
         const parse = (v) => {
-            if (!v) return null; const d = new Date(v); return isNaN(d.getTime()) ? null : d;
+            if (!v && v !== 0) return null;
+            try { if (window.UTILS && typeof UTILS.parseDateDMY === 'function') return UTILS.parseDateDMY(v); } catch(_) {}
+            const d = new Date(v); return isNaN(d.getTime()) ? null : d;
         };
         const tasks = sheet.map(r => ({
             label: r.Order || r.order || r.Task || 'Item',
@@ -1342,17 +1456,10 @@ class ChartService {
         }
 
         const chartData = {
-            // Convert ISO date strings to readable DD/MM labels
-            labels: timeSeriesData.map(d => {
-                try {
-                    const parts = String(d.date).split('-');
-                    if (parts.length === 3) return `${parts[2]}/${parts[1]}`; // DD/MM
-                    return d.date;
-                } catch(e){ return d.date; }
-            }),
+            // For time scale, supply {x: ISO, y: value} points; no string labels
             datasets: [{
                 label: 'Levées quotidiennes',
-                data: timeSeriesData.map(d => d.value),
+                data: timeSeriesData.map(d => ({ x: d.date, y: d.value })),
                 borderColor: CONFIG.COLORS.primary,
                 backgroundColor: CONFIG.COLORS.primary + '20',
                 borderWidth: 3,
@@ -1360,7 +1467,7 @@ class ChartService {
                 tension: 0.4
             }, {
                 label: 'Objectif (832,77)',
-                data: timeSeriesData.map(()=> CONFIG.TARGETS.DAILY_PARCELS),
+                data: timeSeriesData.map(d => ({ x: d.date, y: CONFIG.TARGETS.DAILY_PARCELS })),
                 borderColor: CONFIG.COLORS.danger,
                 backgroundColor: 'transparent',
                 borderWidth: 2,
@@ -1404,18 +1511,33 @@ class ChartService {
             // Create mock quality data
             return this._createMockQualityTrendChart();
         }
-        const groupedByDate = UTILS.groupBy(qualityData, 'Date');
-        const timeSeriesData = [];
+    // Normalize dates to ISO keys using DMY parser then aggregate
+    const groupedByDate = new Map();
+    const timeSeriesData = [];
+    qualityData.forEach(row => {
+        // Prioritize dataAggregationService.parseDate for consistent date parsing
+        let d;
+        if (window.dataAggregationService && typeof window.dataAggregationService.parseDate === 'function') {
+            d = window.dataAggregationService.parseDate(row['Date']);
+        }
+        // Fall back to other methods if needed
+        if (!d) {
+            d = (window.UTILS && UTILS.parseDateDMY) ? UTILS.parseDateDMY(row['Date']) : new Date(row['Date']);
+        }
+        if (!d || isNaN(d)) return;
+        const key = d.toISOString().split('T')[0];
+        if (!groupedByDate.has(key)) groupedByDate.set(key, []);
+        groupedByDate.get(key).push(row);
+    });
 
-        Object.keys(groupedByDate).forEach(date => {
-            const dayData = groupedByDate[date];
+    Array.from(groupedByDate.entries()).forEach(([iso, dayData]) => {
             const sansErreur = dayData.reduce((sum, d) => sum + this._getNumericField(d, ['Nombre de parcelles affichées sans erreurs','parcelles affichées sans erreurs']), 0);
             const avecErreur = dayData.reduce((sum, d) => sum + this._getNumericField(d, ['Nombre Parcelles avec erreur','parcelles avec erreur']), 0);
             const total = sansErreur + avecErreur;
             const qualityRate = total > 0 ? Math.round(sansErreur / total * 100) : 0;
             
             timeSeriesData.push({
-                date,
+        date: iso,
                 sansErreur,
                 avecErreur,
                 total,
@@ -1423,13 +1545,13 @@ class ChartService {
             });
         });
 
-        timeSeriesData.sort((a, b) => new Date(a.date) - new Date(b.date));
+    timeSeriesData.sort((a, b) => a.date.localeCompare(b.date));
 
         const chartData = {
-            labels: timeSeriesData.map(d => d.date),
+            // Supply time series as points with ISO x values; formatting handled by Chart.js options
             datasets: [{
                 label: 'Taux de qualité (%)',
-                data: timeSeriesData.map(d => d.qualityRate),
+                data: timeSeriesData.map(d => ({ x: d.date, y: d.qualityRate })),
                 borderColor: CONFIG.COLORS.success,
                 backgroundColor: CONFIG.COLORS.success + '20',
                 borderWidth: 3,
@@ -1438,7 +1560,7 @@ class ChartService {
                 yAxisID: 'y'
             }, {
                 label: 'Total parcelles',
-                data: timeSeriesData.map(d => d.total),
+                data: timeSeriesData.map(d => ({ x: d.date, y: d.total })),
                 type: 'bar',
                 backgroundColor: CONFIG.COLORS.info + '40',
                 borderColor: CONFIG.COLORS.info,
@@ -1602,31 +1724,31 @@ class ChartService {
         if (!ctx) return;
 
         // Get regional data using case-insensitive lookup
-    const yieldsData = this.findSheet('Yields Projections', rawData) || [];
-    const displayData = this.findSheet('Public Display Follow-up', rawData) || [];
-    const ctasfData = this.findSheet('CTASF Follow-up', rawData) || [];
-        
+        const yieldsData = this.findSheet('Yields Projections', rawData) || [];
+        const displayData = this.findSheet('Public Display Follow-up', rawData) || [];
+        const ctasfData = this.findSheet('CTASF Follow-up', rawData) || [];
+
         // Process by region
         const regions = CONFIG.REGIONS;
         const metrics = [];
-        
+
         regions.forEach(region => {
             // Yields
-            const regionYields = yieldsData.filter(d => d['Région'] === region);
-            const totalYields = regionYields.reduce((sum, d) => sum + this._getNumericField(d, ['Nombre de levées','nombre de levees']), 0);
-            
+            const regionYields = yieldsData.filter(d => d['R\u00e9gion'] === region);
+            const totalYields = regionYields.reduce((sum, d) => sum + this._getNumericField(d, ['Nombre de lev\u00e9es','nombre de levees']), 0);
+
             // Quality
-            const regionDisplay = displayData.filter(d => d['Région'] === region);
-            const sansErreur = regionDisplay.reduce((sum, d) => sum + this._getNumericField(d, ['Nombre de parcelles affichées sans erreurs','parcelles affichées sans erreurs']), 0);
+            const regionDisplay = displayData.filter(d => d['R\u00e9gion'] === region);
+            const sansErreur = regionDisplay.reduce((sum, d) => sum + this._getNumericField(d, ['Nombre de parcelles affich\u00e9es sans erreurs','parcelles affich\u00e9es sans erreurs']), 0);
             const avecErreur = regionDisplay.reduce((sum, d) => sum + this._getNumericField(d, ['Nombre Parcelles avec erreur','parcelles avec erreur']), 0);
             const qualityRate = sansErreur + avecErreur > 0 ? Math.round(sansErreur / (sansErreur + avecErreur) * 100) : 0;
-            
+
             // CTASF
-            const regionCtasf = ctasfData.filter(d => d['Région'] === region);
-            const ctasfEmmen = regionCtasf.reduce((sum, d) => sum + this._getNumericField(d, ['Nombre parcelles emmenées au CTASF','parcelles emmenées']), 0);
+            const regionCtasf = ctasfData.filter(d => d['R\u00e9gion'] === region);
+            const ctasfEmmen = regionCtasf.reduce((sum, d) => sum + this._getNumericField(d, ['Nombre parcelles emmen\u00e9es au CTASF','parcelles emmen\u00e9es']), 0);
             const ctasfReten = regionCtasf.reduce((sum, d) => sum + this._getNumericField(d, ['Nombre parcelles retenues CTASF','parcelles retenues']), 0);
             const ctasfRate = ctasfEmmen > 0 ? Math.round(ctasfReten / ctasfEmmen * 100) : 0;
-            
+
             metrics.push({
                 region,
                 yields: totalYields,
@@ -2186,15 +2308,41 @@ class ChartService {
     _prepareDailyYieldsData(dailyStats) {
         // Sort by date
         const sortedStats = [...dailyStats].sort((a, b) => {
-            const dateA = window.dataService ? dataService.parseDate(a.Date) : new Date(a.Date);
-            const dateB = window.dataService ? dataService.parseDate(b.Date) : new Date(b.Date);
+            // Prioritize dataAggregationService for consistent date parsing
+            let dateA, dateB;
+            
+            if (window.dataAggregationService && typeof window.dataAggregationService.parseDate === 'function') {
+                dateA = window.dataAggregationService.parseDate(a.Date);
+                dateB = window.dataAggregationService.parseDate(b.Date);
+            }
+            
+            // Fall back to other methods if needed
+            if (!dateA) {
+                dateA = (window.UTILS && UTILS.parseDateDMY) ? UTILS.parseDateDMY(a.Date) : (window.dataService && dataService.parseDate ? dataService.parseDate(a.Date) : new Date(a.Date));
+            }
+            if (!dateB) {
+                dateB = (window.UTILS && UTILS.parseDateDMY) ? UTILS.parseDateDMY(b.Date) : (window.dataService && dataService.parseDate ? dataService.parseDate(b.Date) : new Date(b.Date));
+            }
+            
             return dateA - dateB;
         });
             
         // Extract labels (dates) and values
-        const labels = sortedStats.map(stat => 
-            window.dataService ? dataService.formatDate(stat.Date) : stat.Date
-        );
+        const labels = sortedStats.map(stat => {
+            // Parse the date first to ensure consistent format
+            const parsedDate = window.dataAggregationService && typeof window.dataAggregationService.parseDate === 'function' 
+                ? window.dataAggregationService.parseDate(stat.Date) 
+                : null;
+                
+            // Then format it
+            if (parsedDate) {
+                return this.formatDate(parsedDate);
+            } else if (window.dataService && typeof dataService.formatDate === 'function') {
+                return dataService.formatDate(stat.Date);
+            } else {
+                return stat.Date;
+            }
+        });
             
         const yieldValues = sortedStats.map(stat => this._getNumericField(stat, ['Levees', 'Parcelles', 'ParcelsProcessed']));
         const targetValues = sortedStats.map(stat => this._getNumericField(stat, ['Target', 'ObjectifQuotidien']));

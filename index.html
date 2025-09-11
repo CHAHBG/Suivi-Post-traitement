@@ -18,6 +18,7 @@
     <!-- Custom Styles -->
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="css/tubeProgress.css">
+    <link rel="stylesheet" href="css/charts.css">
 </head>
 <body class="bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50 font-inter antialiased selection:bg-blue-200 selection:text-blue-900" data-theme="light">
     
@@ -192,43 +193,106 @@
                     </div>
                 </section>
 
-                <!-- Analytics Charts -->
-                <section class="charts-section mb-12">
-                    <h3 class="section-header">Analyse Détaillée</h3>
-                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        <div class="chart-card">
-                            <div class="chart-header">
-                                <h4 class="chart-title">Vue Synthèse</h4>
-                                <button class="chart-action">
-                                    <i class="fas fa-expand-alt"></i>
-                                </button>
-                            </div>
-                            <div class="chart-content">
-                                <canvas id="overviewMetricsChart"></canvas>
+                <!-- Progress Indicators Section -->
+                <section class="progress-indicators-section mb-12">
+                    <h3 class="section-header">Indicateurs de Progression</h3>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+
+                        <!-- Overview Metrics Progress -->
+                        <div class="progress-group">
+                            <h4 class="progress-group-title">Vue Synthèse</h4>
+                            <p class="progress-group-subtitle">Indicateurs clés de performance</p>
+                            <div class="space-y-4 mt-6">
+                                <!-- Total Parcelles -->
+                                <div class="progress-item">
+                                    <div class="flex justify-between items-center mb-2">
+                                        <span class="progress-label">Total Parcelles</span>
+                                        <span class="progress-value" id="totalParcelsOverviewValue">--</span>
+                                    </div>
+                                    <div class="progress-bar">
+                                        <div class="progress-fill" id="totalParcelsOverviewProgress" style="width: 100%"></div>
+                                    </div>
+                                </div>
+
+                                <!-- NICAD Parcelles -->
+                                <div class="progress-item">
+                                    <div class="flex justify-between items-center mb-2">
+                                        <span class="progress-label">NICAD</span>
+                                        <span class="progress-value" id="nicadOverviewValue">--</span>
+                                    </div>
+                                    <div class="progress-bar">
+                                        <div class="progress-fill" id="nicadOverviewProgress" style="width: 0%"></div>
+                                    </div>
+                                </div>
+
+                                <!-- CTASF Parcelles -->
+                                <div class="progress-item">
+                                    <div class="flex justify-between items-center mb-2">
+                                        <span class="progress-label">CTASF</span>
+                                        <span class="progress-value" id="ctasfOverviewValue">--</span>
+                                    </div>
+                                    <div class="progress-bar">
+                                        <div class="progress-fill" id="ctasfOverviewProgress" style="width: 0%"></div>
+                                    </div>
+                                </div>
+
+                                <!-- Parcelles Délibérées -->
+                                <div class="progress-item">
+                                    <div class="flex justify-between items-center mb-2">
+                                        <span class="progress-label">Délibérées</span>
+                                        <span class="progress-value" id="deliberatedOverviewValue">--</span>
+                                    </div>
+                                    <div class="progress-bar">
+                                        <div class="progress-fill" id="deliberatedOverviewProgress" style="width: 0%"></div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                        
-                        <div class="chart-card">
-                            <div class="chart-header">
-                                <h4 class="chart-title">Phases Processing</h4>
-                                <button class="chart-action">
-                                    <i class="fas fa-expand-alt"></i>
-                                </button>
-                            </div>
-                            <div class="chart-content">
-                                <canvas id="processingPhaseStackedChart"></canvas>
-                            </div>
-                        </div>
-                        
-                        <div class="chart-card">
-                            <div class="chart-header">
-                                <h4 class="chart-title">Productivité Équipe</h4>
-                                <button class="chart-action">
-                                    <i class="fas fa-expand-alt"></i>
-                                </button>
-                            </div>
-                            <div class="chart-content">
-                                <canvas id="teamProductivityChart"></canvas>
+
+                        <!-- Processing Phases Progress -->
+                        <div class="progress-group">
+                            <h4 class="progress-group-title">Phases de Traitement</h4>
+                            <p class="progress-group-subtitle">Progression par phase</p>
+                            <div class="space-y-4 mt-6">
+                                <div class="progress-item">
+                                    <div class="flex justify-between items-center mb-2">
+                                        <span class="progress-label">Phase Pilote</span>
+                                        <span class="progress-value" id="phasePiloteValue">120 / 150</span>
+                                    </div>
+                                    <div class="progress-bar">
+                                        <div class="progress-fill" id="phasePiloteProgress" style="width: 80%"></div>
+                                    </div>
+                                </div>
+
+                                <div class="progress-item">
+                                    <div class="flex justify-between items-center mb-2">
+                                        <span class="progress-label">QField</span>
+                                        <span class="progress-value" id="qfieldValue">480 / 600</span>
+                                    </div>
+                                    <div class="progress-bar">
+                                        <div class="progress-fill" id="qfieldProgress" style="width: 80%"></div>
+                                    </div>
+                                </div>
+
+                                <div class="progress-item">
+                                    <div class="flex justify-between items-center mb-2">
+                                        <span class="progress-label">Total Parcelles</span>
+                                        <span class="progress-value" id="totalParcelsValue">950 / 1200</span>
+                                    </div>
+                                    <div class="progress-bar">
+                                        <div class="progress-fill" id="totalParcelsProgress" style="width: 79.2%"></div>
+                                    </div>
+                                </div>
+
+                                <div class="progress-item">
+                                    <div class="flex justify-between items-center mb-2">
+                                        <span class="progress-label">Phase KoboCollect</span>
+                                        <span class="progress-value" id="koboCollectValue">210 / 250</span>
+                                    </div>
+                                    <div class="progress-bar">
+                                        <div class="progress-fill" id="koboCollectProgress" style="width: 84%"></div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -236,10 +300,10 @@
 
                 <!-- Progress Bars & Details -->
                 <section class="details-section">
-                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
                         <div class="progress-card">
                             <div class="progress-header">
-                                <h4 class="progress-title">CTASF Conversion</h4>
+                                <h4 class="progress-title">CTASF Conversion<br><span class="text-sm text-gray-500">parcelles retenues / parcelles emmenées au CTASF</span></h4>
                                 <span class="progress-value" id="ctasfRate">--</span>
                             </div>
                             <div class="progress-bar">
@@ -249,7 +313,7 @@
 
                         <div class="progress-card">
                             <div class="progress-header">
-                                <h4 class="progress-title">Efficacité Processing</h4>
+                                <h4 class="progress-title">Efficacité Processing<br><span class="text-sm text-gray-500">parcelles post-traitées / parcelles reçues (brutes)</span></h4>
                                 <span class="progress-value" id="processingRate">--</span>
                             </div>
                             <div class="progress-bar">
@@ -257,10 +321,36 @@
                             </div>
                         </div>
 
-                        <div class="detail-card">
-                            <h4 class="detail-title">Performance par Commune</h4>
-                            <div id="communePerformanceList" class="detail-content">
-                                <!-- Populated by JS -->
+                        <!-- Deduplication Rate Card -->
+                        <div class="progress-card">
+                            <div class="progress-header">
+                                <h4 class="progress-title">Parcelles collectées (sans doublon géométrique)<br><span class="text-sm text-gray-500">par rapport à Parcelles brutes</span></h4>
+                                <span class="progress-value" id="dedupRate">--%</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill bg-gradient-to-r from-indigo-400 to-indigo-500" id="dedupRateBar"></div>
+                            </div>
+                        </div>
+
+                        <!-- Post-Processing Retention Rate Card -->
+                        <div class="progress-card">
+                            <div class="progress-header">
+                                <h4 class="progress-title">Parcelles retenues après post-traitement<br><span class="text-sm text-gray-500">par rapport à Parcelles brutes</span></h4>
+                                <span class="progress-value" id="surveyRate">--%</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill bg-gradient-to-r from-blue-400 to-blue-500" id="surveyRateBar"></div>
+                            </div>
+                        </div>
+                        
+                        <!-- URM Validation Card -->
+                        <div class="progress-card">
+                            <div class="progress-header">
+                                <h4 class="progress-title">Parcelles validées par l'URM<br><span class="text-sm text-gray-500">par rapport à Parcelles brutes</span></h4>
+                                <span class="progress-value" id="urmValidationValue">--%</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill bg-gradient-to-r from-purple-400 to-purple-500" id="urmValidationRateBar"></div>
                             </div>
                         </div>
                     </div>
@@ -332,6 +422,39 @@
                     </div>
                     
                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        <!-- Moved from Overview: Vue Synthèse -->
+                        <div class="chart-card">
+                            <div class="chart-header">
+                                <h3 class="chart-title">Vue Synthèse</h3>
+                                <p class="chart-subtitle">Indicateurs clés de performance</p>
+                            </div>
+                            <div class="chart-content">
+                                <canvas id="overviewMetricsChart"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Moved from Overview: Phases Processing -->
+                        <div class="chart-card">
+                            <div class="chart-header">
+                                <h3 class="chart-title">Phases Processing</h3>
+                                <p class="chart-subtitle">Analyse des étapes de traitement</p>
+                            </div>
+                            <div class="chart-content">
+                                <canvas id="processingPhaseStackedChart"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Moved from Overview: Productivité Équipe -->
+                        <div class="chart-card">
+                            <div class="chart-header">
+                                <h3 class="chart-title">Productivité Équipe</h3>
+                                <p class="chart-subtitle">Performance par équipe</p>
+                            </div>
+                            <div class="chart-content">
+                                <canvas id="teamProductivityChart"></canvas>
+                            </div>
+                        </div>
+
                         <div class="chart-card">
                             <div class="chart-header">
                                 <h3 class="chart-title">Entonnoir de Traitement</h3>
@@ -344,7 +467,7 @@
                                 <canvas id="processingFunnelChart"></canvas>
                             </div>
                         </div>
-                        
+
                         <div class="chart-card">
                             <div class="chart-header">
                                 <h3 class="chart-title">Distribution Types de Parcelles</h3>
@@ -353,7 +476,7 @@
                                 <canvas id="parcelTypeDistributionChart"></canvas>
                             </div>
                         </div>
-                        
+
                         <div class="chart-card">
                             <div class="chart-header">
                                 <h3 class="chart-title">Performance par Géomaticien</h3>
@@ -362,7 +485,7 @@
                                 <canvas id="geomaticianPerformanceChart"></canvas>
                             </div>
                         </div>
-                        
+
                         <div class="chart-card">
                             <div class="chart-header">
                                 <h3 class="chart-title">Timeline Projet</h3>
@@ -479,6 +602,75 @@
                             </table>
                         </div>
                     </div>
+
+                    <!-- Public Display Follow-up Table -->
+                    <div id="displayTable" class="table-panel">
+                        <div class="table-wrapper">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Région</th>
+                                        <th>Commune</th>
+                                        <th>Sans erreurs</th>
+                                        <th>Avec erreur</th>
+                                        <th>Motif retour</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="displayTableBody">
+                                    <!-- Data populated by JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- CTASF Follow-up Table -->
+                    <div id="ctasfTable" class="table-panel">
+                        <div class="table-wrapper">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Région</th>
+                                        <th>Commune</th>
+                                        <th>Emmenées</th>
+                                        <th>Retenues</th>
+                                        <th>À délibérer</th>
+                                        <th>Délibérées</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="ctasfTableBody">
+                                    <!-- Data populated by JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Post Process Follow-up Table -->
+                    <div id="processingTable" class="table-panel">
+                        <div class="table-wrapper">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Région</th>
+                                        <th>Commune</th>
+                                        <th>Reçues (Brutes)</th>
+                                        <th>Post traitées</th>
+                                        <th>Individuelles jointes</th>
+                                        <th>Collectives jointes</th>
+                                        <th>Sans jointure</th>
+                                        <th>Retournées</th>
+                                        <th>Géomaticien</th>
+                                        <th>Motif</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="processingTableBody">
+                                    <!-- Data populated by JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             </div>
         </section>
@@ -546,14 +738,21 @@
             try {
                 setTimeout(hideLoadingOverlay, 5000);
                 
+                // Wait for scripts to load
                 setTimeout(async () => {
                     console.log('Initializing PROCASSEF Dashboard...');
+                    // Make sure EnhancedDashboard is available
+                    if (typeof EnhancedDashboard === 'undefined') {
+                        console.error('EnhancedDashboard class not found! Check script loading order.');
+                        return;
+                    }
+                    
                     window.dashboard = new EnhancedDashboard();
                     await window.dashboard.initialize();
                     window.dashboardInitialized = true;
                     console.log('Dashboard ready!');
                     hideLoadingOverlay();
-                }, 100);
+                }, 500); // Increased timeout to ensure all scripts are loaded
             } catch (error) {
                 console.error('Error initializing dashboard:', error);
                 hideLoadingOverlay();
@@ -643,9 +842,11 @@
     <!-- Dashboard Components -->
     <script src="js/enhancedMockData.js"></script>
     <script src="js/dataAggregation.js"></script>
+    <script src="js/dateParsingLoader.js"></script>
     <script src="js/tubeProgress.js"></script>
     <script src="js/debugPanel.js"></script>
     <script src="js/enhancedDashboard.js"></script>
+    <script src="js/streamingUpdates.js"></script>
     <script src="js/yieldsDateFix.js"></script>
 
 </body>

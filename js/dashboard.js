@@ -25,6 +25,26 @@ class Dashboard {
         }, 8000);
     }
 
+    // Dedicated date parser for DD/MM/YYYY format
+    parseDateDMY(dateStr) {
+        if (!dateStr) return null;
+        try {
+            const parts = String(dateStr).trim().split(/[/.-]/);
+            if (parts.length !== 3) return null;
+            let day = parseInt(parts[0], 10);
+            let month = parseInt(parts[1], 10);
+            let year = parseInt(parts[2], 10);
+            if (isNaN(day) || isNaN(month) || isNaN(year)) return null;
+            if (year < 100) year += 2000;
+            const date = new Date(year, month - 1, day);
+            if (isNaN(date.getTime()) || date.getDate() !== day || date.getMonth() + 1 !== month) return null;
+            return date;
+        } catch (e) {
+            // Suppressed invalid date format warning (parsing-related)
+            return null;
+        }
+    }
+
     // Initialize the dashboard
     async initialize() {
         try {
@@ -48,7 +68,7 @@ class Dashboard {
             
         } catch (error) {
             console.error('Error initializing dashboard:', error);
-            this.showError('Erreur lors du chargement du dashboard');
+            this.showError('Erreur lors du chargement du dashboard: ' + error.message);
         } finally {
             this.showLoading(false);
         }
@@ -95,7 +115,7 @@ class Dashboard {
             
         } catch (error) {
             console.error('Error loading dashboard data:', error);
-            this.showError('Erreur lors du chargement des données');
+            this.showError('Erreur lors du chargement des données: ' + error.message);
             throw error;
         }
     }
@@ -135,14 +155,14 @@ class Dashboard {
             });
         });
 
-        // Window resize handler for responsive charts
+        // Window resize handler for responsive charts (passive for performance)
         window.addEventListener('resize', UTILS.debounce(() => {
             this.handleResize();
-        }, 250));
+        }, 250), { passive: true });
     }
 
-    // Apply current filters to data and charts
-    async applyFilters() {
+    // Apply current filters to data and charts (debounced for performance)
+    applyFilters = UTILS.debounce(async () => {
         if (!this.rawData) return;
 
         try {
@@ -180,11 +200,11 @@ class Dashboard {
             this.showSuccess('Filtres appliqués');
         } catch (error) {
             console.error('Error applying filters:', error);
-            this.showError('Erreur lors de l\'application des filtres');
+            this.showError('Erreur lors de l\'application des filtres: ' + error.message);
         } finally {
             this.showLoading(false);
         }
-    }
+    }, 300);
 
     // Filter data based on current filters
     filterData(data) {
@@ -221,8 +241,8 @@ class Dashboard {
                 
                 if (startDate) {
                     filteredSheet = filteredSheet.filter(row => {
-                        const rowDate = new Date(row['Date']);
-                        return rowDate >= startDate && rowDate <= now;
+                        const rowDate = (window.UTILS && UTILS.parseDateDMY) ? UTILS.parseDateDMY(row['Date']) : this.parseDateDMY(row['Date']);
+                        return rowDate && rowDate >= startDate && rowDate <= now;
                     });
                 }
             }
@@ -452,7 +472,7 @@ class Dashboard {
         } catch (error) {
             console.error('Error refreshing data:', error);
             if (!silent) {
-                this.showError('Erreur lors de l\'actualisation des données');
+                this.showError('Erreur lors de l\'actualisation des données: ' + error.message);
             }
             return false;
         } finally {
@@ -506,6 +526,7 @@ class Dashboard {
             animation: slideIn 0.3s ease;
             max-width: 300px;
         `;
+        notification.setAttribute('role', 'alert'); // Accessibility
         
         // Set background color based on type
         const colors = {

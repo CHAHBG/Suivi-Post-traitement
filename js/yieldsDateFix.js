@@ -57,7 +57,19 @@
             const originalDate = new Date(dateStr);
             if (!isNaN(originalDate.getTime())) continue;
             
-            // Try to fix the date format
+            // Try to use the centralized date parsing function if available
+            if (window.dataAggregationService && typeof window.dataAggregationService.parseDate === 'function') {
+                const parsedDate = window.dataAggregationService.parseDate(dateStr);
+                if (parsedDate) {
+                    // Format as MM/DD/YYYY for JavaScript compatibility
+                    const newDateStr = `${parsedDate.getMonth()+1}/${parsedDate.getDate()}/${parsedDate.getFullYear()}`;
+                    row.Date = newDateStr;
+                    fixedDateCount++;
+                    continue;
+                }
+            }
+            
+            // Fallback: Try to fix the date format manually
             if (dateStr.includes('/')) {
                 const parts = dateStr.split('/');
                 if (parts.length === 3) {

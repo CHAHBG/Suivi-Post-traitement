@@ -1,0 +1,150 @@
+/* 
+ * PROCASSEF Dashboard Charts Styling
+ * Contains styles for chart containers, canvas elements and responsive behavior
+ */
+
+/* Chart container styling */
+.chart-card {
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 0.75rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    transition: transform 0.2s, box-shadow 0.2s;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.chart-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.chart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.chart-title {
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: #334155;
+}
+
+.chart-subtitle {
+    font-size: 0.8rem;
+    color: #64748b;
+    margin-top: 0.25rem;
+}
+
+.chart-container {
+    padding: 0.75rem;
+    flex-grow: 1;
+    position: relative;
+    min-height: 250px; /* Minimum height to prevent tiny charts */
+    height: 100%;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden; /* Prevent overflow */
+}
+
+/* Ensure canvas elements fit properly */
+.chart-container canvas {
+    width: 100% !important;
+    height: 100% !important;
+    max-height: 400px; /* Prevent overly tall charts */
+    max-width: 100%;
+    object-fit: contain; /* Ensure the canvas scales properly */
+}
+
+/* Special handling for gauge charts */
+.gauge-card {
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 0.75rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    padding: 1.5rem 1rem;
+    text-align: center;
+    position: relative;
+    height: 100%;
+    min-height: 260px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.gauge-card canvas {
+    max-height: 180px;
+    max-width: 180px;
+    width: 100% !important;
+    height: auto !important;
+    margin: 0 auto 0.75rem auto;
+}
+
+.gauge-label {
+    margin-top: auto;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .chart-container {
+        min-height: 200px;
+    }
+    
+    .gauge-card {
+        min-height: 220px;
+    }
+    
+    .gauge-card canvas {
+        max-height: 140px;
+    }
+}
+
+/* Dark mode support */
+[data-theme="dark"] .chart-card,
+[data-theme="dark"] .gauge-card {
+    background: rgba(30, 41, 59, 0.8);
+}
+
+[data-theme="dark"] .chart-title {
+    color: #e2e8f0;
+}
+
+[data-theme="dark"] .chart-subtitle {
+    color: #94a3b8;
+}
+
+/* Specific chart type adjustments */
+.bar-chart-container {
+    min-height: 300px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.line-chart-container {
+    min-height: 280px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.pie-chart-container {
+    min-height: 280px;
+    max-height: 320px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* Make sure charts don't overflow their containers */
+.panel .grid canvas {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+}

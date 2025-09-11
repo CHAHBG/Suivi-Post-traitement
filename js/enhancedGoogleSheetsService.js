@@ -64,7 +64,7 @@ class EnhancedGoogleSheetsService {
                 sheets
             };
         } catch (error) {
-            console.error('Error building PROCASSEF config from global settings:', error);
+            // Suppressed
             // Fallback to minimal default to avoid breaking callers
             return {
                 spreadsheetId: '',
@@ -87,7 +87,7 @@ class EnhancedGoogleSheetsService {
         }
         
         keysToDelete.forEach(key => this.cache.delete(key));
-        console.log(`Cleared cache for spreadsheet: ${spreadsheetId}`);
+    // console log suppressed
     }
     
     /**
@@ -101,17 +101,17 @@ class EnhancedGoogleSheetsService {
         try {
             // Merge default options with provided options
             const finalOptions = { ...this.options, ...options };
-            console.log('Fetching multiple sheets with options:', finalOptions);
+            // console log suppressed
             
             const result = {};
             
             if (finalOptions.batchRequests) {
                 // Batch fetch all sheets
-                console.log('Using batch fetching for multiple sheets');
+                // console log suppressed
                 return await this.batchFetchSheets(spreadsheetId, sheets, finalOptions);
             } else {
                 // Sequential fetching
-                console.log('Using sequential fetching for multiple sheets');
+                // console log suppressed
                 for (const sheet of sheets) {
                     try {
                         // Remove any API key related options since we're only using GID
@@ -128,7 +128,7 @@ class EnhancedGoogleSheetsService {
                             csvOptions
                         );
                         result[sheet.name] = sheetData;
-                        console.log(`Sheet fetched: ${sheet.name} — rows: ${Array.isArray(sheetData) ? sheetData.length : 0}`);
+                        // console log suppressed
                     } catch (err) {
                         console.error(`Failed to fetch sheet ${sheet.name}:`, err);
                         result[sheet.name] = [];
@@ -138,7 +138,7 @@ class EnhancedGoogleSheetsService {
                 return result;
             }
         } catch (error) {
-            console.error('Error fetching multiple sheets:', error);
+            // Suppressed
             throw error;
         }
     }
@@ -170,7 +170,7 @@ class EnhancedGoogleSheetsService {
                         );
                         resolve({ name: sheet.name, data: sheetData });
                     } catch (error) {
-                        console.error(`Error fetching sheet ${sheet.name}:`, error);
+                        // Suppressed
                         resolve({ name: sheet.name, data: [] });
                     }
                 });
@@ -186,15 +186,12 @@ class EnhancedGoogleSheetsService {
             });
 
             // Debug: log row counts
-            Object.keys(combinedResults).forEach(name => {
-                const rows = combinedResults[name];
-                console.log(`Sheet fetched (batch): ${name} — rows: ${Array.isArray(rows) ? rows.length : 0}`);
-            });
+            // Suppressed debug row counts
             
             return combinedResults;
             
         } catch (error) {
-            console.error('Error in batch fetch:', error);
+            // Suppressed
             throw error;
         }
     }
@@ -214,7 +211,7 @@ class EnhancedGoogleSheetsService {
         if (options.useCaching) {
             const cachedData = this.getFromCache(cacheKey);
             if (cachedData) {
-                console.log(`Using cached data for sheet ${gid}`);
+                // console log suppressed
                 return cachedData;
             }
         }
@@ -223,11 +220,11 @@ class EnhancedGoogleSheetsService {
         const sheetName = options.sheetName;
         
         // Skip API-based fetching and always use CSV export by gid
-        console.log(`Using CSV-only approach for sheet ${sheetName || gid}`);
+    // console log suppressed
 
         // Build the URL for the CSV export (fallback)
         const url = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=csv&gid=${gid}`;
-        console.log(`Fetching data from CSV export URL: ${url}`);
+    // console log suppressed
         
         try {
             let response;
@@ -245,7 +242,7 @@ class EnhancedGoogleSheetsService {
                     }
                 } catch (error) {
                     if (retries === 0) { // Only log first attempt error
-                        console.warn(`CSV fetch attempt failed for sheet ${gid} (${retries + 1}/${options.maxRetries + 1}):`, error.message || error);
+                        // Suppressed
                     }
                     
                     if (retries >= options.maxRetries) {
@@ -276,7 +273,7 @@ class EnhancedGoogleSheetsService {
             return parsedData;
             
         } catch (error) {
-            console.error(`Error fetching sheet ${gid}: ${error.message || error}`);
+            // Suppressed
             throw error;
         }
     }
@@ -289,7 +286,7 @@ class EnhancedGoogleSheetsService {
     parseCSV(csvText) {
         try {
             if (!csvText || typeof csvText !== 'string') {
-                console.warn('Invalid CSV text provided');
+                // Suppressed invalid CSV text warning
                 return [];
             }
             
@@ -330,7 +327,7 @@ class EnhancedGoogleSheetsService {
             return data;
             
         } catch (error) {
-            console.error('Error parsing CSV:', error);
+            // Suppressed parse CSV error log
             return [];
         }
     }
