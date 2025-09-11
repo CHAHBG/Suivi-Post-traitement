@@ -9,6 +9,7 @@ class EnhancedDashboard {
             timeframe: 'daily',
             commune: ''
         };
+    this.tubesInitialized = false;
         this.refreshInterval = null;
         this.rawData = null;
         this.autoRefreshEnabled = true;
@@ -195,12 +196,16 @@ class EnhancedDashboard {
      */
     initializeTubeIndicators(kpis) {
         console.log('Initializing tube indicators with:', kpis);
-        
-        // Make sure the section for tube containers exists
-        const overviewSection = document.querySelector('.overview-section');
-        if (!overviewSection) {
-            console.error('Overview section not found for tube indicators');
-            return false;
+
+        // Accept both legacy class and new hero-section naming (robust to future changes)
+        const possibleSections = [
+            document.querySelector('.overview-section'),
+            document.querySelector('.hero-section'),
+            document.getElementById('dailyTube')?.parentElement // fallback heuristic
+        ].filter(Boolean);
+
+        if (!possibleSections.length) {
+            console.warn('[TubeInit] No overview/hero section found – retry will occur on next refresh if containers appear later.');
         }
         
         // Initialize or update tube progress indicators
@@ -241,7 +246,7 @@ class EnhancedDashboard {
             
             if (dailyContainer) {
                 tubesToInitialize.dailyTube = {
-                    title: 'Objectif Quotidien',
+                    title: 'Jour',
                     currentValue: kpis.daily.current,
                     targetValue: kpis.daily.target,
                     percentage: kpis.daily.percentage,
@@ -253,7 +258,7 @@ class EnhancedDashboard {
             
             if (weeklyContainer) {
                 tubesToInitialize.weeklyTube = {
-                    title: 'Objectif Hebdomadaire',
+                    title: 'Semaine',
                     currentValue: kpis.weekly.current,
                     targetValue: kpis.weekly.target,
                     percentage: kpis.weekly.percentage,
@@ -265,7 +270,7 @@ class EnhancedDashboard {
             
             if (monthlyContainer) {
                 tubesToInitialize.monthlyTube = {
-                    title: 'Objectif Septembre',
+                    title: 'Mois',
                     currentValue: kpis.monthly.current,
                     targetValue: kpis.monthly.target,
                     percentage: kpis.monthly.percentage,
@@ -278,19 +283,21 @@ class EnhancedDashboard {
             if (Object.keys(tubesToInitialize).length > 0) {
                 try {
                     tubeProgressService.initializeTubes(tubesToInitialize);
+                    this.tubesInitialized = true;
                     return true;
                 } catch (error) {
                     console.error('Error initializing tube indicators:', error);
                     return false;
                 }
             } else {
-                console.warn('No tube containers found, cannot initialize tube indicators');
+                console.warn('[TubeInit] Containers (dailyTube / weeklyTube / monthlyTube) not found yet.');
                 return false;
             }
         } else if (window.liquidProgressService) {
             // Fallback to legacy liquid progress
             try {
                 liquidProgressService.initializeLiquidProgress(kpis);
+                this.tubesInitialized = true;
                 return true;
             } catch (error) {
                 console.error('Error initializing liquid indicators:', error);
@@ -308,6 +315,7 @@ class EnhancedDashboard {
         // Update quality rate display
         if (kpis.quality && typeof kpis.quality.rate !== 'undefined') {
             this.updateQualityRate(kpis.quality.rate);
+            this.updateTrendBadge('qualityRate', kpis.quality.changePct);
         } else {
             console.warn('Quality rate data is missing');
             this.updateQualityRate(0);
@@ -316,11 +324,13 @@ class EnhancedDashboard {
         // Update CTASF rate
         if (kpis.ctasf && typeof kpis.ctasf.rate !== 'undefined') {
             this.updateCTASFRate(kpis.ctasf.rate);
+            this.updateTrendBadge('ctasfRate', kpis.ctasf.changePct, true);
         }
         
         // Update processing rate
         if (kpis.processing && typeof kpis.processing.rate !== 'undefined') {
             this.updateProcessingRate(kpis.processing.rate);
+            this.updateTrendBadge('processingRate', kpis.processing.changePct, true);
         }
     }
     
@@ -452,8 +462,13 @@ class EnhancedDashboard {
                 
                 // Update tube indicators
                 if (window.tubeProgressService) {
+                    // If tubes never initialized (e.g., DOM structure changed), attempt init now
+                    if (!this.tubesInitialized || (window.tubeProgressService.tubes && window.tubeProgressService.tubes.size === 0)) {
+                        this.initializeTubeIndicators(kpis);
+                    }
                     tubeProgressService.updateTubes({
                         'dailyTube': {
+                            title: 'Jour',
                             currentValue: kpis.daily.current,
                             targetValue: kpis.daily.target,
                             percentage: kpis.daily.percentage,
@@ -461,6 +476,7 @@ class EnhancedDashboard {
                             status: kpis.daily.status
                         },
                         'weeklyTube': {
+                            title: 'Semaine',
                             currentValue: kpis.weekly.current,
                             targetValue: kpis.weekly.target,
                             percentage: kpis.weekly.percentage,
@@ -468,6 +484,7 @@ class EnhancedDashboard {
                             status: kpis.weekly.status
                         },
                         'monthlyTube': {
+                            title: 'Mois',
                             currentValue: kpis.monthly.current,
                             targetValue: kpis.monthly.target,
                             percentage: kpis.monthly.percentage,
@@ -521,11 +538,12 @@ class EnhancedDashboard {
         
         // Apply filters to each relevant dataset
         Object.keys(filteredData).forEach(key => {
-            if (Array.isArray(filteredData[key])) {
-                filteredData[key] = dataAggregationService.applyFilters(
-                    filteredData[key], 
-                    this.currentFilters
-                );
+            const arr = filteredData[key];
+            if (Array.isArray(arr)) {
+                const beforeLen = arr.length;
+                const after = dataAggregationService.applyFilters(arr, this.currentFilters, key);
+                // Avoid completely wiping dataset for charts: if after filtering it's empty but before had data, keep original
+                filteredData[key] = (beforeLen > 0 && after.length === 0) ? arr : after;
             }
         });
         
@@ -608,6 +626,44 @@ class EnhancedDashboard {
                 processingRateBarElement.className = 'bg-red-500 h-2 rounded-full';
             }
         }
+    }
+
+    /**
+     * Update / inject a small trend badge near a metric element
+     * @param {string} baseId - base element id (e.g., 'qualityRate')
+     * @param {number} changePct - percentage change (can be positive/negative)
+     * @param {boolean} isInline - whether to render inline (for progress headers)
+     */
+    updateTrendBadge(baseId, changePct, isInline = false) {
+        if (typeof changePct !== 'number' || isNaN(changePct)) return;
+        const target = document.getElementById(baseId);
+        if (!target) return;
+
+        // Find or create container
+        let container = target.parentElement.querySelector('.trend-badge-container');
+        if (!container) {
+            container = document.createElement('div');
+            container.className = isInline ? 'trend-badge-container inline-flex items-center ml-2' : 'trend-badge-container mt-2';
+            if (isInline) {
+                target.parentElement.classList.add('flex','items-center','gap-2');
+                target.insertAdjacentElement('afterend', container);
+            } else {
+                target.parentElement.appendChild(container);
+            }
+        }
+        container.innerHTML = '';
+
+        const badge = document.createElement('span');
+        const direction = changePct > 0 ? 'up' : (changePct < 0 ? 'down' : 'flat');
+        const absVal = Math.abs(changePct).toFixed(1);
+        let colorClass = 'bg-gray-200 text-gray-700';
+        if (direction === 'up') colorClass = 'bg-green-100 text-green-700';
+        else if (direction === 'down') colorClass = 'bg-red-100 text-red-700';
+        badge.className = `trend-badge ${colorClass} px-2 py-0.5 rounded-full text-xs font-medium flex items-center gap-1 animate-scale-in`;
+        badge.innerHTML = direction === 'flat'
+            ? '<i class="fas fa-minus text-[10px]"></i><span>0%</span>'
+            : `<i class="fas fa-arrow-${direction === 'up' ? 'up' : 'down'} text-[10px]"></i><span>${direction === 'down' ? '-' : '+'}${absVal}%</span>`;
+        container.appendChild(badge);
     }
     
     /**

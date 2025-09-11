@@ -6,6 +6,8 @@ class ChartService {
         this.gauges = new Map();
     this.initializedBasic = false;
     this.deferredQueue = [];
+    // Initialize modern Chart.js theme once
+    this._initGlobalTheme();
         // Prefer using dataAggregationService helper if available
         this._getNumericField = (row, candidates) => {
             try {
@@ -30,6 +32,89 @@ class ChartService {
             }
             return 0;
         };
+    }
+
+    _initGlobalTheme(){
+        if (typeof Chart === 'undefined') return;
+        // Avoid re-applying (idempotent)
+        if (Chart.__PROC_MODERN_THEME__) return;
+        Chart.__PROC_MODERN_THEME__ = true;
+        const baseFont = 'Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
+        Chart.defaults.font.family = baseFont;
+        Chart.defaults.font.size = 12;
+        Chart.defaults.color = '#4b5563';
+        Chart.defaults.elements.line.borderWidth = 2;
+        Chart.defaults.elements.line.tension = 0.35;
+        Chart.defaults.elements.point.radius = 3;
+        Chart.defaults.elements.point.hoverRadius = 5;
+        Chart.defaults.animation.duration = 600;
+        Chart.defaults.plugins.legend.labels.usePointStyle = true;
+        Chart.defaults.plugins.tooltip.backgroundColor = '#111827EE';
+        Chart.defaults.plugins.tooltip.borderColor = '#374151';
+        Chart.defaults.plugins.tooltip.borderWidth = 1;
+        Chart.defaults.plugins.tooltip.padding = 10;
+        Chart.defaults.plugins.tooltip.titleFont = { weight: '600' };
+        Chart.defaults.layout = Chart.defaults.layout || {};
+        Chart.defaults.layout.padding = { top: 8, right: 12, bottom: 4, left: 8 };
+
+        // Simple shadow plugin for bars & lines
+        const shadowPlugin = {
+            id: 'procShadow',
+            afterDatasetsDraw(chart, args, pluginOptions){
+                const { ctx } = chart;
+                ctx.save();
+                chart.data.datasets.forEach((ds, i) => {
+                    const meta = chart.getDatasetMeta(i);
+                    if (!meta || meta.hidden) return;
+                    if (ds.type === 'line' || chart.config.type === 'line') {
+                        ctx.shadowColor = (ds.borderColor || '#000') + '55';
+                        ctx.shadowBlur = 6;
+                        ctx.shadowOffsetY = 3;
+                        ctx.lineJoin = 'round';
+                        ctx.lineCap = 'round';
+                    } else if (chart.config.type === 'bar' || ds.type === 'bar') {
+                        ctx.shadowColor = (ds.backgroundColor || '#000') + '55';
+                        ctx.shadowBlur = 8;
+                        ctx.shadowOffsetY = 4;
+                    } else {
+                        return;
+                    }
+                    meta.data.forEach(el => {
+                        if (!el || !el.draw) return;
+                        ctx.save();
+                        el.draw(ctx);
+                        ctx.restore();
+                    });
+                    ctx.shadowColor = 'transparent';
+                    ctx.shadowBlur = 0;
+                    ctx.shadowOffsetY = 0;
+                });
+                ctx.restore();
+            }
+        };
+        Chart.register(shadowPlugin);
+    }
+
+    _makeAreaGradient(color, canvas){
+        try {
+            const ctx = canvas.getContext('2d');
+            const h = canvas.height || 300;
+            const g = ctx.createLinearGradient(0,0,0,h);
+            const base = color || '#3b82f6';
+            g.addColorStop(0, base + '66');
+            g.addColorStop(0.6, base + '22');
+            g.addColorStop(1, base + '00');
+            return g;
+        } catch(e){ return color; }
+    }
+
+    _shortenLabel(lbl){
+        if (!lbl) return lbl;
+        const map = { 'Parcelles':'Parc.', 'Processing':'Proc.', 'Distribution':'Distr.', 'Performance':'Perf.' };
+        let out = String(lbl);
+        Object.entries(map).forEach(([k,v])=>{ out = out.replace(k, v); });
+        if (out.length > 24) out = out.slice(0,22) + '…';
+        return out;
     }
 
     // Generic sheet finder with case/spacing/diacritic insensitivity
@@ -57,9 +142,15 @@ class ChartService {
     // Initialize all charts
     async initializeCharts(rawData, precomputedKPIs = null, fullRawData = null) {
         try {
+            // Persist a reference to the full (non filtré) dataset for time series charts
+            if (fullRawData && typeof window !== 'undefined') {
+                window.__fullRawData = fullRawData;
+            } else if (!window.__fullRawData) {
+                window.__fullRawData = rawData;
+            }
             // Fast path: render only above-the-fold essential charts first
             if (!this.initializedBasic) {
-                this.createDailyYieldsChart(rawData);
+                this.createDailyYieldsChart(fullRawData || rawData);
                 this.createQualityTrendChart(rawData);
                 this.createGaugeCharts(fullRawData || rawData, precomputedKPIs);
                 this.initializedBasic = true;
@@ -68,7 +159,7 @@ class ChartService {
                 return true;
             }
             // Create time series charts
-            this.createDailyYieldsChart(rawData);
+            this.createDailyYieldsChart(fullRawData || rawData);
             this.createQualityTrendChart(rawData);
             this.createCtasfPipelineChart(rawData);
             this.createPostProcessingChart(rawData);
@@ -124,15 +215,19 @@ class ChartService {
         if (!ctx) return;
         const sheet = this.findSheet('Overview Metrics', rawData) || [];
         if (!sheet.length) return;
+        const labels = sheet.map(r => r.Metric || r.metric || r['Métrique'] || r['Libellé'] || '');
+        const values = sheet.map(r => this._getNumericField(r, ['Value','Valeur','Valeurs','value','valeur','valeurs','Nombre','Total','total']));
 
-        const labels = sheet.map(r => r.Metric || r.metric || '');
-        const values = sheet.map(r => Number(r.Value || r.value || 0));
+        // If all zeros, log a diagnostic hint
+        if (values.every(v => v === 0)) {
+            console.warn('[ChartService] Overview Metrics values all zero – verify header names (expected one of Value/Valeur).');
+        }
 
         this.destroyChart('overviewMetricsChart');
         this.charts.set('overviewMetricsChart', new Chart(ctx, {
             type: 'bar',
             data: { labels, datasets: [{ label: 'Valeur', data: values, backgroundColor: CONFIG.COLORS.primary }] },
-            options: { ...CHART_CONFIGS.defaultOptions, plugins: { ...CHART_CONFIGS.defaultOptions.plugins, title: { display: true, text: 'Overview Metrics' } }, scales: { y: { beginAtZero: true } } }
+            options: { ...CHART_CONFIGS.defaultOptions, plugins: { ...CHART_CONFIGS.defaultOptions.plugins, title: { display: true, text: 'Overview Metrics' } }, scales: { x: { ticks: { callback: v => this._shortenLabel(labels[v]) } }, y: { beginAtZero: true } } }
         }));
     }
 
@@ -148,10 +243,10 @@ class ChartService {
         const groupMap = new Map();
         const addRows = (rows, label) => {
             rows.forEach(r => {
-                const phase = r.Phase || r.phase || 'Phase';
-                const tool = r.Tool || r.tool || 'Tool';
-                const parcelType = r['Parcel Type'] || r.ParcelType || r['parcel type'] || 'Type';
-                const total = Number(r.Total || r.total || 0);
+                const phase = r.Phase || r.phase || r['Phase Libellé'] || 'Phase';
+                const tool = r.Tool || r.tool || r['Outil'] || 'Tool';
+                const parcelType = r['Parcel Type'] || r.ParcelType || r['parcel type'] || r['Type de Parcelle'] || 'Type';
+                const total = this._getNumericField(r, ['Total','Total Parcelles','Total Parcels','Nombre total','total','Parcelles']);
                 const key = `${phase}|${tool}`;
                 if (!groupMap.has(key)) groupMap.set(key, { phase, tool });
                 const entry = groupMap.get(key);
@@ -177,7 +272,7 @@ class ChartService {
         this.charts.set('processingPhaseStackedChart', new Chart(ctx, {
             type: 'bar',
             data: { labels, datasets },
-            options: { ...CHART_CONFIGS.defaultOptions, plugins: { ...CHART_CONFIGS.defaultOptions.plugins, title: { display: true, text: 'Processing Phase Composition' } }, responsive: true, interaction: { mode: 'index', intersect: false }, scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } } }
+            options: { ...CHART_CONFIGS.defaultOptions, plugins: { ...CHART_CONFIGS.defaultOptions.plugins, title: { display: true, text: 'Processing Phase Composition' } }, responsive: true, interaction: { mode: 'index', intersect: false }, scales: { x: { stacked: true, ticks: { callback: v => this._shortenLabel(labels[v]) } }, y: { stacked: true, beginAtZero: true } } }
         }));
     }
 
@@ -193,7 +288,7 @@ class ChartService {
         this.charts.set('teamProductivityChart', new Chart(ctx, {
             type: 'bar',
             data: { labels, datasets: [{ label: 'Champs / Équipe / Jour', data: values, backgroundColor: CONFIG.COLORS.secondary }] },
-            options: { ...CHART_CONFIGS.defaultOptions, plugins: { ...CHART_CONFIGS.defaultOptions.plugins, title: { display: true, text: 'Team Productivity' } }, scales: { y: { beginAtZero: true } } }
+            options: { ...CHART_CONFIGS.defaultOptions, plugins: { ...CHART_CONFIGS.defaultOptions.plugins, title: { display: true, text: 'Team Productivity' } }, scales: { x: { ticks: { callback: v => this._shortenLabel(labels[v]) } }, y: { beginAtZero: true } } }
         }));
     }
 
@@ -227,7 +322,7 @@ class ChartService {
         this.charts.set('communeStatusChart', new Chart(ctx, {
             type: 'bar',
             data: { labels: communes, datasets },
-            options: { ...CHART_CONFIGS.defaultOptions, plugins: { ...CHART_CONFIGS.defaultOptions.plugins, title: { display: true, text: 'Statut par Commune' } }, responsive: true, interaction: { mode: 'index', intersect: false }, scales: { x: { stacked: false }, y: { beginAtZero: true } } }
+            options: { ...CHART_CONFIGS.defaultOptions, plugins: { ...CHART_CONFIGS.defaultOptions.plugins, title: { display: true, text: 'Statut par Commune' } }, responsive: true, interaction: { mode: 'index', intersect: false }, scales: { x: { stacked: false, ticks: { callback: v => this._shortenLabel(communes[v]) } }, y: { beginAtZero: true } } }
         }));
     }
 
@@ -308,16 +403,31 @@ class ChartService {
     createDailyYieldsChart(rawData) {
         const ctx = document.getElementById('dailyYieldsChart');
         if (!ctx) return;
-
-        const timeSeriesData = dataService.getTimeSeriesData(
-            rawData, 
-            'Yields Projections', 
-            'Date', 
+        // Build from provided dataset; if too court, fallback to full stored dataset
+        const build = (dataset) => dataService.getTimeSeriesData(
+            dataset,
+            'Yields Projections',
+            'Date',
             'Nombre de levées'
         );
+        let timeSeriesData = build(rawData);
+        if (timeSeriesData.length < 5 && window.__fullRawData) {
+            const expanded = build(window.__fullRawData);
+            if (expanded.length > timeSeriesData.length) {
+                timeSeriesData = expanded;
+            }
+        }
+        if (!timeSeriesData.length) return; // nothing to draw
 
         const chartData = {
-            labels: timeSeriesData.map(d => d.date),
+            // Convert ISO date strings to readable DD/MM labels
+            labels: timeSeriesData.map(d => {
+                try {
+                    const parts = String(d.date).split('-');
+                    if (parts.length === 3) return `${parts[2]}/${parts[1]}`; // DD/MM
+                    return d.date;
+                } catch(e){ return d.date; }
+            }),
             datasets: [{
                 label: 'Levées quotidiennes',
                 data: timeSeriesData.map(d => d.value),
@@ -328,7 +438,7 @@ class ChartService {
                 tension: 0.4
             }, {
                 label: 'Objectif (832,77)',
-                data: Array(timeSeriesData.length).fill(CONFIG.TARGETS.DAILY_PARCELS),
+                data: timeSeriesData.map(()=> CONFIG.TARGETS.DAILY_PARCELS),
                 borderColor: CONFIG.COLORS.danger,
                 backgroundColor: 'transparent',
                 borderWidth: 2,
@@ -350,7 +460,9 @@ class ChartService {
         };
 
         this.destroyChart('dailyYieldsChart');
-        this.charts.set('dailyYieldsChart', new Chart(ctx, {
+    // Gradient for area
+    chartData.datasets[0].backgroundColor = this._makeAreaGradient(CONFIG.COLORS.primary, ctx);
+    this.charts.set('dailyYieldsChart', new Chart(ctx, {
             type: 'line',
             data: chartData,
             options: options
@@ -431,7 +543,9 @@ class ChartService {
         };
 
         this.destroyChart('qualityTrendChart');
-        this.charts.set('qualityTrendChart', new Chart(ctx, {
+    // Apply gradient to quality line fill
+    chartData.datasets[0].backgroundColor = this._makeAreaGradient(CONFIG.COLORS.success, ctx);
+    this.charts.set('qualityTrendChart', new Chart(ctx, {
             type: 'line',
             data: chartData,
             options: options
@@ -544,7 +658,10 @@ class ChartService {
         };
 
         this.destroyChart('postProcessingChart');
-        this.charts.set('postProcessingChart', new Chart(ctx, {
+    // Gradient fills
+    chartData.datasets[0].backgroundColor = this._makeAreaGradient(CONFIG.COLORS.info, ctx);
+    chartData.datasets[1].backgroundColor = this._makeAreaGradient(CONFIG.COLORS.success, ctx);
+    this.charts.set('postProcessingChart', new Chart(ctx, {
             type: 'line',
             data: chartData,
             options: options
@@ -959,6 +1076,9 @@ class ChartService {
     // Update all charts with new data
     async updateCharts(rawData, precomputedKPIs = null, fullRawData = null) {
         try {
+            if (fullRawData && typeof window !== 'undefined') {
+                window.__fullRawData = fullRawData;
+            }
             // Destroy all existing charts
             this.destroyAllCharts();
             

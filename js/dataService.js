@@ -221,34 +221,72 @@ class DataService {
             // If valueColumns is a string, convert to array
             const columns = Array.isArray(valueColumns) ? valueColumns : [valueColumns];
             
-            // Parse date string to proper format for Chart.js
+            // Robust date parsing that tolerates multiple formats (DD/MM/YYYY, DD-MM-YYYY, YYYY-MM-DD, DD/MM/YY)
             const parseDate = (dateStr) => {
-                // If already a valid moment/Date object, return as is
-                if (moment.isMoment(dateStr) || dateStr instanceof Date) return dateStr;
-                
-                // Try to parse date in various formats
-                const formats = ['DD/MM/YYYY', 'YYYY-MM-DD', 'MM/DD/YYYY'];
-                const date = moment(dateStr, formats, true);
-                
-                // Return the moment object if valid, or current date if invalid
-                return date.isValid() ? date : moment();
+                if (dateStr === undefined || dateStr === null || dateStr === '') return null;
+                if (moment.isMoment(dateStr)) return dateStr.clone();
+                if (dateStr instanceof Date && !isNaN(dateStr)) return moment(dateStr);
+                // Excel serial number support (roughly > 40000 corresponds to year 2009+)
+                if (!isNaN(dateStr) && Number(dateStr) > 40000 && Number(dateStr) < 60000) {
+                    const base = moment('1899-12-30','YYYY-MM-DD');
+                    return base.add(Number(dateStr), 'days');
+                }
+                const formats = [
+                    'DD/MM/YYYY','DD-MM-YYYY','YYYY-MM-DD','YYYY/MM/DD',
+                    'DD/MM/YY','DD-MM-YY','MM/DD/YYYY','MM-DD-YYYY','D/M/YYYY','D/M/YY','DD.M.YYYY','D.M.YYYY'
+                ];
+                let m = moment(String(dateStr).trim(), formats, true);
+                if (!m.isValid()) {
+                    const cleaned = String(dateStr).trim().replace(/[.]/g,'/').replace(/-/g,'/');
+                    const parts = cleaned.split('/').map(p=>p.trim()).filter(Boolean);
+                    if (parts.length === 3) {
+                        let [a,b,c] = parts;
+                        if (c.length === 2) c = '20'+c; // 2-digit year assumption
+                        if (a.length === 1) a = a.padStart(2,'0');
+                        if (b.length === 1) b = b.padStart(2,'0');
+                        // If first >12 -> day first
+                        if (parseInt(a,10) > 12 && parseInt(b,10) <= 12) m = moment(`${c}-${b}-${a}`,'YYYY-MM-DD',true);
+                        else if (parseInt(b,10) > 12 && parseInt(a,10) <= 12) m = moment(`${c}-${a}-${b}`,'YYYY-MM-DD',true); // probably month/day
+                        else m = moment(`${c}-${b}-${a}`,'YYYY-MM-DD',true); // default day-first
+                    }
+                }
+                if (!m.isValid()) return null;
+                return m;
             };
             
-            // Group by date if needed
+            // Group by date if single value column (aggregate multiple rows same date)
             if (columns.length === 1) {
-                return data.map(row => ({
-                    date: parseDate(row[dateColumn]),
-                    value: parseFloat(row[columns[0]]) || 0
-                })).sort((a, b) => moment(a.date).diff(moment(b.date)));
+                const byDate = new Map();
+                const rawDateSet = new Set();
+                data.forEach(row => {
+                    const rawVal = row[dateColumn];
+                    rawDateSet.add(rawVal);
+                    const m = parseDate(rawVal);
+                    const key = m ? m.format('YYYY-MM-DD') : String(rawVal).trim();
+                    const val = parseFloat(row[columns[0]]) || 0;
+                    if (!byDate.has(key)) byDate.set(key, 0);
+                    byDate.set(key, byDate.get(key) + val);
+                });
+                if (sheetName.toLowerCase().includes('yield')) {
+                    try {
+                        console.debug('[TimeSeriesDebug] Distinct raw dates in', sheetName, Array.from(rawDateSet));
+                        console.debug('[TimeSeriesDebug] Parsed date keys', Array.from(byDate.keys()));
+                    } catch(e){}
+                }
+                const result = Array.from(byDate.entries()).map(([k,v]) => ({
+                    date: k, // keep as ISO string for stable label / sorting
+                    value: v
+                })).sort((a,b)=> a.date.localeCompare(b.date));
+                return result;
             } else {
                 // For multiple value columns, return data with all values
                 return data.map(row => {
-                    const result = { date: parseDate(row[dateColumn]) };
-                    columns.forEach(col => {
-                        result[col] = parseFloat(row[col]) || 0;
-                    });
-                    return result;
-                }).sort((a, b) => new Date(a.date) - new Date(b.date));
+                    const m = parseDate(row[dateColumn]);
+                    if (!m) return null;
+                    const entry = { date: m.format('YYYY-MM-DD') };
+                    columns.forEach(col => { entry[col] = parseFloat(row[col]) || 0; });
+                    return entry;
+                }).filter(Boolean).sort((a,b)=> a.date.localeCompare(b.date));
             }
         } catch (error) {
             console.error(`Error getting time series data for ${sheetName}:`, error);

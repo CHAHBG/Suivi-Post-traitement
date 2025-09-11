@@ -96,19 +96,27 @@ class TubeProgressService {
         container.innerHTML = '';
         
         // Add tube structure
+        const shortFmt = (v) => {
+            if (Math.abs(v) >= 1000000) return (v/1000000).toFixed(1)+'M';
+            if (Math.abs(v) >= 1000) return (v/1000).toFixed(1)+'K';
+            return config.formatter(v);
+        };
+        const gapVal = config.gap;
+        const gapDisplay = gapVal < 0 ? shortFmt(gapVal) : (gapVal>0? '+'+shortFmt(gapVal): '0');
         container.innerHTML = `
-            <div class="tube-progress">
+            <div class="tube-progress" title="${config.formatter(config.currentValue)} / ${config.formatter(config.targetValue)} (écart ${gapDisplay})">
                 <div class="tube-liquid" data-percentage="0">
                     <div class="tube-wave"></div>
                 </div>
                 <div class="tube-label">
-                    <div class="tube-title">${config.title}</div>
-                    <div class="tube-value">${config.formatter(config.currentValue)} / ${config.formatter(config.targetValue)}</div>
-                    <div class="tube-percentage">0%</div>
-                    ${config.showGap && config.gap < 0 ? `<div class="tube-gap">${config.formatter(config.gap)}</div>` : ''}
+                    <div class="tube-title text-sm">${config.title}</div>
+                    <div class="flex items-end gap-2 mt-1">
+                        <div class="tube-percentage text-lg font-semibold">0%</div>
+                        <div class="text-[11px] text-gray-500 font-medium">${shortFmt(config.currentValue)} / ${shortFmt(config.targetValue)}</div>
+                    </div>
+                    ${config.showGap ? `<div class="tube-gap text-[11px] mt-0.5 ${gapVal<0?'text-red-500':gapVal>0?'text-green-600':'text-gray-500'}">${gapDisplay}</div>` : ''}
                 </div>
-            </div>
-        `;
+            </div>`;
         
         // Add color class if specified
         if (config.color) {
@@ -175,17 +183,21 @@ class TubeProgressService {
         
         // Update text content
         if (elements.title) elements.title.textContent = config.title;
-        if (elements.value) elements.value.textContent = `${config.formatter(config.currentValue)} / ${config.formatter(config.targetValue)}`;
+        // Abbreviated values already baked into structure; update title attribute for detailed view
+        if (elements.tube) {
+            const gapVal = config.gap;
+            const gapDisplay = gapVal < 0 ? config.formatter(gapVal) : (gapVal>0? '+'+config.formatter(gapVal): '0');
+            elements.tube.parentElement.setAttribute('title', `${config.formatter(config.currentValue)} / ${config.formatter(config.targetValue)} (écart ${gapDisplay})`);
+        }
         if (elements.percentage) elements.percentage.textContent = `${Math.round(config.percentage)}%`;
         
         // Update gap display
         if (elements.gap) {
-            if (config.showGap && config.gap < 0) {
-                elements.gap.textContent = config.formatter(config.gap);
+            const gapVal = config.gap;
+            if (config.showGap) {
+                elements.gap.textContent = gapVal < 0 ? config.formatter(gapVal) : (gapVal>0? '+'+config.formatter(gapVal): '0');
                 elements.gap.style.display = 'block';
-            } else {
-                elements.gap.style.display = 'none';
-            }
+            } else elements.gap.style.display = 'none';
         }
         
         // Update color based on status
