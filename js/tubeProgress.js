@@ -207,6 +207,19 @@ class TubeProgressService {
         
         // Update color based on status
         this.updateTubeColor(elementId, config.status);
+
+    // Ensure initial text contrast is appropriate even before animations
+    this.updateTubeTextContrast(tube);
+
+        // If animations are disabled, set the fill and contrast immediately
+        if (!this.shouldAnimate(config) && elements.liquid) {
+            tube.currentPercentage = config.percentage || 0;
+            const height = `${tube.currentPercentage}%`;
+            elements.liquid.style.height = height;
+            elements.liquid.style.setProperty('--fill-height', height);
+            elements.liquid.setAttribute('data-percentage', Math.round(tube.currentPercentage));
+            this.updateTubeTextContrast(tube);
+        }
     }
     
     /**
@@ -218,7 +231,7 @@ class TubeProgressService {
         const tube = this.tubes.get(elementId);
         if (!tube) return;
         
-        const { elements } = tube;
+    const { elements } = tube;
         
         // Get color based on status
         let color;
@@ -230,11 +243,63 @@ class TubeProgressService {
             default: color = status.startsWith('#') ? status : this.config.colors.primary; // Custom color
         }
         
-        // Apply color to elements
-        if (elements.liquid) elements.liquid.style.background = color;
-        if (elements.percentage) elements.percentage.style.color = this.config.colors.neutral; // Contrast text
-        if (elements.value) elements.value.style.color = this.config.colors.neutral;
-        if (elements.gap) elements.gap.style.color = this.config.colors.neutral;
+    // Apply color to elements
+    if (elements.liquid) elements.liquid.style.background = color;
+
+    // Remember liquid color for dynamic contrast decisions
+    tube.liquidColor = color;
+    tube.textColorOnLiquid = this.getContrastingTextColor(color);
+
+    // Set a reasonable initial text color; will be refined during animation
+    const root = elements.tube; // .tube-progress root
+    if (root) root.style.setProperty('--tube-text-color', tube.textColorOnLiquid);
+    // Keep explicit fallback colors minimal; CSS now uses --tube-text-color
+    }
+
+    /**
+     * Compute contrasting text color (black/white) for a given background color
+     * @param {string} hexColor - e.g., '#22C55E'
+     * @returns {string} '#FFFFFF' or '#111827'
+     */
+    getContrastingTextColor(hexColor) {
+        try {
+            const hex = hexColor.replace('#','');
+            const bigint = parseInt(hex.length === 3 ? hex.split('').map(c=>c+c).join('') : hex, 16);
+            const r = (bigint >> 16) & 255;
+            const g = (bigint >> 8) & 255;
+            const b = bigint & 255;
+            // Relative luminance (sRGB)
+            const [R, G, B] = [r, g, b].map(v => {
+                v /= 255;
+                return v <= 0.03928 ? v/12.92 : Math.pow((v+0.055)/1.055, 2.4);
+            });
+            const L = 0.2126*R + 0.7152*G + 0.0722*B;
+            // Threshold ~0.5: choose dark text for light backgrounds, white for dark
+            return L > 0.5 ? '#111827' : '#FFFFFF';
+        } catch(_) {
+            return '#111827';
+        }
+    }
+
+    /**
+     * Update the tube text contrast based on whether the label area is over liquid or background
+     * @param {Object} tube - Tube state object
+     */
+    updateTubeTextContrast(tube) {
+        if (!tube || !tube.elements || !tube.elements.tube) return;
+        const root = tube.elements.tube;
+        // Heuristic: label is centered at ~50% height; ensure it's well covered before switching
+        const threshold = 55; // percent
+        const covered = (tube.currentPercentage || 0) >= threshold;
+
+        // Determine text colors for each background
+        const liquidColor = tube.liquidColor || this.config.colors.primary;
+        const textOnLiquid = tube.textColorOnLiquid || this.getContrastingTextColor(liquidColor);
+        // Tube background is light (#f8fafc); prefer dark text on it
+        const textOnBg = '#111827';
+
+        const textColor = covered ? textOnLiquid : textOnBg;
+        root.style.setProperty('--tube-text-color', textColor);
     }
     
     /**
@@ -283,6 +348,9 @@ class TubeProgressService {
             // Update wave animation
             this.updateWaveAnimation(elements.liquid, now);
             
+            // Update text contrast based on coverage
+            this.updateTubeTextContrast(tube);
+
             // Update percentage text if animated
             if (config.animated && elements.percentage) {
                 elements.percentage.textContent = `${Math.round(tube.currentPercentage)}%`;

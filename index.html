@@ -381,9 +381,10 @@
                             </div>
                         </div>
                         
-                        <div class="chart-card">
+            <div class="chart-card">
                             <div class="chart-header">
                                 <h3 class="chart-title">Comparaison Régionale</h3>
+                <p class="chart-subtitle">Comparer les volumes clés entre régions</p>
                             </div>
                             <div class="chart-content">
                                 <canvas id="regionalComparisonChart"></canvas>
@@ -392,9 +393,10 @@
                     </div>
                     
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mt-8">
-                        <div class="chart-card">
+            <div class="chart-card">
                             <div class="chart-header">
                                 <h3 class="chart-title">Projections Multi-Métriques</h3>
+                <p class="chart-subtitle">Projection mensuelle NICAD / Affichage / CTASF</p>
                             </div>
                             <div class="chart-content">
                                 <canvas id="projectionsMultiMetricChart"></canvas>
@@ -403,7 +405,19 @@
                         
                         <div class="chart-card">
                             <div class="chart-header">
+                                <h3 class="chart-title">Rétention vs Rejet</h3>
+                                <p class="chart-subtitle">Collectées vs Traitées (rétention / rejet)</p>
+                            </div>
+                            <div class="chart-content">
+                                <canvas id="retentionDonutChart"></canvas>
+                                <p id="retentionAnalysisText" class="text-sm text-gray-600 mt-4"></p>
+                            </div>
+                        </div>
+
+            <div class="chart-card">
+                            <div class="chart-header">
                                 <h3 class="chart-title">Timeline Projet</h3>
+                <p class="chart-subtitle">Début/fin par lot pour le suivi global</p>
                             </div>
                             <div class="chart-content">
                                 <canvas id="projectTimelineChart"></canvas>
@@ -433,16 +447,7 @@
                             </div>
                         </div>
 
-                        <!-- Moved from Overview: Phases Processing -->
-                        <div class="chart-card">
-                            <div class="chart-header">
-                                <h3 class="chart-title">Phases Processing</h3>
-                                <p class="chart-subtitle">Analyse des étapes de traitement</p>
-                            </div>
-                            <div class="chart-content">
-                                <canvas id="processingPhaseStackedChart"></canvas>
-                            </div>
-                        </div>
+                        
 
                         <!-- Moved from Overview: Productivité Équipe -->
                         <div class="chart-card">
@@ -455,18 +460,7 @@
                             </div>
                         </div>
 
-                        <div class="chart-card">
-                            <div class="chart-header">
-                                <h3 class="chart-title">Entonnoir de Traitement</h3>
-                                <div class="chart-status">
-                                    <span class="status-indicator active"></span>
-                                    <span>En temps réel</span>
-                                </div>
-                            </div>
-                            <div class="chart-content">
-                                <canvas id="processingFunnelChart"></canvas>
-                            </div>
-                        </div>
+                        
 
                         <div class="chart-card">
                             <div class="chart-header">
@@ -507,12 +501,13 @@
                     </div>
                     
                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                        <div class="chart-card">
+            <div class="chart-card">
                             <div class="chart-header">
                                 <h3 class="chart-title">Évolution Quotidienne des Levées</h3>
-                                <div class="chart-trend positive">
-                                    <i class="fas fa-arrow-up"></i>
-                                    <span>+12%</span>
+                <p class="chart-subtitle">Tendance des levées selon l'intervalle choisi</p>
+                                <div id="dailyYieldsTrend" class="chart-trend">
+                                    <i id="dailyYieldsTrendIcon" class="fas fa-minus"></i>
+                                    <span id="dailyYieldsTrendValue">--%</span>
                                 </div>
                             </div>
                             <div class="chart-content">
@@ -520,12 +515,13 @@
                             </div>
                         </div>
                         
-                        <div class="chart-card">
+            <div class="chart-card">
                             <div class="chart-header">
                                 <h3 class="chart-title">Qualité Affichage Public</h3>
-                                <div class="chart-trend positive">
-                                    <i class="fas fa-arrow-up"></i>
-                                    <span>+8.5%</span>
+                <p class="chart-subtitle">Part des affichages sans erreurs</p>
+                                <div id="qualityTrendHeader" class="chart-trend">
+                                    <i id="qualityTrendIcon" class="fas fa-minus"></i>
+                                    <span id="qualityTrendValue">--%</span>
                                 </div>
                             </div>
                             <div class="chart-content">
@@ -533,18 +529,28 @@
                             </div>
                         </div>
                         
-                        <div class="chart-card">
+            <div class="chart-card">
                             <div class="chart-header">
                                 <h3 class="chart-title">Pipeline CTASF</h3>
+                <p class="chart-subtitle">Flux emmenées → retenues → délibérées</p>
+                                <div id="ctasfTrendHeader" class="chart-trend">
+                                    <i id="ctasfTrendIcon" class="fas fa-minus"></i>
+                                    <span id="ctasfTrendValue">--%</span>
+                                </div>
                             </div>
                             <div class="chart-content">
                                 <canvas id="ctasfPipelineChart"></canvas>
                             </div>
                         </div>
                         
-                        <div class="chart-card">
+            <div class="chart-card">
                             <div class="chart-header">
                                 <h3 class="chart-title">Performance Post-Processing</h3>
+                <p class="chart-subtitle">Évolution des volumes traités quotidiennement</p>
+                                <div id="postProcTrendHeader" class="chart-trend">
+                                    <i id="postProcTrendIcon" class="fas fa-minus"></i>
+                                    <span id="postProcTrendValue">--%</span>
+                                </div>
                             </div>
                             <div class="chart-content">
                                 <canvas id="postProcessingChart"></canvas>
@@ -819,8 +825,7 @@
         });
 
         // Initialize theme
-        const savedTheme = localStorage.getItem('proc-theme') || 
-            (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    const savedTheme = localStorage.getItem('proc-theme') || 'light';
         
         document.body.dataset.theme = savedTheme;
         if (savedTheme === 'dark') {

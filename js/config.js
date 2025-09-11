@@ -43,7 +43,7 @@ const CONFIG = {
             'Koar', 'Sinthiou Maleme', 'Ndoga Babacar', 'Missirah', 'Netteboulou', 'Bala'
         ],
         inProgress: [
-            'Tomboronkoto', 'Dindefello', 'Moudery', 'Gabou', 'Dimboli', 'Bembou'
+            'Tomboronkoto', 'Dindefello', 'Moudery', 'Gabou', 'Bembou'
         ],
         finished: [
             'Fongolembi', 'Bandafassi', 'Dimboli'

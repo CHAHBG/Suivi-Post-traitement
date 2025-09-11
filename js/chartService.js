@@ -178,6 +178,8 @@ class ChartService {
         };
     }
 
+    
+
     _initGlobalTheme(){
         if (typeof Chart === 'undefined') return;
         // Avoid re-applying (idempotent)
@@ -504,7 +506,6 @@ class ChartService {
                 { name: 'Regional Comparison', method: () => this.createRegionalComparisonChart(rawData) },
                 { name: 'Parcel Type Distribution', method: () => this.createParcelTypeDistributionChart(rawData) },
                 { name: 'Geomatician Performance', method: () => this.createGeomaticianPerformanceChart(rawData) },
-                { name: 'Processing Funnel', method: () => this.createProcessingFunnelChart(rawData) }
             ];
             
             // Initialize each chart with individual error handling
@@ -519,10 +520,10 @@ class ChartService {
             // Additional charts with error handling
             const additionalChartMethods = [
                 { name: 'Overview Metrics', method: () => this.createOverviewMetricsChart(rawData) },
-                { name: 'Processing Phase Stacked', method: () => this.createProcessingPhaseStackedChart(rawData) },
                 { name: 'Team Productivity', method: () => this.createTeamProductivityChart(rawData) },
                 { name: 'Commune Status', method: () => this.createCommuneStatusChart(rawData) },
                 { name: 'Projections Multi Metric', method: () => this.createProjectionsMultiMetricChart(rawData) },
+                { name: 'Retention Summary', method: () => this.createRetentionDonutChart(rawData) },
                 { name: 'Project Timeline', method: () => this.createProjectTimelineChart(rawData) },
                 { name: 'Gauge Charts', method: () => this.createGaugeCharts(fullRawData || rawData, precomputedKPIs) }
             ];
@@ -543,7 +544,7 @@ class ChartService {
             // Even with an error, try to render mock data so the dashboard is not empty
             try {
                 this._createMockOverviewMetricsChart();
-                this._createMockProcessingPhaseChart();
+                
                 this._createMockTeamProductivityChart();
                 this._createMockQualityTrendChart();
                 console.log('Fallback mock charts created after error');
@@ -561,9 +562,7 @@ class ChartService {
             this.createRegionalComparisonChart(rawData);
             this.createParcelTypeDistributionChart(rawData);
             this.createGeomaticianPerformanceChart(rawData);
-            this.createProcessingFunnelChart(rawData);
             this.createOverviewMetricsChart(rawData);
-            this.createProcessingPhaseStackedChart(rawData);
             this.createTeamProductivityChart(rawData);
             this.createCommuneStatusChart(rawData);
             this.createProjectionsMultiMetricChart(rawData);
@@ -683,86 +682,7 @@ class ChartService {
         });
     }
     
-    /**
-     * Create a mock Processing Phase chart when no data is available
-     * @private
-     */
-    _createMockProcessingPhaseChart() {
-        const phases = [
-            'Phase pilote', 
-            'QField', 
-            'Total parcelles', 
-            'Phase Tool', 
-            'Phase KoboCollect'
-        ];
-        
-        const totalValues = [120, 480, 950, 370, 210];
-        const individualValues = [85, 320, 710, 250, 140];
-        
-        return this._createChart('processingPhaseStackedChart', {
-            type: 'bar',
-            data: { 
-                labels: phases, 
-                datasets: [
-                    {
-                        label: 'Total', 
-                        data: totalValues, 
-                        backgroundColor: CONFIG.COLORS.primary,
-                        borderColor: CONFIG.COLORS.primary + 'CC',
-                        borderWidth: 1,
-                        borderRadius: 4
-                    },
-                    {
-                        label: 'Individuelles', 
-                        data: individualValues, 
-                        backgroundColor: CONFIG.COLORS.success,
-                        borderColor: CONFIG.COLORS.success + 'CC',
-                        borderWidth: 1,
-                        borderRadius: 4
-                    }
-                ] 
-            },
-            options: { 
-                ...CHART_CONFIGS.defaultOptions, 
-                plugins: { 
-                    ...CHART_CONFIGS.defaultOptions.plugins, 
-                    title: { 
-                        display: true, 
-                        text: 'Phases Processing',
-                        font: {
-                            size: 16,
-                            weight: 'bold'
-                        }
-                    },
-                    subtitle: {
-                        display: true,
-                        text: 'Analyse des étapes de traitement',
-                        font: {
-                            size: 14,
-                            style: 'italic'
-                        },
-                        padding: {
-                            bottom: 10
-                        }
-                    }
-                }, 
-                scales: { 
-                    x: { 
-                        ticks: { 
-                            callback: v => this._shortenLabel(phases[v], 15) 
-                        } 
-                    }, 
-                    y: { 
-                        beginAtZero: true,
-                        title: {
-                            display: true,
-                            text: 'Nombre de parcelles'
-                        }
-                    } 
-                } 
-            }
-        });
-    }
+    
     
     /**
      * Create a mock Team Productivity chart when no data is available
@@ -855,12 +775,12 @@ class ChartService {
             { name: 'Regional Comparison', method: () => this.createRegionalComparisonChart(rawData) },
             { name: 'Parcel Type Distribution', method: () => this.createParcelTypeDistributionChart(rawData) },
             { name: 'Geomatician Performance', method: () => this.createGeomaticianPerformanceChart(rawData) },
-            { name: 'Processing Funnel', method: () => this.createProcessingFunnelChart(rawData) },
+            
             { name: 'Overview Metrics', method: () => this.createOverviewMetricsChart(rawData) },
-            { name: 'Processing Phase Stacked', method: () => this.createProcessingPhaseStackedChart(rawData) },
             { name: 'Team Productivity', method: () => this.createTeamProductivityChart(rawData) },
             { name: 'Commune Status', method: () => this.createCommuneStatusChart(rawData) },
             { name: 'Projections Multi Metric', method: () => this.createProjectionsMultiMetricChart(rawData) },
+            { name: 'Retention Summary', method: () => this.createRetentionDonutChart(rawData) },
             { name: 'Project Timeline', method: () => this.createProjectTimelineChart(rawData) }
         ];
         
@@ -912,145 +832,7 @@ class ChartService {
         }));
     }
 
-    // Processing Phase stacked comparison (Sheets: Processing Phase 1 & 2)
-    createProcessingPhaseStackedChart(rawData) {
-        const ctx = document.getElementById('processingPhaseStackedChart');
-        if (!ctx) return;
-        const phase1 = this.findSheet('Processing Phase 1', rawData) || [];
-        const phase2 = this.findSheet('Processing Phase 2', rawData) || [];
-        if (!phase1.length && !phase2.length) {
-            console.log('No processing phase data available, using mock data');
-            // Create mock data
-            return this._createMockProcessingPhaseChart();
-        }
-
-        // Based on the specified column indices
-        // gid=778550489 and gid=1687610293: 0:Phase, 1:Tool, 2:Parcel Type, 3:Total
-        
-        // Process Phase 1 data - group by Phase and Tool, sum Totals
-        const phase1Data = {};
-        phase1.forEach(r => {
-            const phase = this._getField(r, 0) || r.Phase || r.phase || '';
-            const tool = this._getField(r, 1) || r.Tool || r.tool || '';
-            const total = this._parseNumeric(this._getField(r, 3)) || 0;
-            
-            // Group by phase
-            if (!phase1Data[phase]) {
-                phase1Data[phase] = {};
-            }
-            
-            // Group by tool within phase
-            if (!phase1Data[phase][tool]) {
-                phase1Data[phase][tool] = 0;
-            }
-            
-            // Sum totals
-            phase1Data[phase][tool] += total;
-        });
-        
-        // Process Phase 2 data - group by Phase and Tool, sum Totals
-        const phase2Data = {};
-        phase2.forEach(r => {
-            const phase = this._getField(r, 0) || r.Phase || r.phase || '';
-            const tool = this._getField(r, 1) || r.Tool || r.tool || '';
-            const total = this._parseNumeric(this._getField(r, 3)) || 0;
-            
-            // Group by phase
-            if (!phase2Data[phase]) {
-                phase2Data[phase] = {};
-            }
-            
-            // Group by tool within phase
-            if (!phase2Data[phase][tool]) {
-                phase2Data[phase][tool] = 0;
-            }
-            
-            // Sum totals
-            phase2Data[phase][tool] += total;
-        });
-        
-        // Combine all phases and tools
-        const allPhases = [...new Set([
-            ...Object.keys(phase1Data),
-            ...Object.keys(phase2Data)
-        ])];
-        
-        const allTools = [...new Set([
-            ...Object.keys(phase1Data).flatMap(phase => Object.keys(phase1Data[phase])),
-            ...Object.keys(phase2Data).flatMap(phase => Object.keys(phase2Data[phase]))
-        ])];
-        
-        // Create labels from phases
-        const labels = allPhases;
-        
-        // Create datasets from tools
-        const datasets = allTools.map(tool => {
-            // Generate a consistent color based on the tool name
-            const toolIndex = allTools.indexOf(tool);
-            // Define color array here since CONFIG.COLORS_ARRAY is not defined
-            const colorArray = [
-                CONFIG.COLORS.primary, 
-                CONFIG.COLORS.secondary, 
-                CONFIG.COLORS.success, 
-                CONFIG.COLORS.warning, 
-                CONFIG.COLORS.info, 
-                CONFIG.COLORS.accent || '#9c27b0', 
-                CONFIG.COLORS.danger || '#f44336'
-            ];
-            const color = colorArray[toolIndex % colorArray.length];
-            
-            return {
-                label: tool,
-                data: allPhases.map(phase => {
-                    // Get the total for this phase/tool combination from phase1 or phase2
-                    let total = 0;
-                    
-                    if (phase1Data[phase] && phase1Data[phase][tool]) {
-                        total += phase1Data[phase][tool];
-                    }
-                    
-                    if (phase2Data[phase] && phase2Data[phase][tool]) {
-                        total += phase2Data[phase][tool];
-                    }
-                    
-                    return total;
-                }),
-                backgroundColor: color
-            };
-        });
-
-        // Create chart
-        this.destroyChart('processingPhaseStackedChart');
-        return this._createChart('processingPhaseStackedChart', {
-            type: 'bar',
-            data: { 
-                labels, 
-                datasets 
-            },
-            options: { 
-                ...CHART_CONFIGS.defaultOptions,
-                plugins: { 
-                    ...CHART_CONFIGS.defaultOptions.plugins,
-                    title: { 
-                        display: true, 
-                        text: 'Composition des Phases Processing' 
-                    }
-                },
-                scales: {
-                    x: {
-                        stacked: true,
-                        ticks: { 
-                            callback: v => this._shortenLabel(labels[v]) 
-                        }
-                    },
-                    y: { 
-                        stacked: true,
-                        beginAtZero: true 
-                    }
-                }
-            }
-        });
-    }
+    // (Removed) Phases de Traitement chart and replacement
 
     // Team Productivity - updated to use both Yields and Post Process data
     createTeamProductivityChart(rawData) {
@@ -1259,7 +1041,7 @@ class ChartService {
         const sheet = this.findSheet('Commune Analysis', rawData) || [];
         if (!sheet.length) return;
 
-        const communes = sheet.map(r => r.Commune || r.commune || '');
+    const communes = sheet.map(r => r.Commune || r.commune || '');
         const statusMap = (name) => {
             const n = String(name || '').trim().toLowerCase();
             const inList = (arr) => arr.some(c => String(c).trim().toLowerCase() === n);
@@ -1270,7 +1052,6 @@ class ChartService {
         };
         const communeStatuses = communes.map(statusMap);
         const metrics = [
-            { key: ['Total Parcels','Total','total parcels'], label: 'Total', color: CONFIG.COLORS.primary },
             { key: ['NICAD','nicad'], label: 'NICAD', color: CONFIG.COLORS.success },
             { key: ['CTASF','ctasf'], label: 'CTASF', color: CONFIG.COLORS.warning },
             { key: ['Deliberated','Délibérées','deliberated'], label: 'Délibérées', color: CONFIG.COLORS.info }
@@ -1310,7 +1091,11 @@ class ChartService {
                 responsive: true, 
                 interaction: { mode: 'index', intersect: false }, 
                 scales: { 
-                    x: { stacked: false, ticks: { callback: v => this._shortenLabel(communes[v]) } }, 
+                    x: { stacked: false, ticks: { callback: (v, idx, ticks) => {
+                        const chart = this.charts.get('communeStatusChart');
+                        const labels = chart?.data?.labels || communes;
+                        return this._shortenLabel(labels[v] ?? labels[idx] ?? '');
+                    } } }, 
                     y: { beginAtZero: true } 
                 }
             }
@@ -1326,10 +1111,78 @@ class ChartService {
                     'Terminé': CONFIG.COLORS.success,
                     '—': CONFIG.COLORS.primary
                 };
+                // Persist original data for filtering
+                chart.__allData = {
+                    communes: [...communes],
+                    statuses: [...communeStatuses],
+                    datasetsRaw: chart.data.datasets.map(ds => Array.isArray(ds.data) ? [...ds.data] : []),
+                    baseColors
+                };
                 chart.data.datasets[0].backgroundColor = communeStatuses.map(s => baseColors[s] || CONFIG.COLORS.primary);
                 chart.update('none');
             }
         } catch(_) { /* no-op */ }
+
+        // Attach filter buttons once and apply current selection
+        this._attachCommuneStatusFilterControls();
+        const activeBtn = document.querySelector('.chart-controls .chart-filter.active');
+        const filterKey = activeBtn?.dataset?.filter || 'all';
+        this.applyCommuneStatusFilter(filterKey);
+    }
+
+    /**
+     * Apply filter to the Commune Status chart based on UI selection
+     * @param {'all'|'active'|'completed'} filterKey
+     */
+    applyCommuneStatusFilter(filterKey = 'all') {
+        try {
+            const chart = this.charts.get('communeStatusChart');
+            if (!chart || !chart.__allData) return;
+            const { communes, statuses, datasetsRaw, baseColors } = chart.__allData;
+            // Build index mask
+            const keepIdx = communes.map((_, i) => {
+                if (filterKey === 'active') return statuses[i] === 'Actif';
+                if (filterKey === 'completed') return statuses[i] === 'Terminé';
+                return true; // all
+            });
+            // Filter labels
+            const newLabels = communes.filter((_, i) => keepIdx[i]);
+            chart.data.labels = newLabels;
+            // Filter each dataset's data
+            chart.data.datasets.forEach((ds, di) => {
+                const raw = datasetsRaw[di] || [];
+                ds.data = raw.filter((_, i) => keepIdx[i]);
+            });
+            // Recolor first dataset bars based on status of filtered set
+            if (chart.data.datasets[0]) {
+                const filteredStatuses = statuses.filter((_, i) => keepIdx[i]);
+                chart.data.datasets[0].backgroundColor = filteredStatuses.map(s => baseColors[s] || CONFIG.COLORS.primary);
+            }
+            chart.update('none');
+        } catch(_) { /* no-op */ }
+    }
+
+    /**
+     * Attach click handlers to the Actif/Terminé buttons (once)
+     */
+    _attachCommuneStatusFilterControls() {
+        if (this._communeStatusFilterBound) return;
+        const controls = document.querySelectorAll('.chart-controls .chart-filter');
+        if (!controls || controls.length === 0) return;
+        controls.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                // Toggle active class within group
+                const parent = btn.parentElement;
+                if (parent) {
+                    parent.querySelectorAll('.chart-filter').forEach(b => b.classList.remove('active'));
+                }
+                btn.classList.add('active');
+                const key = btn.dataset.filter || 'all';
+                this.applyCommuneStatusFilter(key);
+            });
+        });
+        this._communeStatusFilterBound = true;
     }
 
     // Projections Multi-Metric (Sheets: NICAD Projection, Public Display, CTASF Projection)
@@ -1812,10 +1665,9 @@ class ChartService {
     createParcelTypeDistributionChart(rawData) {
         const ctx = document.getElementById('parcelTypeDistributionChart');
         if (!ctx) return;
-
         // Combine processing1 and processing2 data using case-insensitive lookup
-    const processing1 = this.findSheet('Processing Phase 1', rawData) || [];
-    const processing2 = this.findSheet('Processing Phase 2', rawData) || [];
+        const processing1 = this.findSheet('Processing Phase 1', rawData) || [];
+        const processing2 = this.findSheet('Processing Phase 2', rawData) || [];
         
         // Group by parcel type
         const parcelTypes = new Map();
@@ -1873,6 +1725,147 @@ class ChartService {
             data: chartData,
             options: options
         }));
+    }
+
+    // Helper: compute retention metrics from Commune Status/Analysis
+    _computeRetentionMetrics(rawData) {
+        const communeStatus = this.findSheet('Commune Status', rawData) || this.findSheet('Commune Analysis', rawData) || [];
+        const collectedHeader = 'Parcelles collectées (sans doublon géométrique)';
+        const retainedHeader = 'Parcelles retenues après post-traitement';
+        const rejectedHeaderCurly = 'Parcelles rejetées par l’URM';
+        const rejectedHeaderStraight = "Parcelles rejetées par l'URM";
+
+        const collected = communeStatus.reduce((sum, r) => sum + this._getNumericField(r, [collectedHeader]), 0);
+        const retained = communeStatus.reduce((s, r) => s + this._getNumericField(r, [retainedHeader]), 0);
+        const rejected = communeStatus.reduce((s, r) => s + this._getNumericField(r, [rejectedHeaderCurly, rejectedHeaderStraight]), 0);
+
+        const coll = Math.max(0, collected);
+        const ret = Math.max(0, retained);
+        const rej = Math.max(0, rejected);
+        const processed = ret + rej;
+        const remainder = Math.max(0, coll - processed);
+
+        const tauxRetentionVsCollected = Math.round((ret / (coll || 1)) * 100);
+        const tauxRejetVsCollected = Math.round((rej / (coll || 1)) * 100);
+        const tauxRetentionVsProcessed = Math.round((ret / (processed || 1)) * 100);
+        const tauxRejetVsProcessed = Math.round((rej / (processed || 1)) * 100);
+
+        return { coll, ret, rej, processed, remainder, tauxRetentionVsCollected, tauxRejetVsCollected, tauxRetentionVsProcessed, tauxRejetVsProcessed };
+    }
+
+    // Retention summary chart (non-bar) for collected vs retained vs rejected
+    createRetentionDonutChart(rawData) {
+        const ctx = document.getElementById('retentionDonutChart');
+        if (!ctx) return;
+        const { coll, ret, rej, processed, remainder, tauxRetentionVsCollected, tauxRejetVsCollected, tauxRetentionVsProcessed, tauxRejetVsProcessed } = this._computeRetentionMetrics(rawData);
+
+        // Outer ring: collected remainder vs processed
+        const innerLabels = ['Retenues', 'Rejetées URM'];
+        const outerLabels = ['Reste (non traité)', 'Traité'];
+        const chartData = {
+            labels: [],
+            datasets: [
+                {
+                    // Inner ring: retained vs rejected among processed
+                    data: [ret, rej],
+                    backgroundColor: [CONFIG.COLORS.success, CONFIG.COLORS.danger],
+                    borderWidth: 1
+                },
+                {
+                    // Outer ring: collected split into processed and remainder
+                    data: [remainder, processed],
+                    backgroundColor: [CONFIG.COLORS.info + '66', CONFIG.COLORS.info],
+                    borderWidth: 1
+                }
+            ]
+        };
+
+        const options = {
+            ...CHART_CONFIGS.defaultOptions,
+            plugins: {
+                ...CHART_CONFIGS.defaultOptions.plugins,
+                title: {
+                    display: true,
+                    text: 'Rétention vs Rejet (Process)'
+                },
+                subtitle: {
+                    display: true,
+                    text: `Retention/Collectées: ${tauxRetentionVsCollected}% • Rejet/Collectées: ${tauxRejetVsCollected}% • Retention/Traitées: ${tauxRetentionVsProcessed}% • Rejet/Traitées: ${tauxRejetVsProcessed}%`
+                },
+                tooltip: {
+                    callbacks: {
+                        label: (ctx) => {
+                            const dsIndex = ctx.datasetIndex;
+                            const di = ctx.dataIndex;
+                            const name = dsIndex === 0 ? innerLabels[di] : outerLabels[di];
+                            const val = ctx.parsed;
+                            return `${name}: ${val.toLocaleString()}`;
+                        },
+                        afterLabel: (ctx) => {
+                            const dsIndex = ctx.datasetIndex;
+                            let total = dsIndex === 0 ? (processed || 1) : ((remainder + processed) || 1);
+                            const val = ctx.parsed;
+                            const pct = total > 0 ? Math.round((val / total) * 100) : 0;
+                            return `(${pct}%)`;
+                        }
+                    }
+                }
+            },
+            cutout: '55%'
+        };
+
+        this.destroyChart('retentionDonutChart');
+        this.charts.set('retentionDonutChart', new Chart(ctx, {
+            type: 'doughnut',
+            data: chartData,
+            options
+        }));
+
+        // Optional: populate a brief analysis text if a target element exists
+        try {
+            const el = document.getElementById('retentionAnalysisText');
+            if (el) {
+                el.textContent = `Sur ${coll.toLocaleString()} parcelles collectées, ${processed.toLocaleString()} ont été traitées: ` +
+                    `${ret.toLocaleString()} retenues (${tauxRetentionVsProcessed}%) et ${rej.toLocaleString()} rejetées (${tauxRejetVsProcessed}%). ` +
+                    `Par rapport au collecté: rétention ${tauxRetentionVsCollected}%, rejet ${tauxRejetVsCollected}%.`;
+            }
+        } catch(_) {}
+    }
+
+    // Update retention donut chart and analysis when data changes (streaming/partial updates)
+    updateRetentionDonutChart(rawData) {
+        const ctx = document.getElementById('retentionDonutChart');
+        if (!ctx) return false;
+        const metrics = this._computeRetentionMetrics(rawData);
+        const { coll, ret, rej, processed, remainder, tauxRetentionVsCollected, tauxRejetVsCollected, tauxRetentionVsProcessed, tauxRejetVsProcessed } = metrics;
+        const chart = this.charts.get('retentionDonutChart');
+        if (!chart) {
+            // Not created yet; create it now
+            this.createRetentionDonutChart(rawData);
+            return true;
+        }
+        try {
+            if (Array.isArray(chart.data?.datasets) && chart.data.datasets.length >= 2) {
+                chart.data.datasets[0].data = [ret, rej];
+                chart.data.datasets[1].data = [remainder, processed];
+            }
+            if (chart.options?.plugins?.subtitle) {
+                chart.options.plugins.subtitle.text = `Retention/Collectées: ${tauxRetentionVsCollected}% • Rejet/Collectées: ${tauxRejetVsCollected}% • Retention/Traitées: ${tauxRetentionVsProcessed}% • Rejet/Traitées: ${tauxRejetVsProcessed}%`;
+            }
+            chart.update('none');
+        } catch (e) {
+            console.warn('Retention donut update failed; recreating...', e);
+            this.createRetentionDonutChart(rawData);
+        }
+        try {
+            const el = document.getElementById('retentionAnalysisText');
+            if (el) {
+                el.textContent = `Sur ${coll.toLocaleString()} parcelles collectées, ${processed.toLocaleString()} ont été traitées: ` +
+                    `${ret.toLocaleString()} retenues (${tauxRetentionVsProcessed}%) et ${rej.toLocaleString()} rejetées (${tauxRejetVsProcessed}%). ` +
+                    `Par rapport au collecté: rétention ${tauxRetentionVsCollected}%, rejet ${tauxRejetVsCollected}%.`;
+            }
+        } catch(_) {}
+        return true;
     }
 
     // Create geomatician performance chart
@@ -1952,77 +1945,7 @@ class ChartService {
         }));
     }
 
-    // Create processing funnel chart
-    createProcessingFunnelChart(rawData) {
-        const ctx = document.getElementById('processingFunnelChart');
-        if (!ctx) return;
-    const postProcessData = this.findSheet('Post Process Follow-up', rawData) || [];
-        if (!postProcessData.length) return;
-        
-        // Calculate funnel stages
-        const received = postProcessData.reduce((sum, d) => sum + Number(d['Parcelles reçues (Brutes)'] || 0), 0);
-        const processed = postProcessData.reduce((sum, d) => sum + Number(d['Parcelles post traitées (Sans Doublons et topoplogie correcte)'] || 0), 0);
-        const individual = postProcessData.reduce((sum, d) => sum + Number(d['Parcelles individuelles Jointes'] || 0), 0);
-        const collective = postProcessData.reduce((sum, d) => sum + Number(d['Parcelles collectives Jointes'] || 0), 0);
-        const noJoin = postProcessData.reduce((sum, d) => sum + Number(d['Parcelles sans jointure'] || 0), 0);
-        const returned = postProcessData.reduce((sum, d) => sum + Number(d['Parcelles retournées aux topos'] || 0), 0);
-        
-        // Chart data
-        const labels = [
-            'Reçues (Brutes)',
-            'Post-traitées',
-            'Individuelles jointes',
-            'Collectives jointes',
-            'Sans jointure',
-            'Retournées'
-        ];
-        
-        const values = [received, processed, individual, collective, noJoin, returned];
-        
-        // Create gradient colors
-        const gradientColors = [
-            CONFIG.COLORS.primary,
-            CONFIG.COLORS.secondary,
-            CONFIG.COLORS.success,
-            CONFIG.COLORS.accent,
-            CONFIG.COLORS.warning,
-            CONFIG.COLORS.danger
-        ];
-
-        const chartData = {
-            labels,
-            datasets: [{
-                data: values,
-                backgroundColor: gradientColors,
-                borderWidth: 1
-            }]
-        };
-
-        const options = {
-            ...CHART_CONFIGS.defaultOptions,
-            indexAxis: 'y',
-            plugins: {
-                ...CHART_CONFIGS.defaultOptions.plugins,
-                title: {
-                    display: true,
-                    text: 'Entonnoir de Traitement'
-                }
-            },
-            scales: {
-                x: {
-                    beginAtZero: true,
-                    title: { display: true, text: 'Nombre de parcelles' }
-                }
-            }
-        };
-
-        this.destroyChart('processingFunnelChart');
-        this.charts.set('processingFunnelChart', new Chart(ctx, {
-            type: 'bar',
-            data: chartData,
-            options: options
-        }));
-    }
+    
 
     // Create gauge charts
     createGaugeCharts(rawData, precomputedKPIs = null) {
@@ -2157,9 +2080,7 @@ class ChartService {
                     this.updateGeomaticianPerformanceChart(rawData);
                 }
                 
-                if (this.charts.has('processingFunnelChart')) {
-                    this.updateProcessingFunnelChart(rawData);
-                }
+                
                 
                 if (this.charts.has('ctasfPipelineChart')) {
                     this.updateCtasfPipelineChart(rawData);
@@ -2169,6 +2090,11 @@ class ChartService {
                     this.updatePostProcessingChart(rawData);
                 }
                 
+                // Update retention donut and analysis dynamically
+                if (document.getElementById('retentionDonutChart')) {
+                    this.updateRetentionDonutChart(rawData);
+                }
+
                 // Update gauges with new KPI data
                 this.updateGaugeCharts(fullRawData || rawData, precomputedKPIs);
                 

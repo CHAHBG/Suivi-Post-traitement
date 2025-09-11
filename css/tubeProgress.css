@@ -21,6 +21,8 @@
     --tube-width: 110px;
     --tube-border-radius: 999px;
     --tube-bottom-radius: 55px;
+    /* Default text contrast (dark text for light backgrounds) */
+    --text-contrast: #111827;
 }
 
 /* Dark mode variables */
@@ -148,7 +150,8 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    color: var(--text-contrast); /* Contrast with liquid */
+    /* Allow per-tube override via --tube-text-color, fallback to theme-level --text-contrast */
+    color: var(--tube-text-color, var(--text-contrast)); /* Contrast with liquid */
     padding: 0.25rem;
     box-sizing: border-box;
 }
@@ -156,9 +159,10 @@
 .tube-title {
     font-size: 0.75rem; /* Smaller size */
     font-weight: 600;
-    color: var(--text-contrast);
+    color: var(--tube-text-color, var(--text-contrast));
     margin-bottom: 0.5rem; /* Slightly increased spacing */
-    text-shadow: 0 0 3px rgba(0, 0, 0, 0.7), 0 0 1px rgba(255, 255, 255, 0.5); /* Enhanced readability */
+    /* Subtle shadow for light background; darker variants set in dark theme */
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
     overflow: hidden;
     text-overflow: ellipsis;
     width: 100%;
@@ -169,19 +173,19 @@
 .tube-percentage {
     font-size: 1.6rem; /* Reduced size for better fit */
     font-weight: 700;
-    color: var(--text-contrast);
+    color: var(--tube-text-color, var(--text-contrast));
     margin: 0.25rem 0; /* Adjust spacing */
     line-height: 1;
-    text-shadow: 0 0 3px rgba(0, 0, 0, 0.7), 0 0 1px rgba(255, 255, 255, 0.5); /* Enhanced readability */
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
 }
 
 .tube-value {
     font-size: 0.65rem; /* Even smaller for better fit */
     font-weight: 500;
-    color: var(--text-contrast);
+    color: var(--tube-text-color, var(--text-contrast));
     margin-bottom: 0.25rem; /* Reduce spacing */
     white-space: nowrap;
-    text-shadow: 0 0 3px rgba(0, 0, 0, 0.7), 0 0 1px rgba(255, 255, 255, 0.5); /* Enhanced readability */
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
     overflow: hidden;
     text-overflow: ellipsis;
     width: 100%;
@@ -192,11 +196,20 @@
     font-size: 1.25rem;
     font-weight: 700;
     margin-top: 0.75rem;
-    color: var(--text-contrast);
+    color: var(--tube-text-color, var(--text-contrast));
     animation: tubeFadeIn 0.8s ease-in forwards;
     animation-delay: 0.5s;
     opacity: 0;
-    text-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+
+}
+
+/* Stronger shadows for dark theme to improve readability over bright fills */
+[data-theme="dark"] .tube-title,
+[data-theme="dark"] .tube-percentage,
+[data-theme="dark"] .tube-value,
+[data-theme="dark"] .tube-gap {
+    text-shadow: 0 0 3px rgba(0, 0, 0, 0.7), 0 0 1px rgba(255, 255, 255, 0.4);
 }
 
 /* Tube color variations */

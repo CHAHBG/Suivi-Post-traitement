@@ -176,6 +176,9 @@ class EnhancedDashboard {
             
             // Update quality and other rate displays
             this.updateRateDisplays(kpis);
+
+            // Update header trends dynamically
+            this.updateHeaderTrends(this.rawData, kpis);
             
             // Update progress indicators
             this.updateProgressIndicators(kpis);
@@ -525,6 +528,19 @@ class EnhancedDashboard {
     updateRegionalData(data) {
         const communeData = data.communeData || [];
         this.generateCommuneHeatmap(communeData);
+
+        // Update header stat pills for Actif / En cours based on CONFIG
+        try {
+            const activeCount = Array.isArray(CONFIG?.COMMUNE_STATUS?.active) ? CONFIG.COMMUNE_STATUS.active.length : 0;
+            const inProgressCount = Array.isArray(CONFIG?.COMMUNE_STATUS?.inProgress) ? CONFIG.COMMUNE_STATUS.inProgress.length : 0;
+            document.querySelectorAll('.stat-pill').forEach(pill => {
+                const label = pill.querySelector('.stat-label')?.textContent?.trim();
+                const valueEl = pill.querySelector('.stat-value');
+                if (!valueEl) return;
+                if (label === 'Actif') valueEl.textContent = String(activeCount);
+                if (label === 'En cours') valueEl.textContent = String(inProgressCount);
+            });
+        } catch(_) { /* no-op */ }
     }
     
     /**
@@ -675,6 +691,9 @@ class EnhancedDashboard {
                 
                 // Update rate displays
                 this.updateRateDisplays(kpis);
+
+                // Update header trends dynamically
+                this.updateHeaderTrends(this.rawData, kpis);
                 
                 // Update progress indicators
                 this.updateProgressIndicators(kpis);
@@ -705,6 +724,202 @@ class EnhancedDashboard {
         } finally {
             if (!isAuto) this.showLoading(false);
         }
+    }
+
+    /**
+     * Update header trend badges (Daily Yields and Quality) using KPIs and time series
+     */
+    updateHeaderTrends(rawData, kpis) {
+        try {
+            const timeframe = this.currentFilters?.timeframe || 'daily';
+            const getBucketInfo = (d) => {
+                if (!(d instanceof Date) || isNaN(d)) return null;
+                const y = d.getFullYear();
+                const m = d.getMonth();
+                const day = d.getDate();
+                if (timeframe === 'monthly') {
+                    const start = new Date(y, m, 1);
+                    return { key: `M:${y}-${String(m+1).padStart(2,'0')}`, sort: start.getTime() };
+                }
+                if (timeframe === 'weekly') {
+                    // ISO week: Thursday-based week number
+                    const tmp = new Date(d);
+                    tmp.setHours(0,0,0,0);
+                    // Thursday in current week decides the year
+                    tmp.setDate(tmp.getDate() + 4 - (tmp.getDay() || 7));
+                    const isoYear = tmp.getFullYear();
+                    const yearStart = new Date(isoYear, 0, 1);
+                    const week = Math.ceil((((tmp - yearStart) / 86400000) + 1) / 7);
+                    // Start of ISO week (Monday)
+                    const mon = new Date(d);
+                    const dayIdx = (mon.getDay() + 6) % 7; // 0=Mon
+                    mon.setDate(mon.getDate() - dayIdx);
+                    mon.setHours(0,0,0,0);
+                    return { key: `W:${isoYear}-W${String(week).padStart(2,'0')}`, sort: mon.getTime() };
+                }
+                // daily default
+                const start = new Date(y, m, day);
+                start.setHours(0,0,0,0);
+                return { key: `D:${start.toISOString().slice(0,10)}`, sort: start.getTime() };
+            };
+            const fromMapToSortedBuckets = (map) => {
+                return Array.from(map.entries())
+                    .map(([key, val]) => val)
+                    .filter(v => (v.sum ?? v.value ?? 0) > 0)
+                    .sort((a,b)=> a.sort - b.sort);
+            };
+            // Daily yields: compute % change vs previous period (yesterday or previous day with data)
+            let yieldsSeries = [];
+            try {
+                yieldsSeries = dataService.getTimeSeriesData(
+                    rawData,
+                    'Yields Projections',
+                    'Date',
+                    'Nombre de levées'
+                ) || [];
+            } catch(_) {}
+            if (Array.isArray(yieldsSeries) && yieldsSeries.length) {
+                const buckets = new Map(); // key -> {sum, sort}
+                yieldsSeries.forEach(p => {
+                    const d = dataAggregationService.parseDate(p.date);
+                    const info = getBucketInfo(d);
+                    if (!info) return;
+                    const cur = buckets.get(info.key) || { sum: 0, sort: info.sort };
+                    cur.sum += Number(p.value || 0);
+                    cur.sort = info.sort; buckets.set(info.key, cur);
+                });
+                const arr = fromMapToSortedBuckets(buckets);
+                if (arr.length >= 2) {
+                    const prev = arr[arr.length-2].sum;
+                    const last = arr[arr.length-1].sum;
+                    const change = prev === 0 ? (last>0 ? 100 : 0) : ((last - prev)/prev)*100;
+                    this._setTrend('dailyYieldsTrend', 'dailyYieldsTrendIcon', 'dailyYieldsTrendValue', change);
+                }
+            }
+
+            // Quality trend: use kpis.quality.changePct when available; otherwise compute from display time series
+            let qChange = (kpis?.quality?.changePct);
+            if (typeof qChange !== 'number' || isNaN(qChange)) {
+                try {
+                    const display = rawData['Public Display Follow-up'] || [];
+                    const byDate = new Map();
+                    display.forEach(r => {
+                        const d = dataAggregationService.parseDate(r['Date']);
+                        if (!d) return;
+                        const key = d.toISOString().slice(0,10);
+                        const ok = dataAggregationService._getNumericField ? dataAggregationService._getNumericField(r, ['Nombre de parcelles affichées sans erreurs']) : Number(r['Nombre de parcelles affichées sans erreurs']||0);
+                        const ko = dataAggregationService._getNumericField ? dataAggregationService._getNumericField(r, ['Nombre Parcelles avec erreur']) : Number(r['Nombre Parcelles avec erreur']||0);
+                        const cur = byDate.get(key) || {ok:0,ko:0};
+                        cur.ok += ok; cur.ko += ko; byDate.set(key, cur);
+                    });
+                    // Bucket by timeframe
+                    const buckets = new Map(); // key -> {ok, ko, sort}
+                    Array.from(byDate.entries()).forEach(([iso, val]) => {
+                        const d = new Date(iso);
+                        const info = getBucketInfo(d);
+                        if (!info) return;
+                        const cur = buckets.get(info.key) || { ok:0, ko:0, sort: info.sort };
+                        cur.ok += val.ok; cur.ko += val.ko; cur.sort = info.sort; buckets.set(info.key, cur);
+                    });
+                    const arr = Array.from(buckets.values())
+                        .map(v => ({ pct: (v.ok+v.ko)>0 ? (v.ok/(v.ok+v.ko))*100 : 0, sort: v.sort }))
+                        .filter(v => v.pct>0 || timeframe!=='daily') // allow 0 in weekly/monthly if needed
+                        .sort((a,b)=> a.sort - b.sort);
+                    if (arr.length >= 2) {
+                        const qa = arr[arr.length-2].pct;
+                        const qb = arr[arr.length-1].pct;
+                        qChange = qa === 0 ? (qb>0 ? 100 : 0) : ((qb - qa) / qa) * 100;
+                    }
+                } catch(_) {}
+            }
+            if (typeof qChange === 'number' && !isNaN(qChange)) {
+                this._setTrend('qualityTrendHeader', 'qualityTrendIcon', 'qualityTrendValue', qChange);
+            }
+
+            // CTASF trend: use 'Nombre parcelles retenues CTASF' last vs previous
+            try {
+                const ctasf = rawData['CTASF Follow-up'] || [];
+                const byDate = new Map();
+                const getNum = (r, keys) => {
+                    if (dataAggregationService && dataAggregationService._getNumericField) return dataAggregationService._getNumericField(r, keys);
+                    for (const k of keys) { const v = r[k]; const n = Number(String(v).replace(/\s+/g,'').replace(/,/g,'.')); if (!isNaN(n)) return n; }
+                    return 0;
+                };
+                ctasf.forEach(r => {
+                    const d = dataAggregationService.parseDate(r['Date']);
+                    if (!d) return;
+                    const key = d.toISOString().slice(0,10);
+                    const retenues = getNum(r, ['Nombre parcelles retenues CTASF']);
+                    const cur = byDate.get(key) || 0; byDate.set(key, cur + retenues);
+                });
+                // Bucket by timeframe
+                const buckets = new Map(); // key -> {sum, sort}
+                Array.from(byDate.entries()).forEach(([iso, val]) => {
+                    const d = new Date(iso);
+                    const info = getBucketInfo(d);
+                    if (!info) return;
+                    const cur = buckets.get(info.key) || { sum:0, sort: info.sort };
+                    cur.sum += val; cur.sort = info.sort; buckets.set(info.key, cur);
+                });
+                const arr = fromMapToSortedBuckets(buckets);
+                if (arr.length >= 2) {
+                    const prev = arr[arr.length-2].sum;
+                    const last = arr[arr.length-1].sum;
+                    const change = prev === 0 ? (last>0 ? 100 : 0) : ((last - prev)/prev)*100;
+                    this._setTrend('ctasfTrendHeader', 'ctasfTrendIcon', 'ctasfTrendValue', change);
+                }
+            } catch(_) {}
+
+            // Post-Processing trend: use 'Parcelles post traitées (Sans Doublons et topoplogie correcte)' last vs previous
+            try {
+                const post = rawData['Post Process Follow-up'] || [];
+                const byDate = new Map();
+                const getNum = (r, keys) => {
+                    if (dataAggregationService && dataAggregationService._getNumericField) return dataAggregationService._getNumericField(r, keys);
+                    for (const k of keys) { const v = r[k]; const n = Number(String(v).replace(/\s+/g,'').replace(/,/g,'.')); if (!isNaN(n)) return n; }
+                    return 0;
+                };
+                post.forEach(r => {
+                    const d = dataAggregationService.parseDate(r['Date']);
+                    if (!d) return;
+                    const key = d.toISOString().slice(0,10);
+                    const processed = getNum(r, ['Parcelles post traitées (Sans Doublons et topoplogie correcte)']);
+                    const cur = byDate.get(key) || 0; byDate.set(key, cur + processed);
+                });
+                // Bucket by timeframe
+                const buckets = new Map(); // key -> {sum, sort}
+                Array.from(byDate.entries()).forEach(([iso, val]) => {
+                    const d = new Date(iso);
+                    const info = getBucketInfo(d);
+                    if (!info) return;
+                    const cur = buckets.get(info.key) || { sum:0, sort: info.sort };
+                    cur.sum += val; cur.sort = info.sort; buckets.set(info.key, cur);
+                });
+                const arr = fromMapToSortedBuckets(buckets);
+                if (arr.length >= 2) {
+                    const prev = arr[arr.length-2].sum;
+                    const last = arr[arr.length-1].sum;
+                    const change = prev === 0 ? (last>0 ? 100 : 0) : ((last - prev)/prev)*100;
+                    this._setTrend('postProcTrendHeader', 'postProcTrendIcon', 'postProcTrendValue', change);
+                }
+            } catch(_) {}
+        } catch (e) {
+            console.warn('Failed to update header trends:', e);
+        }
+    }
+
+    _setTrend(containerId, iconId, valueId, changePct) {
+        const container = document.getElementById(containerId);
+        const icon = document.getElementById(iconId);
+        const valueEl = document.getElementById(valueId);
+        if (!container || !icon || !valueEl) return;
+        const val = (changePct || 0);
+        const isUp = val > 0; const isDown = val < 0;
+        container.classList.remove('positive','negative');
+        if (isUp) container.classList.add('positive');
+        if (isDown) container.classList.add('negative');
+        icon.className = `fas ${isUp ? 'fa-arrow-up' : (isDown ? 'fa-arrow-down' : 'fa-minus')}`;
+        valueEl.textContent = `${(Math.abs(val)).toFixed(1)}%`;
     }
     
     /**

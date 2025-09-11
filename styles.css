@@ -685,8 +685,26 @@ body {
     position: relative;
     min-height: 300px;
     display: flex;
-    align-items: center;
-    justify-content: center;
+    flex-direction: column; /* Stack canvas and analysis vertically */
+    align-items: stretch;   /* Allow children to take full width */
+    justify-content: flex-start; /* Top-align content to avoid odd centering */
+    gap: var(--spacing-md); /* Add breathing room between canvas and text */
+}
+
+/* Ensure retention analysis text is readable and not clipped */
+#retentionAnalysisText {
+    color: var(--color-gray-600);
+    font-size: var(--font-size-sm);
+    line-height: 1.5;
+    white-space: normal;
+    word-wrap: break-word;
+    overflow: visible;
+}
+
+/* Keep the retention donut at a comfortable height so analysis fits */
+#retentionDonutChart {
+    max-height: 280px !important;
+    align-self: center;
 }
 
 /* Progress Cards */

@@ -13,6 +13,7 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    color: #0f172a; /* default dark text for readability on light background */
 }
 
 .chart-card:hover {
@@ -31,12 +32,12 @@
 .chart-title {
     font-weight: 600;
     font-size: 0.95rem;
-    color: #334155;
+    color: #0f172a; /* darker for light backgrounds */
 }
 
 .chart-subtitle {
     font-size: 0.8rem;
-    color: #64748b;
+    color: #475569; /* darker for light backgrounds */
     margin-top: 0.25rem;
 }
 
