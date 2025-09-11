@@ -1,0 +1,375 @@
+/**
+ * Enhanced Tube Progress Indicator Component
+ * This service creates and manages interactive tube-style progress indicators
+ * that show progress towards goals with animated liquid filling effects.
+ */
+class TubeProgressService {
+    constructor() {
+        this.tubes = new Map();
+        this.animationFrameId = null;
+        this.config = {
+            animationDuration: 2000,
+            waveFrequency: 3,
+            colors: {
+                primary: '#4B83F6',    // Blue
+                success: '#22C55E',    // Green
+                warning: '#F97316',    // Orange
+                danger: '#EF4444',     // Red
+                neutral: '#94A3B8'     // Slate
+            },
+            thresholds: {
+                danger: 30,
+                warning: 60,
+                success: 90
+            }
+        };
+    }
+    
+    /**
+     * Initialize a tube progress indicator
+     * @param {string} elementId - ID of the container element
+     * @param {Object} options - Configuration options
+     */
+    initTube(elementId, options = {}) {
+        const container = document.getElementById(elementId);
+        if (!container) {
+            console.error(`Tube container with ID ${elementId} not found`);
+            return false;
+        }
+        
+        // Merge options with defaults
+        const config = {
+            title: options.title || 'Progress',
+            currentValue: options.currentValue || 0,
+            targetValue: options.targetValue || 100,
+            percentage: options.percentage || 0,
+            gap: options.gap || 0,
+            status: options.status || this.getStatusFromPercentage(options.percentage || 0),
+            showGap: options.showGap !== undefined ? options.showGap : true,
+            animated: options.animated !== undefined ? options.animated : true,
+            color: options.color || null,
+            formatter: options.formatter || this.defaultFormatter
+        };
+        
+        // Create tube structure if it doesn't exist
+        if (!container.querySelector('.tube-progress')) {
+            this.createTubeStructure(container, config);
+        }
+        
+        // Get tube elements
+        const tubeElements = {
+            tube: container.querySelector('.tube-progress'),
+            liquid: container.querySelector('.tube-liquid'),
+            title: container.querySelector('.tube-title'),
+            value: container.querySelector('.tube-value'),
+            percentage: container.querySelector('.tube-percentage'),
+            gap: container.querySelector('.tube-gap')
+        };
+        
+        // Store tube data
+        this.tubes.set(elementId, {
+            config,
+            elements: tubeElements,
+            currentPercentage: 0,
+            targetPercentage: config.percentage,
+            animationStart: Date.now()
+        });
+        
+        // Update tube display
+        this.updateTubeDisplay(elementId);
+        
+        // Start animation if needed
+        if (config.animated && !this.animationFrameId) {
+            this.startAnimationLoop();
+        }
+        
+        return true;
+    }
+    
+    /**
+     * Create the HTML structure for a tube progress indicator
+     * @param {HTMLElement} container - Container element
+     * @param {Object} config - Tube configuration
+     */
+    createTubeStructure(container, config) {
+        // Clear existing content
+        container.innerHTML = '';
+        
+        // Add tube structure
+        container.innerHTML = `
+            <div class="tube-progress">
+                <div class="tube-liquid" data-percentage="0">
+                    <div class="tube-wave"></div>
+                </div>
+                <div class="tube-label">
+                    <div class="tube-title">${config.title}</div>
+                    <div class="tube-value">${config.formatter(config.currentValue)} / ${config.formatter(config.targetValue)}</div>
+                    <div class="tube-percentage">0%</div>
+                    ${config.showGap && config.gap < 0 ? `<div class="tube-gap">${config.formatter(config.gap)}</div>` : ''}
+                </div>
+            </div>
+        `;
+        
+        // Add color class if specified
+        if (config.color) {
+            container.querySelector('.tube-progress').classList.add(`tube-${config.color}`);
+        }
+    }
+    
+    /**
+     * Update a tube's display with new data
+     * @param {string} elementId - ID of the tube container
+     * @param {Object} [data] - New data to update (optional)
+     */
+    updateTube(elementId, data = {}) {
+        const tube = this.tubes.get(elementId);
+        if (!tube) {
+            console.warn(`Tube with ID ${elementId} not found`);
+            return;
+        }
+        
+        // Update config with new data
+        if (data.currentValue !== undefined) tube.config.currentValue = data.currentValue;
+        if (data.targetValue !== undefined) tube.config.targetValue = data.targetValue;
+        
+        // Calculate percentage if not provided
+        if (data.percentage !== undefined) {
+            tube.config.percentage = data.percentage;
+        } else if (data.currentValue !== undefined && tube.config.targetValue) {
+            tube.config.percentage = Math.min(Math.max((tube.config.currentValue / tube.config.targetValue) * 100, 0), 100);
+        }
+        
+        // Calculate gap if not provided
+        if (data.gap !== undefined) {
+            tube.config.gap = data.gap;
+        } else if (data.currentValue !== undefined && tube.config.targetValue) {
+            tube.config.gap = tube.config.currentValue - tube.config.targetValue;
+        }
+        
+        // Update status if not provided
+        if (data.status !== undefined) {
+            tube.config.status = data.status;
+        } else {
+            tube.config.status = this.getStatusFromPercentage(tube.config.percentage);
+        }
+        
+        // Reset animation
+        tube.animationStart = Date.now();
+        tube.targetPercentage = tube.config.percentage;
+        
+        // Update display
+        this.updateTubeDisplay(elementId);
+        
+        return this;
+    }
+    
+    /**
+     * Update the visual display of a tube
+     * @param {string} elementId - ID of the tube container
+     */
+    updateTubeDisplay(elementId) {
+        const tube = this.tubes.get(elementId);
+        if (!tube) return;
+        
+        const { elements, config } = tube;
+        
+        // Update text content
+        if (elements.title) elements.title.textContent = config.title;
+        if (elements.value) elements.value.textContent = `${config.formatter(config.currentValue)} / ${config.formatter(config.targetValue)}`;
+        if (elements.percentage) elements.percentage.textContent = `${Math.round(config.percentage)}%`;
+        
+        // Update gap display
+        if (elements.gap) {
+            if (config.showGap && config.gap < 0) {
+                elements.gap.textContent = config.formatter(config.gap);
+                elements.gap.style.display = 'block';
+            } else {
+                elements.gap.style.display = 'none';
+            }
+        }
+        
+        // Update color based on status
+        this.updateTubeColor(elementId, config.status);
+    }
+    
+    /**
+     * Update the color of a tube based on status
+     * @param {string} elementId - ID of the tube container
+     * @param {string} status - Status: 'danger', 'warning', 'success', or custom
+     */
+    updateTubeColor(elementId, status) {
+        const tube = this.tubes.get(elementId);
+        if (!tube) return;
+        
+        const { elements } = tube;
+        
+        // Get color based on status
+        let color;
+        switch (status) {
+            case 'danger': color = this.config.colors.danger; break;
+            case 'warning': color = this.config.colors.warning; break;
+            case 'success': color = this.config.colors.success; break;
+            case 'primary': color = this.config.colors.primary; break;
+            default: color = status.startsWith('#') ? status : this.config.colors.primary; // Custom color
+        }
+        
+        // Apply color to elements
+        if (elements.liquid) elements.liquid.style.background = color;
+        if (elements.percentage) elements.percentage.style.color = color;
+    }
+    
+    /**
+     * Start the animation loop for all tubes
+     */
+    startAnimationLoop() {
+        if (this.animationFrameId) {
+            cancelAnimationFrame(this.animationFrameId);
+        }
+        
+        const animate = () => {
+            this.updateAllTubeAnimations();
+            this.animationFrameId = requestAnimationFrame(animate);
+        };
+        
+        animate();
+    }
+    
+    /**
+     * Update animations for all tubes
+     */
+    updateAllTubeAnimations() {
+        const now = Date.now();
+        
+        this.tubes.forEach((tube, elementId) => {
+            const { elements, config, animationStart, targetPercentage } = tube;
+            if (!elements.liquid) return;
+            
+            // Calculate progress based on elapsed time
+            const elapsed = now - animationStart;
+            const progress = Math.min(elapsed / this.config.animationDuration, 1);
+            
+            // Apply easing
+            const eased = this.easeOutCubic(progress);
+            
+            // Update current percentage
+            tube.currentPercentage = targetPercentage * eased;
+            
+            // Apply height to liquid
+            const height = `${tube.currentPercentage}%`;
+            elements.liquid.style.height = height;
+            elements.liquid.style.setProperty('--fill-height', height);
+            elements.liquid.setAttribute('data-percentage', Math.round(tube.currentPercentage));
+            
+            // Update wave animation
+            this.updateWaveAnimation(elements.liquid, now);
+            
+            // Update percentage text if animated
+            if (config.animated && elements.percentage) {
+                elements.percentage.textContent = `${Math.round(tube.currentPercentage)}%`;
+            }
+        });
+    }
+    
+    /**
+     * Update wave animation for a tube
+     * @param {HTMLElement} liquidElement - Liquid element
+     * @param {number} time - Current timestamp
+     */
+    updateWaveAnimation(liquidElement, time) {
+        const wave = liquidElement.querySelector('.tube-wave');
+        if (!wave) return;
+        
+        // Create subtle wave movement
+        const timeSeconds = time * 0.001; // Convert to seconds
+        const offsetX = Math.sin(timeSeconds * this.config.waveFrequency) * 10;
+        const offsetY = Math.sin(timeSeconds * (this.config.waveFrequency * 0.7)) * 5;
+        
+        wave.style.transform = `translate(${offsetX}px, ${offsetY}px)`;
+    }
+    
+    /**
+     * Get status based on percentage
+     * @param {number} percentage - Percentage value
+     * @returns {string} - Status: 'danger', 'warning', or 'success'
+     */
+    getStatusFromPercentage(percentage) {
+        if (percentage < this.config.thresholds.danger) return 'danger';
+        if (percentage < this.config.thresholds.warning) return 'warning';
+        if (percentage < this.config.thresholds.success) return 'success';
+        return 'success';
+    }
+    
+    /**
+     * Default formatter for values
+     * @param {number} value - Value to format
+     * @returns {string} - Formatted value
+     */
+    defaultFormatter(value) {
+        return new Intl.NumberFormat('fr-FR').format(value);
+    }
+    
+    /**
+     * Cubic ease out function for smooth animations
+     * @param {number} x - Input value between 0 and 1
+     * @returns {number} - Eased value between 0 and 1
+     */
+    easeOutCubic(x) {
+        return 1 - Math.pow(1 - x, 3);
+    }
+    
+    /**
+     * Initialize multiple tubes with different data
+     * @param {Object} tubesConfig - Map of tube IDs to configurations
+     */
+    initializeTubes(tubesConfig) {
+        Object.entries(tubesConfig).forEach(([id, config]) => {
+            this.initTube(id, config);
+        });
+        return this;
+    }
+    
+    /**
+     * Update multiple tubes with new data
+     * @param {Object} tubesData - Map of tube IDs to data
+     */
+    updateTubes(tubesData) {
+        Object.entries(tubesData).forEach(([id, data]) => {
+            this.updateTube(id, data);
+        });
+        return this;
+    }
+    
+    /**
+     * Stop all animations
+     */
+    stopAnimations() {
+        if (this.animationFrameId) {
+            cancelAnimationFrame(this.animationFrameId);
+            this.animationFrameId = null;
+        }
+    }
+    
+    /**
+     * Destroy tube (remove from tracking)
+     * @param {string} elementId - ID of tube to destroy
+     */
+    destroyTube(elementId) {
+        this.tubes.delete(elementId);
+        
+        // Stop animation loop if no tubes left
+        if (this.tubes.size === 0) {
+            this.stopAnimations();
+        }
+    }
+    
+    /**
+     * Clean up all tubes
+     */
+    destroy() {
+        this.stopAnimations();
+        this.tubes.clear();
+    }
+}
+
+// Create global instance
+window.tubeProgressService = new TubeProgressService();

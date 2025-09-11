@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Cadastre Sénégal | PROCASSEF</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🗺️</text></svg>">
+    
+    <!-- CSS Libraries -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+    
+    <!-- JavaScript Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-moment@1.0.1/dist/chartjs-adapter-moment.min.js"></script>
+    
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="css/tubeProgress.css">
+</head>
+<body class="bg-gray-50 font-sans">
+    <!-- Navigation Header -->
+    <nav class="bg-white shadow-lg border-b border-gray-200 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center">
+                    <h1 class="text-2xl font-bold text-gray-900">Cadastre Sénégal</h1>
+                    <span class="ml-3 text-sm text-gray-500">Monitoring Dashboard</span>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <select id="regionFilter" class="border border-gray-300 rounded-md px-3 py-1">
+                        <option value="">Toutes les régions</option>
+                        <option value="Tambacounda">Tambacounda</option>
+                        <option value="Kedougou">Kedougou</option>
+                    </select>
+                    <select id="timeFilter" class="border border-gray-300 rounded-md px-3 py-1">
+                        <option value="daily">Quotidien</option>
+                        <option value="weekly">Hebdomadaire</option>
+                        <option value="monthly">Mensuel</option>
+                    </select>
+                    <button id="refreshBtn" class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600">
+                        Actualiser
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Dashboard Container -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+        <!-- Top Tab Bar -->
+        <div class="bg-white rounded-lg shadow-sm mb-6">
+            <div class="px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                <div class="flex items-center space-x-3">
+                    <h2 class="text-lg font-semibold text-gray-900">Tableau de bord PROCASSEF</h2>
+                    <p class="text-sm text-gray-500">Sélectionnez une vue</p>
+                </div>
+                <div class="mt-3 sm:mt-0">
+                    <nav class="flex space-x-2" aria-label="Primary">
+                        <button class="primary-tab bg-blue-50 text-blue-700 px-3 py-1 rounded-md text-sm font-medium" data-tab="overview">Vue d'ensemble - Objectifs</button>
+                        <button class="primary-tab text-gray-600 hover:text-gray-900 px-3 py-1 rounded-md text-sm font-medium" data-tab="regional">Analyse Régionale</button>
+                        <button class="primary-tab text-gray-600 hover:text-gray-900 px-3 py-1 rounded-md text-sm font-medium" data-tab="process">Analytics Processus</button>
+                        <button class="primary-tab text-gray-600 hover:text-gray-900 px-3 py-1 rounded-md text-sm font-medium" data-tab="temporal">Suivi Temporel</button>
+                    </nav>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab Panels -->
+        <div id="tabPanels" class="relative">
+
+            <!-- Overview Panel -->
+            <div data-panel="overview" class="panel block transition-transform transition-opacity duration-300 ease-out">
+                <!-- Section 1: Overview KPIs with Liquid Progress -->
+                <section class="overview-section mb-8">
+            <h2 class="text-xl font-semibold text-gray-900 mb-4">Vue d'ensemble - Objectifs</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6 mb-6">
+                <!-- Progress Indicators -->
+                <div class="tube-container" id="dailyTube">
+                    <!-- Will be populated by tubeProgress.js -->
+                </div>
+                
+                <div class="tube-container" id="weeklyTube">
+                    <!-- Will be populated by tubeProgress.js -->
+                </div>
+                
+                <div class="tube-container" id="monthlyTube">
+                    <!-- Will be populated by tubeProgress.js -->
+                </div>
+                
+                <!-- KPI Cards -->
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <div class="text-sm font-medium text-gray-500">Taux de Qualité</div>
+                    <div class="text-2xl font-bold text-green-600" id="qualityRate">--</div>
+                    <div class="text-xs text-gray-400">Affichage sans erreur</div>
+                </div>
+            </div>
+
+                    <!-- Performance Gauges -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="bg-white rounded-lg shadow-md p-4">
+                    <canvas id="dailyEfficiencyGauge" width="200" height="200"></canvas>
+                    <div class="text-center mt-2">
+                        <div class="text-sm font-medium">Efficacité Quotidienne</div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-lg shadow-md p-4">
+                    <canvas id="qualityScoreGauge" width="200" height="200"></canvas>
+                    <div class="text-center mt-2">
+                        <div class="text-sm font-medium">Score Qualité</div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-lg shadow-md p-4">
+                    <canvas id="ctasfConversionGauge" width="200" height="200"></canvas>
+                    <div class="text-center mt-2">
+                        <div class="text-sm font-medium">Conversion CTASF</div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-lg shadow-md p-4">
+                    <canvas id="processingEfficiencyGauge" width="200" height="200"></canvas>
+                    <div class="text-center mt-2">
+                        <div class="text-sm font-medium">Efficacité Processing</div>
+                    </div>
+                </div>
+            </div>
+            <!-- Additional quick metrics row -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+                <div class="bg-white rounded-lg shadow-md p-4"><h3 class="text-sm font-medium mb-2">Vue Synthèse</h3><canvas id="overviewMetricsChart"></canvas></div>
+                <div class="bg-white rounded-lg shadow-md p-4"><h3 class="text-sm font-medium mb-2">Phases Processing</h3><canvas id="processingPhaseStackedChart"></canvas></div>
+                <div class="bg-white rounded-lg shadow-md p-4"><h3 class="text-sm font-medium mb-2">Productivité Équipe</h3><canvas id="teamProductivityChart"></canvas></div>
+            </div>
+                </section>
+
+                <!-- Small rate bars used by EnhancedDashboard -->
+                <div class="grid grid-cols-1 gap-4 mt-4">
+                    <div class="bg-white rounded-lg shadow-sm p-4">
+                        <div class="flex justify-between mb-2">
+                            <div class="text-sm font-medium text-gray-700">CTASF Conversion</div>
+                            <div id="ctasfRate" class="text-sm text-gray-600">--</div>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-2">
+                            <div id="ctasfRateBar" class="bg-orange-500 h-2 rounded-full" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-lg shadow-sm p-4">
+                        <div class="flex justify-between mb-2">
+                            <div class="text-sm font-medium text-gray-700">Efficacité Processing</div>
+                            <div id="processingRate" class="text-sm text-gray-600">--</div>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-2">
+                            <div id="processingRateBar" class="bg-green-500 h-2 rounded-full" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-lg shadow-sm p-4">
+                        <h3 class="text-sm font-medium text-gray-700 mb-2">Performance par Commune</h3>
+                        <div id="communePerformanceList" class="space-y-3 max-h-80 overflow-auto"></div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Regional Panel -->
+            <div data-panel="regional" class="panel hidden opacity-0 translate-y-2 transition-transform transition-opacity duration-300 ease-out">
+                <!-- Section 3: Regional Analysis -->
+                <section class="regional-section mb-8">
+                    <h2 class="text-xl font-semibold text-gray-900 mb-4">Analyse Régionale</h2>
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div class="lg:col-span-2 bg-white rounded-lg shadow-md p-6">
+                            <h3 class="text-lg font-medium mb-4">Performance par Commune</h3>
+                            <canvas id="communeStatusChart" class="h-96"></canvas>
+                        </div>
+                        <div class="bg-white rounded-lg shadow-md p-6">
+                            <h3 class="text-lg font-medium mb-4">Comparaison Régionale</h3>
+                            <canvas id="regionalComparisonChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                        <div class="bg-white rounded-lg shadow-md p-6"><h3 class="text-lg font-medium mb-4">Projections Multi-Métriques</h3><canvas id="projectionsMultiMetricChart"></canvas></div>
+                        <div class="bg-white rounded-lg shadow-md p-6"><h3 class="text-lg font-medium mb-4">Timeline Projet (Bar)</h3><canvas id="projectTimelineChart"></canvas></div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Process Panel -->
+            <div data-panel="process" class="panel hidden opacity-0 translate-y-2 transition-transform transition-opacity duration-300 ease-out">
+                <!-- Section 4: Process Analytics -->
+                <section class="process-section mb-8">
+                    <h2 class="text-xl font-semibold text-gray-900 mb-4">Analytics Processus</h2>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div class="bg-white rounded-lg shadow-md p-6">
+                            <h3 class="text-lg font-medium mb-4">Entonnoir de Traitement</h3>
+                            <canvas id="processingFunnelChart"></canvas>
+                        </div>
+                        <div class="bg-white rounded-lg shadow-md p-6">
+                            <h3 class="text-lg font-medium mb-4">Distribution Types de Parcelles</h3>
+                            <canvas id="parcelTypeDistributionChart"></canvas>
+                        </div>
+                        <div class="bg-white rounded-lg shadow-md p-6">
+                            <h3 class="text-lg font-medium mb-4">Performance par Géomaticien</h3>
+                            <canvas id="geomaticianPerformanceChart"></canvas>
+                        </div>
+                        <div class="bg-white rounded-lg shadow-md p-6">
+                            <h3 class="text-lg font-medium mb-4">Timeline Projet</h3>
+                            <canvas id="projectTimelineChart" class="h-64"></canvas>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Temporal Panel -->
+            <div data-panel="temporal" class="panel hidden opacity-0 translate-y-2 transition-transform transition-opacity duration-300 ease-out">
+                <!-- Section 2: Time Series Monitoring -->
+                <section class="monitoring-section mb-8">
+                    <h2 class="text-xl font-semibold text-gray-900 mb-4">Suivi Temporel</h2>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div class="bg-white rounded-lg shadow-md p-6">
+                            <h3 class="text-lg font-medium mb-4">Évolution Quotidienne des Levées</h3>
+                            <canvas id="dailyYieldsChart"></canvas>
+                        </div>
+                        <div class="bg-white rounded-lg shadow-md p-6">
+                            <h3 class="text-lg font-medium mb-4">Qualité Affichage Public</h3>
+                            <canvas id="qualityTrendChart"></canvas>
+                        </div>
+                        <div class="bg-white rounded-lg shadow-md p-6">
+                            <h3 class="text-lg font-medium mb-4">Pipeline CTASF</h3>
+                            <canvas id="ctasfPipelineChart"></canvas>
+                        </div>
+                        <div class="bg-white rounded-lg shadow-md p-6">
+                            <h3 class="text-lg font-medium mb-4">Performance Post-Processing</h3>
+                            <canvas id="postProcessingChart"></canvas>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+        </div>
+
+        <!-- Data Summary Tables -->
+        <section class="data-tables-section">
+            <h2 class="text-xl font-semibold text-gray-900 mb-4">Données Détaillées</h2>
+            <div class="bg-white rounded-lg shadow-md overflow-hidden">
+                <div class="border-b border-gray-200">
+                    <nav class="flex space-x-8" aria-label="Tabs">
+                        <button class="tab-button active" data-tab="yields">Levées</button>
+                        <button class="tab-button" data-tab="display">Affichage</button>
+                        <button class="tab-button" data-tab="ctasf">CTASF</button>
+                        <button class="tab-button" data-tab="processing">Processing</button>
+                    </nav>
+                </div>
+                <div class="p-6">
+                    <div id="yieldsTable" class="tab-content active">
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Région</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Commune</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre de Levées</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="yieldsTableBody" class="bg-white divide-y divide-gray-200">
+                                    <!-- Data will be populated here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <!-- Other table contents will be similar -->
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-6 text-center">
+            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+            <p class="text-gray-700" id="loadingMessage">Chargement des données...</p>
+            <p class="text-xs text-gray-500 mt-2" id="loadingTimer">0s</p>
+        </div>
+    </div>
+    
+    <script>
+        // Loading timer
+        let loadingSeconds = 0;
+        const loadingTimer = setInterval(() => {
+            loadingSeconds++;
+            const timerElement = document.getElementById('loadingTimer');
+            if (timerElement) {
+                timerElement.textContent = `${loadingSeconds}s`;
+            }
+            
+            // Update loading message for better feedback
+            const messageElement = document.getElementById('loadingMessage');
+            if (messageElement) {
+                if (loadingSeconds > 3) {
+                    messageElement.textContent = 'Initialisation du dashboard...';
+                }
+                if (loadingSeconds > 6) {
+                    messageElement.textContent = 'Préparation des graphiques...';
+                }
+                if (loadingSeconds > 9) {
+                    messageElement.textContent = 'Chargement presque terminé...';
+                }
+            }
+            
+            // Force hide after 15 seconds (extreme fallback)
+            if (loadingSeconds >= 15) {
+                const overlay = document.getElementById('loadingOverlay');
+                if (overlay) overlay.style.display = 'none';
+                clearInterval(loadingTimer);
+            }
+        }, 1000);
+        
+        // Clear timer when overlay is hidden
+        const observeLoading = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
+                    const overlay = document.getElementById('loadingOverlay');
+                    if (overlay && overlay.style.display === 'none') {
+                        clearInterval(loadingTimer);
+                    }
+                }
+            });
+        });
+        
+        // Start observing the loading overlay
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        if (loadingOverlay) {
+            observeLoading.observe(loadingOverlay, { attributes: true });
+        }
+    </script>
+
+    <!-- Core Libraries -->
+    <script src="js/localization.js"></script>
+    <script src="js/config.js"></script>
+    <script src="js/mockData.js"></script>
+    
+    <!-- Services -->
+    <script src="js/dataService.js"></script>
+    <script src="js/chartService.js"></script>
+    <script src="js/enhancedGoogleSheetsService.js"></script>
+    
+    <!-- Dashboard Components -->
+    <script src="js/enhancedMockData.js"></script>
+    <script src="js/dataAggregation.js"></script>
+    <script src="js/tubeProgress.js"></script>
+    <script src="js/debugPanel.js"></script>
+    
+    <!-- Main Dashboard - Using Enhanced Version Only -->
+    <script src="js/enhancedDashboard.js"></script>
+    
+    <!-- Fixes and Debug Tools -->
+    <script src="js/yieldsDateFix.js"></script>
+
+    <!-- Initialize Dashboard -->
+    <script>
+        // Global flag to track if dashboard has been initialized
+        window.dashboardInitialized = false;
+        
+        // Function to hide loading overlay
+        function hideLoadingOverlay() {
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            if (loadingOverlay) {
+                loadingOverlay.style.display = 'none';
+            }
+        }
+        
+        // Set a timeout to force-hide loading overlay after 10 seconds as fallback
+        setTimeout(hideLoadingOverlay, 10000);
+        
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                // Add loading timeout - hide loading after max 5 seconds
+                setTimeout(hideLoadingOverlay, 5000);
+                
+                // Wait a bit to ensure all scripts are loaded and evaluated
+                setTimeout(async () => {
+                    console.log('Initializing PROCASSEF Dashboard...');
+                    window.dashboard = new EnhancedDashboard();
+                    await window.dashboard.initialize();
+                    window.dashboardInitialized = true;
+                    console.log('Dashboard ready!');
+                    hideLoadingOverlay();
+                }, 100);
+            } catch (error) {
+                console.error('Error initializing dashboard:', error);
+                hideLoadingOverlay();
+                
+                // Display error to user
+                const errorMessage = document.createElement('div');
+                errorMessage.className = 'bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded fixed bottom-4 right-4 shadow-lg';
+                errorMessage.innerHTML = `
+                    <strong class="font-bold">Erreur!</strong>
+                    <span class="block sm:inline">Impossible d'initialiser le dashboard.</span>
+                `;
+                document.body.appendChild(errorMessage);
+                
+                // Remove error message after 10 seconds
+                setTimeout(() => {
+                    if (errorMessage.parentNode) {
+                        errorMessage.parentNode.removeChild(errorMessage);
+                    }
+                }, 10000);
+            }
+        });
+        
+        // Tab switching logic
+        (function(){
+            const tabs = Array.from(document.querySelectorAll('.primary-tab'));
+            const panels = Array.from(document.querySelectorAll('[data-panel]'));
+
+            function activateTab(tabEl){
+                const target = tabEl.dataset.tab;
+
+                // style tabs
+                tabs.forEach(t => {
+                    if(t === tabEl){
+                        t.classList.add('bg-blue-50','text-blue-700');
+                        t.classList.remove('text-gray-600');
+                    } else {
+                        t.classList.remove('bg-blue-50','text-blue-700');
+                        t.classList.add('text-gray-600');
+                    }
+                });
+
+                // show/hide panels with transition
+                panels.forEach(p => {
+                    if(p.dataset.panel === target){
+                        p.classList.remove('hidden','opacity-0','translate-y-2');
+                        p.classList.add('block','opacity-100','translate-y-0');
+                    } else {
+                        p.classList.remove('block','opacity-100','translate-y-0');
+                        p.classList.add('hidden','opacity-0','translate-y-2');
+                    }
+                });
+
+                // ensure charts redraw when their container becomes visible
+                setTimeout(()=>{
+                    try{
+                        if(window.dashboard && typeof window.dashboard.refreshDashboard === 'function'){
+                            // trigger a non-auto refresh so filters are applied and charts redraw
+                            window.dashboard.refreshDashboard(false);
+                        }
+                    }catch(e){console.warn('Error refreshing dashboard after tab switch',e)}
+                }, 200);
+            }
+
+            // attach events
+            tabs.forEach(t => t.addEventListener('click', ()=> activateTab(t)));
+
+            // activate first tab by default
+            if(tabs.length) activateTab(tabs[0]);
+        })();
+    </script>
+</body>
+</html>

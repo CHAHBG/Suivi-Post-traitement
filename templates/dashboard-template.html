@@ -1,0 +1,215 @@
+<!-- Overview Section with Tube Progress Indicators -->
+<section class="overview-section mb-8">
+    <div class="flex justify-between items-center mb-4">
+        <h2 class="text-xl font-semibold text-gray-900">Vue d'ensemble - Objectifs</h2>
+        <div class="flex items-center space-x-2">
+            <span class="text-sm text-gray-500">Dernière mise à jour: </span>
+            <span class="text-sm font-medium text-gray-700" id="lastUpdateTime">10 Sept 2025, 15:30</span>
+        </div>
+    </div>
+    
+    <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6 mb-6">
+        <!-- Tube Progress Indicators -->
+        <div class="tube-container" id="dailyTube">
+            <div class="tube-progress">
+                <div class="tube-liquid" data-percentage="42">
+                    <div class="tube-wave"></div>
+                </div>
+                <div class="tube-label">
+                    <div class="tube-title">Objectif Quotidien</div>
+                    <div class="tube-value">350 / 832,77</div>
+                    <div class="tube-percentage">42%</div>
+                    <div class="tube-gap">-482.77000</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="tube-container" id="weeklyTube">
+            <div class="tube-progress">
+                <div class="tube-liquid" data-percentage="72">
+                    <div class="tube-wave"></div>
+                </div>
+                <div class="tube-label">
+                    <div class="tube-title">Objectif Hebdomadaire</div>
+                    <div class="tube-value">4200 / 5829,39</div>
+                    <div class="tube-percentage">72%</div>
+                    <div class="tube-gap">-629.3900</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="tube-container" id="monthlyTube">
+            <div class="tube-progress">
+                <div class="tube-liquid" data-percentage="2">
+                    <div class="tube-wave"></div>
+                </div>
+                <div class="tube-label">
+                    <div class="tube-title">Objectif Septembre</div>
+                    <div class="tube-value">1178 / 60830,22</div>
+                    <div class="tube-percentage">2%</div>
+                    <div class="tube-gap">-9652.2200</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Quality Rate KPI Card -->
+        <div class="bg-white rounded-lg shadow-md p-6 flex flex-col justify-center">
+            <div class="text-sm font-medium text-gray-500 mb-1">Taux de Qualité</div>
+            <div class="text-2xl font-bold text-green-600" id="qualityRate">0%</div>
+            <div class="text-xs text-gray-400">Affichage sans erreur</div>
+            
+            <div class="mt-4 pt-4 border-t border-gray-100">
+                <div class="flex justify-between items-center mb-1">
+                    <span class="text-xs text-gray-500">Conversion CTASF</span>
+                    <span class="text-xs font-medium text-gray-700" id="ctasfRate">0%</span>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-2">
+                    <div class="bg-blue-500 h-2 rounded-full" id="ctasfRateBar" style="width: 0%"></div>
+                </div>
+            </div>
+            
+            <div class="mt-2">
+                <div class="flex justify-between items-center mb-1">
+                    <span class="text-xs text-gray-500">Post-traitement</span>
+                    <span class="text-xs font-medium text-gray-700" id="processingRate">100%</span>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-2">
+                    <div class="bg-green-500 h-2 rounded-full" id="processingRateBar" style="width: 100%"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Performance Gauges -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="bg-white rounded-lg shadow-md p-4 text-center">
+            <h3 class="text-lg font-medium text-gray-700 mb-3">Efficacité Quotidienne</h3>
+            <canvas id="dailyEfficiencyGauge" class="gauge-chart mx-auto"></canvas>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow-md p-4 text-center">
+            <h3 class="text-lg font-medium text-gray-700 mb-3">Score Qualité</h3>
+            <canvas id="qualityScoreGauge" class="gauge-chart mx-auto"></canvas>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow-md p-4 text-center">
+            <h3 class="text-lg font-medium text-gray-700 mb-3">Conversion CTASF</h3>
+            <canvas id="ctasfConversionGauge" class="gauge-chart mx-auto"></canvas>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow-md p-4 text-center">
+            <h3 class="text-lg font-medium text-gray-700 mb-3">Efficacité Processing</h3>
+            <canvas id="processingEfficiencyGauge" class="gauge-chart mx-auto"></canvas>
+        </div>
+    </div>
+</section>
+
+<!-- Monitoring Section -->
+<section class="monitoring-section mb-8">
+    <h2 class="text-xl font-semibold text-gray-900 mb-4">Monitoring des Opérations</h2>
+    
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Progress by Phase -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h3 class="text-lg font-medium text-gray-700 mb-4">Pipeline CTASF - Évolution Multi-étapes</h3>
+            <div class="chart-container">
+                <canvas id="ctasfPipelineChart"></canvas>
+            </div>
+        </div>
+        
+        <!-- Post-Processing Efficiency -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h3 class="text-lg font-medium text-gray-700 mb-4">Efficacité Post-Processing</h3>
+            <div class="chart-container">
+                <canvas id="postProcessingChart"></canvas>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Regional Analysis Section -->
+<section class="regional-section mb-8">
+    <h2 class="text-xl font-semibold text-gray-900 mb-4">Analyse Régionale</h2>
+    
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Commune Performance -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h3 class="text-lg font-medium text-gray-700 mb-4">Performance par Commune</h3>
+            <div class="max-h-[500px] overflow-y-auto">
+                <div id="communePerformanceList" class="space-y-4">
+                    <!-- Communes will be inserted here dynamically -->
+                    <div class="commune-performance-item">
+                        <div class="flex justify-between mb-1">
+                            <h4 class="font-medium text-gray-800">Tomboronkoto</h4>
+                            <span class="text-sm text-gray-500">undefined</span>
+                        </div>
+                        <div class="space-y-2">
+                            <div>
+                                <div class="flex justify-between text-xs mb-1">
+                                    <span>NICAD</span>
+                                    <span>0.0%</span>
+                                </div>
+                                <div class="w-full bg-gray-200 rounded-full h-2">
+                                    <div class="bg-blue-500 h-2 rounded-full" style="width: 0%"></div>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="flex justify-between text-xs mb-1">
+                                    <span>CTASF</span>
+                                    <span>0.0%</span>
+                                </div>
+                                <div class="w-full bg-gray-200 rounded-full h-2">
+                                    <div class="bg-orange-500 h-2 rounded-full" style="width: 0%"></div>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="flex justify-between text-xs mb-1">
+                                    <span>Délibéré</span>
+                                    <span>0.0%</span>
+                                </div>
+                                <div class="w-full bg-gray-200 rounded-full h-2">
+                                    <div class="bg-green-500 h-2 rounded-full" style="width: 0%"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="text-xs text-gray-500 mt-1">
+                            Total: 0 parcelles
+                        </div>
+                    </div>
+                    <!-- More communes -->
+                </div>
+            </div>
+        </div>
+        
+        <!-- Regional Comparison -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h3 class="text-lg font-medium text-gray-700 mb-4">Comparaison Régionale</h3>
+            <div class="chart-container">
+                <canvas id="regionalComparisonChart"></canvas>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Process Analytics Section -->
+<section class="process-section mb-8">
+    <h2 class="text-xl font-semibold text-gray-900 mb-4">Analytics Processus</h2>
+    
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Processing Funnel -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h3 class="text-lg font-medium text-gray-700 mb-4">Entonnoir de Traitement</h3>
+            <div class="chart-container">
+                <canvas id="processingFunnelChart"></canvas>
+            </div>
+        </div>
+        
+        <!-- Parcel Type Distribution -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h3 class="text-lg font-medium text-gray-700 mb-4">Distribution Types de Parcelles</h3>
+            <div class="chart-container">
+                <canvas id="parcelDistributionChart"></canvas>
+            </div>
+        </div>
+    </div>
+</section>
