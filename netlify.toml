@@ -24,10 +24,15 @@
   [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"
 
+
+
 # Basic security-related headers (kept conservative)
 [[headers]]
   for = "/*"
   [headers.values]
+    # Allow embedding from your portal(s) — replace with your real domain(s)
+    Content-Security-Policy = "frame-ancestors https://portailprocasefboundou.netlify.app https://your-other-domain.example"
+    # Optional modern-fallback/compat header (modern browsers will use CSP frame-ancestors)
     X-Frame-Options = "SAMEORIGIN"
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
