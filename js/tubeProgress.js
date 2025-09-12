@@ -204,6 +204,8 @@ class TubeProgressService {
                 elements.gap.style.display = 'block';
             } else elements.gap.style.display = 'none';
         }
+
+        // forecast rendering moved to a dedicated forecast card component
         
         // Update color based on status
         this.updateTubeColor(elementId, config.status);

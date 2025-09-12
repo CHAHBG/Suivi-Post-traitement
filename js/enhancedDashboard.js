@@ -169,6 +169,14 @@ class EnhancedDashboard {
             
             // Calculate KPIs using aggregation service (use normalized this.rawData)
             const kpis = dataAggregationService.calculateKPIs(this.rawData, this.currentFilters);
+            // Expose KPIs and dashboard reference globally so other UI helpers (forecastCard) can access immediately
+            try {
+                window.__lastGoodKPIs = kpis;
+                window.kpis = kpis;
+                window.enhancedDashboard = window.enhancedDashboard || this;
+                // also attach to this instance for internal consumers
+                this.kpis = kpis;
+            } catch (e) { /* ignore */ }
             console.log('KPIs calculated:', kpis);
             
             // Initialize tube progress indicators
@@ -278,10 +286,15 @@ class EnhancedDashboard {
             }
             
             if (monthlyContainer) {
+                // Compute monthly target as dailyGoal * 30 (preference to CONFIG.TARGETS.DAILY_PARCELS)
+                const cfgDaily = (window.CONFIG && window.CONFIG.TARGETS && window.CONFIG.TARGETS.DAILY_PARCELS) ? window.CONFIG.TARGETS.DAILY_PARCELS : (dataAggregationService && dataAggregationService.config && dataAggregationService.config.dailyGoal) ? dataAggregationService.config.dailyGoal : 833;
+                const monthlyTargetFromDaily = Math.round(Number(cfgDaily) * 30);
+                const effectiveMonthlyTarget = (kpis.monthly && kpis.monthly.target) ? kpis.monthly.target : monthlyTargetFromDaily;
+
                 tubesToInitialize.monthlyTube = {
                     title: 'Mois',
                     currentValue: kpis.monthly.current,
-                    targetValue: kpis.monthly.target,
+                    targetValue: effectiveMonthlyTarget,
                     percentage: kpis.monthly.percentage,
                     gap: kpis.monthly.gap,
                     status: kpis.monthly.status,
@@ -293,6 +306,31 @@ class EnhancedDashboard {
                 try {
                     tubeProgressService.initializeTubes(tubesToInitialize);
                     this.tubesInitialized = true;
+                    // Add small forecast icon to monthly tube (if available)
+                    try {
+                        // Do NOT add an icon into the monthly tube per design change.
+                        // Only recompute and display the gap based on effective monthly target
+                        const monthlyEl = document.getElementById('monthlyTube');
+                        if (monthlyEl) {
+                            try {
+                                const monthlyKPI = kpis && kpis.monthly ? kpis.monthly : null;
+                                if (monthlyKPI) {
+                                    const effectiveTarget = monthlyKPI.target;
+                                    const gap = (Number(monthlyKPI.current) || 0) - (Number(effectiveTarget) || 0);
+                                    const gapEl = monthlyEl.querySelector('.tube-gap');
+                                    if (gapEl) {
+                                        const absFmt = new Intl.NumberFormat('fr-FR').format(Math.abs(Math.round(gap)));
+                                        gapEl.textContent = (gap >= 0 ? `+${absFmt}` : `-${absFmt}`);
+                                        gapEl.classList.toggle('positive', gap > 0);
+                                        gapEl.classList.toggle('negative', gap < 0);
+                                    }
+                                    if (window.tubeProgressService && typeof window.tubeProgressService.updateTube === 'function') {
+                                        window.tubeProgressService.updateTube('monthlyTube', { targetValue: effectiveTarget, gap: (Number(monthlyKPI.current)||0) - (Number(effectiveTarget)||0) });
+                                    }
+                                }
+                            } catch(e) { /* ignore */ }
+                        }
+                    } catch (err) { console.warn('Could not update monthly gap:', err); }
                     return true;
                 } catch (error) {
                     console.error('Error initializing tube indicators:', error);

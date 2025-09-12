@@ -505,6 +505,70 @@ class DataAggregationService {
                 }
             } catch (trendErr) { /* silent trend failure */ }
 
+            // ---- Monthly target override: use daily goal * 30 (user expects daily goal baseline)
+            try {
+                const cfgDaily = (window.CONFIG && window.CONFIG.TARGETS && window.CONFIG.TARGETS.DAILY_PARCELS) ? window.CONFIG.TARGETS.DAILY_PARCELS : this.config.dailyGoal;
+                // Use floor to match explicit daily goal intent (e.g., 832 from 832.77)
+                const dailyGoalBase = Math.floor(Number(cfgDaily) || this.config.dailyGoal);
+                const monthlyTargetFromDaily = dailyGoalBase * 30;
+                monthly.target = Math.round(monthlyTargetFromDaily);
+
+                // Compute recent average daily rate using yieldsSheet (last N days with data)
+                const dateMap = new Map();
+                for (const r of yieldsSheet) {
+                    const pd = this.parseDate(r['Date'] || r['date']);
+                    if (!pd || pd > latestDate) continue;
+                    const key = this.formatDate(pd);
+                    const val = this._getNumericField(r, ['Nombre de levées','Nombre de Levées','nombre de levées','nombre de levees','Nombre de levees','levées','levees','NombreDeLevees']) || 0;
+                    dateMap.set(key, (dateMap.get(key) || 0) + val);
+                }
+                const sortedDates = Array.from(dateMap.keys()).sort((a,b)=> new Date(a) - new Date(b));
+                // Use up to last 7 days with data to compute avg daily rate, falling back to monthly.current/days so far
+                const lastNDays = 7;
+                const lastDates = sortedDates.slice(-lastNDays);
+                let avgDaily = 0;
+                if (lastDates.length) {
+                    const sum = lastDates.reduce((s,k)=> s + (dateMap.get(k)||0), 0);
+                    avgDaily = sum / lastDates.length;
+                }
+                if (!avgDaily) {
+                    // fallback: use monthly.current / days so far in month
+                    const daysSoFar = latestDate ? (latestDate.getDate()) : 1;
+                    avgDaily = daysSoFar > 0 ? (monthly.current / daysSoFar) : (daily.current || 0);
+                }
+
+                // Total so far (all yields up to latestDate)
+                const totalSoFar = Array.from(dateMap.values()).reduce((s,v)=> s+v, 0);
+
+                const projections = {};
+                // Helper: days between (exclusive of today) latestDate and endOfMonth inclusive
+                const daysUntil = (fromDate, toDate) => {
+                    const a = new Date(fromDate.getFullYear(), fromDate.getMonth(), fromDate.getDate());
+                    const b = new Date(toDate.getFullYear(), toDate.getMonth(), toDate.getDate());
+                    // compute days difference (b - a) in days
+                    const msPerDay = 24 * 60 * 60 * 1000;
+                    const diff = Math.ceil((b - a) / msPerDay);
+                    return diff >= 0 ? diff : 0;
+                };
+
+                const monthsToCheck = [ {y: latestDate.getFullYear(), m: 8}, {y: latestDate.getFullYear(), m: 9}, {y: latestDate.getFullYear(), m:10}, {y: latestDate.getFullYear(), m:11} ];
+                // Note: months are 0-based in JS Date; user requested Sept(8) Oct(9) Nov(10) Dec(11)
+                monthsToCheck.forEach(item => {
+                    const endOfMonth = new Date(item.y, item.m+1, 0); // last day of month
+                    const days = daysUntil(latestDate, endOfMonth);
+                    const projected = Math.round(totalSoFar + (avgDaily * days));
+                    const label = ['septembre','octobre','novembre','decembre'][item.m - 8] || `${item.m+1}/${item.y}`;
+                    projections[label] = { projectedTotal: projected, daysRemaining: days };
+                });
+
+                // Determine achievability for September target: check projected at end of septembre vs monthly.target
+                const septProj = projections['septembre'] ? projections['septembre'].projectedTotal : null;
+                const achievable = septProj !== null ? (septProj >= monthly.target) : false;
+                monthly.forecast = { avgDaily: Math.round(avgDaily), totalSoFar: Math.round(totalSoFar), projections, achievable };
+                monthly.achievable = achievable;
+                monthly.alert = achievable ? 'Atteignable au rythme actuel' : 'Non atteignable au rythme actuel';
+            } catch (ex) { console.warn('Monthly forecast calculation failed:', ex); }
+
             return { daily, weekly, monthly, quality, ctasf, processing };
         } catch (e) {
             console.error('calculateKPIs failed:', e);

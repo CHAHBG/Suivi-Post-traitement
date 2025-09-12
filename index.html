@@ -109,6 +109,10 @@
                         <i class="fas fa-chart-line"></i>
                         <span>Suivi Temporel</span>
                     </button>
+                    <button class="nav-tab" data-tab="commune-table">
+                        <i class="fas fa-table"></i>
+                        <span>Tableau - Statut des Communes</span>
+                    </button>
                 </nav>
             </div>
         </div>
@@ -121,7 +125,7 @@
                 
                 <!-- Hero KPIs Section -->
                 <section class="hero-section mb-12">
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div class="hero-grid">
                         <!-- Progress Tubes -->
                         <div class="metric-card" id="dailyTube">
                             <!-- Populated by JS -->
@@ -133,6 +137,20 @@
                         
                         <div class="metric-card" id="monthlyTube">
                             <!-- Populated by JS -->
+                        </div>
+
+                        <!-- Forecast Card (separate from tubes) -->
+                        <div class="metric-card" id="monthlyForecastCard">
+                            <div class="metric-header" style="position:relative;">
+                                <button type="button" class="forecast-icon-btn alt" title="Afficher prévisions" style="position: absolute; top: 12px; right: 12px;">
+                                    <i class="fas fa-chart-line"></i>
+                                </button>
+                                <div class="metric-info">
+                                    <h3 class="metric-title">Prévisions Mensuelles</h3>
+                                    <p class="metric-subtitle">Projection à fin de mois et achievabilité</p>
+                                </div>
+                            </div>
+                            <div id="forecastContent" class="p-3 text-sm text-slate-700">Chargement...</div>
                         </div>
                         
                         <!-- Quality Rate Card -->
@@ -421,6 +439,44 @@
                             </div>
                             <div class="chart-content">
                                 <canvas id="projectTimelineChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Commune Status Table Panel -->
+            <div data-panel="commune-table" class="panel">
+                <section class="commune-table-section">
+                    <div class="section-intro mb-6">
+                        <h2 class="section-title">Tableau - Statut des Communes</h2>
+                        <p class="section-description">Liste complète des communes et champs associés (tri, affichage colonne, réorganisation)</p>
+                    </div>
+
+                    <div class="chart-card">
+                        <div class="chart-header flex items-center justify-between">
+                            <div>
+                                <h3 class="chart-title">Données Communes</h3>
+                                <p class="chart-subtitle">Affichez/masquez des colonnes et réorganisez-les par glisser-déposer</p>
+                            </div>
+                            <div class="chart-controls flex items-center space-x-2">
+                                <label class="inline-flex items-center space-x-2">
+                                    <i class="fas fa-filter"></i>
+                                    <span>Colonnes</span>
+                                </label>
+                                <button id="columnChooserBtn" class="action-button">Gérer colonnes</button>
+                            </div>
+                        </div>
+                        <div class="chart-content">
+                            <div id="communeTableControls" class="mb-4 hidden">
+                                <!-- Column chooser will be injected here -->
+                            </div>
+                            <div id="communeTableContainer" class="overflow-auto">
+                                <!-- Table will be rendered here by JS -->
+                                <table id="communeStatusTable" class="min-w-full table-auto border-collapse">
+                                    <thead id="communeTableHead"></thead>
+                                    <tbody id="communeTableBody"></tbody>
+                                </table>
                             </div>
                         </div>
                     </div>
@@ -849,7 +905,9 @@
     <script src="js/dataAggregation.js"></script>
     <script src="js/dateParsingLoader.js"></script>
     <script src="js/tubeProgress.js"></script>
+    <script src="js/forecastCard.js"></script>
     <script src="js/debugPanel.js"></script>
+    <script src="js/communeTable.js"></script>
     <script src="js/enhancedDashboard.js"></script>
     <script src="js/streamingUpdates.js"></script>
     <script src="js/yieldsDateFix.js"></script>
