@@ -256,7 +256,17 @@
     }
 
     function buildColumnChooser(columns, settings, rows){
-        const container = document.getElementById('communeTableControls');
+        let container = document.getElementById('communeTableControls');
+        if (!container) {
+            // try to create controls container next to the table if missing
+            const tbl = document.getElementById('communeTableContainer') || document.getElementById('communeStatusTable');
+            if (tbl && tbl.parentElement) {
+                container = document.createElement('div');
+                container.id = 'communeTableControls';
+                tbl.parentElement.insertBefore(container, tbl);
+            }
+        }
+        if (!container) return; // nothing we can do
         container.innerHTML = '';
         const cols = columns;
         cols.forEach(c => {

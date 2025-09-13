@@ -538,7 +538,12 @@
                             // If rows are arrays (CSV parsed without headers), try to convert to objects using header row
                             let normalized = rows;
                             if (Array.isArray(rows) && rows.length && Array.isArray(rows[0])){
-                                const hdr = rows[0]; normalized = rows.slice(1).map(r=>{ const obj={}; hdr.forEach((h,i)=> obj[h]= r[i]; return obj; });
+                                const hdr = rows[0];
+                                normalized = rows.slice(1).map(r => {
+                                    const obj = {};
+                                    hdr.forEach((h, i) => { obj[h] = r[i]; });
+                                    return obj;
+                                });
                             }
                             buildTableFromRows(normalized);
                             buildCharts(normalized);
