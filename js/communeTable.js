@@ -132,8 +132,77 @@
         return val;
     }
 
+    function ensureTableStructure() {
+        // Ensure the table structure exists before trying to manipulate it
+        let table = document.getElementById('communeStatusTable');
+        if (!table) {
+            table = document.createElement('table');
+            table.id = 'communeStatusTable';
+            table.className = 'min-w-full table-auto border-collapse';
+            
+            const container = document.getElementById('communeTableContainer');
+            if (container) {
+                container.appendChild(table);
+            } else {
+                // Try to find a suitable parent or create one
+                const anchors = [
+                    document.getElementById('communeStatusPanel'),
+                    document.getElementById('commune-panel'),
+                    document.querySelector('.commune-panel')
+                ];
+                let placed = false;
+                for (const a of anchors) {
+                    if (a && a.parentElement) {
+                        a.parentElement.insertBefore(table, a.nextSibling);
+                        placed = true; 
+                        break;
+                    }
+                }
+                if (!placed) {
+                    try { 
+                        document.body.appendChild(table); 
+                    } catch (e) { 
+                        console.warn('Could not append table to DOM:', e);
+                        return false;
+                    }
+                }
+            }
+        }
+        
+        // Ensure thead exists
+        let thead = document.getElementById('communeTableHead');
+        if (!thead) {
+            thead = document.createElement('thead');
+            thead.id = 'communeTableHead';
+            table.appendChild(thead);
+        }
+        
+        // Ensure tbody exists
+        let tbody = document.getElementById('communeTableBody');
+        if (!tbody) {
+            tbody = document.createElement('tbody');
+            tbody.id = 'communeTableBody';
+            table.appendChild(tbody);
+        }
+        
+        return true;
+    }
+
     function buildTable(columns, rows, settings){
+        // Ensure table structure exists before proceeding
+        if (!ensureTableStructure()) {
+            console.error('Could not create table structure');
+            return;
+        }
+        
         const thead = document.getElementById('communeTableHead');
+        const tbody = document.getElementById('communeTableBody');
+        
+        if (!thead || !tbody) {
+            console.error('Table structure missing after ensureTableStructure');
+            return;
+        }
+        
         thead.innerHTML = '';
         const tr = document.createElement('tr');
         tr.className = 'bg-gray-100';
@@ -177,7 +246,6 @@
         });
         thead.appendChild(tr);
 
-        const tbody = document.getElementById('communeTableBody');
         tbody.innerHTML = '';
         rows.forEach(row => {
             const trr = document.createElement('tr');
@@ -244,14 +312,16 @@
         // If no rows, add a single no-data row to the tbody (preserve headers)
         if (!rows || !rows.length) {
             const tbody = document.getElementById('communeTableBody');
-            tbody.innerHTML = '';
-            const tr = document.createElement('tr');
-            const td = document.createElement('td');
-            td.colSpan = Math.max(columns.length, 1);
-            td.className = 'py-6 text-center text-gray-500';
-            td.textContent = 'Aucune donnée disponible';
-            tr.appendChild(td);
-            tbody.appendChild(tr);
+            if (tbody) {
+                tbody.innerHTML = '';
+                const tr = document.createElement('tr');
+                const td = document.createElement('td');
+                td.colSpan = Math.max(columns.length, 1);
+                td.className = 'py-6 text-center text-gray-500';
+                td.textContent = 'Aucune donnée disponible';
+                tr.appendChild(td);
+                tbody.appendChild(tr);
+            }
         }
     }
 
@@ -327,82 +397,64 @@
     }
 
     async function init() {
-        const toggleBtn = document.getElementById('columnChooserBtn');
-        const controls = document.getElementById('communeTableControls');
-        if (toggleBtn && controls) toggleBtn.addEventListener('click', () => { controls.classList.toggle('hidden'); });
-        // Show a lightweight loading state without destroying the table DOM
-        const container = document.getElementById('communeTableContainer');
-        // Ensure the table exists (do not overwrite it) so thead/tbody references remain stable
-        let table = document.getElementById('communeStatusTable');
-        if (!table) {
-            table = document.createElement('table');
-            table.id = 'communeStatusTable';
-            table.className = 'min-w-full table-auto border-collapse';
-            const the = document.createElement('thead'); the.id = 'communeTableHead';
-            const tbo = document.createElement('tbody'); tbo.id = 'communeTableBody';
-            table.appendChild(the); table.appendChild(tbo);
+        try {
+            const toggleBtn = document.getElementById('columnChooserBtn');
+            const controls = document.getElementById('communeTableControls');
+            if (toggleBtn && controls) toggleBtn.addEventListener('click', () => { controls.classList.toggle('hidden'); });
+            
+            // Ensure table structure exists first
+            if (!ensureTableStructure()) {
+                console.error('Failed to create table structure, aborting init');
+                return;
+            }
+            
+            // Show a lightweight loading state without destroying the table DOM
+            const container = document.getElementById('communeTableContainer');
+            let loadingEl = document.getElementById('communeTableLoading');
+            if (!loadingEl && container) {
+                loadingEl = document.createElement('div');
+                loadingEl.id = 'communeTableLoading';
+                loadingEl.className = 'p-6 text-gray-500';
+                const table = document.getElementById('communeStatusTable');
+                container.insertBefore(loadingEl, table);
+            }
+            if (loadingEl) loadingEl.textContent = 'Chargement des données...';
 
-            // Try appending to the logical container first, otherwise place next to known anchors or document.body
-            if (container && container.appendChild) {
-                container.appendChild(table);
-            } else {
-                const anchors = [
-                    document.getElementById('communeTableContainer'),
-                    document.getElementById('communeStatusPanel'),
-                    document.getElementById('commune-panel'),
-                    document.querySelector('.commune-panel')
-                ];
-                let placed = false;
-                for (const a of anchors) {
-                    if (a && a.parentElement) {
-                        a.parentElement.insertBefore(table, a.nextSibling);
-                        placed = true; break;
+            // Try fetching rows, with short retries to allow enhancedDashboard to finish loading
+            let rows = await fetchCommuneStatus();
+            if (!rows || !rows.length) {
+                // Retry a few times, waiting for enhancedDashboard/rawData to be available
+                for (let attempt = 0; attempt < 5 && (!rows || !rows.length); attempt++) {
+                    // If enhancedDashboard has rawData, try to pull from it directly
+                    if (window.enhancedDashboard && window.enhancedDashboard.rawData) {
+                        rows = window.enhancedDashboard.rawData['Commune Analysis'] || window.enhancedDashboard.rawData['Commune Status'] || rows || [];
                     }
-                }
-                if (!placed) {
-                    try { document.body.appendChild(table); } catch (e) { /* give up quietly */ }
+                    if (rows && rows.length) break;
+                    // Otherwise wait a bit then try the fetch fallback again
+                    await new Promise(r => setTimeout(r, 800));
+                    try { rows = await fetchCommuneStatus(); } catch(e){ console.warn('communeTable: retry fetch failed', e); }
                 }
             }
-        }
-        // Create or update a loading element so we don't remove the table
-        let loadingEl = document.getElementById('communeTableLoading');
-        if (!loadingEl && container) {
-            loadingEl = document.createElement('div');
-            loadingEl.id = 'communeTableLoading';
-            loadingEl.className = 'p-6 text-gray-500';
-            container.insertBefore(loadingEl, table);
-        }
-        if (loadingEl) loadingEl.textContent = 'Chargement des données...';
 
-        // Try fetching rows, with short retries to allow enhancedDashboard to finish loading
-        let rows = await fetchCommuneStatus();
-        if (!rows || !rows.length) {
-            // Retry a few times, waiting for enhancedDashboard/rawData to be available
-            for (let attempt = 0; attempt < 5 && (!rows || !rows.length); attempt++) {
-                // If enhancedDashboard has rawData, try to pull from it directly
-                if (window.enhancedDashboard && window.enhancedDashboard.rawData) {
-                    rows = window.enhancedDashboard.rawData['Commune Analysis'] || window.enhancedDashboard.rawData['Commune Status'] || rows || [];
-                }
-                if (rows && rows.length) break;
-                // Otherwise wait a bit then try the fetch fallback again
-                await new Promise(r => setTimeout(r, 800));
-                try { rows = await fetchCommuneStatus(); } catch(e){ console.warn('communeTable: retry fetch failed', e); }
-            }
+            // Load persistent settings early to avoid temporal-dead-zone issues
+            const settings = getSettings();
+            console.debug('communeTable: fetched rows count =', (rows && rows.length) || 0, rows && rows[0] ? Object.keys(rows[0]) : null);
+            
+            // If no saved order, derive columns from first row
+            const columns = settings.order && settings.order.length ? settings.order : (rows && rows[0] ? Object.keys(rows[0]) : (settings.order || []));
+            // Ensure settings.order exists
+            settings.order = settings.order && settings.order.length ? settings.order : columns;
+            saveSettings(settings);
+
+            // Remove loading indicator
+            const loading = document.getElementById('communeTableLoading'); 
+            if (loading) loading.remove();
+            
+            buildColumnChooser(columns, settings, rows);
+            renderTableWithSettings(rows, settings);
+        } catch (error) {
+            console.error('communeTable init failed:', error);
         }
-
-    // Load persistent settings early to avoid temporal-dead-zone issues
-    const settings = getSettings();
-    console.debug('communeTable: fetched rows count =', (rows && rows.length) || 0, rows && rows[0] ? Object.keys(rows[0]) : null);
-        // If no saved order, derive columns from first row
-        const columns = settings.order && settings.order.length ? settings.order : (rows && rows[0] ? Object.keys(rows[0]) : (settings.order || []));
-        // Ensure settings.order exists
-        settings.order = settings.order && settings.order.length ? settings.order : columns;
-        saveSettings(settings);
-
-        // Remove loading indicator
-        const loading = document.getElementById('communeTableLoading'); if (loading) loading.remove();
-        buildColumnChooser(columns, settings, rows);
-        renderTableWithSettings(rows, settings);
     }
 
     // Expose helpers so other panels can reuse the same data-fetching logic
