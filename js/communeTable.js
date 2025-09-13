@@ -291,7 +291,13 @@
             }
         }
         if (!container) return; // defensive guard
-        container.innerHTML = '';
+        try {
+            container.innerHTML = '';
+        } catch (err) {
+            // Defensive: if DOM became detached or innerHTML cannot be set, bail quietly
+            console.warn('communeTable: failed to clear controls container innerHTML', err);
+            return;
+        }
         const cols = columns;
         cols.forEach(c => {
             // ensure id starts with a letter to be valid and avoid collisions
