@@ -551,19 +551,29 @@ class DataAggregationService {
                     return diff >= 0 ? diff : 0;
                 };
 
-                const monthsToCheck = [ {y: latestDate.getFullYear(), m: 8}, {y: latestDate.getFullYear(), m: 9}, {y: latestDate.getFullYear(), m:10}, {y: latestDate.getFullYear(), m:11} ];
-                // Note: months are 0-based in JS Date; user requested Sept(8) Oct(9) Nov(10) Dec(11)
+                // Build projections starting from the latestDate (or today if latestDate missing)
+                const baseDate = latestDate || new Date();
+                const startMonth = baseDate.getMonth(); // 0-based month index
+                const monthNames = ['janvier','fevrier','mars','avril','mai','juin','juillet','aout','septembre','octobre','novembre','decembre'];
+                const monthsToCheck = [];
+                for (let i = 0; i < 4; i++) {
+                    const m = (startMonth + i) % 12;
+                    const y = baseDate.getFullYear() + Math.floor((startMonth + i) / 12);
+                    monthsToCheck.push({ y, m });
+                }
+
                 monthsToCheck.forEach(item => {
-                    const endOfMonth = new Date(item.y, item.m+1, 0); // last day of month
-                    const days = daysUntil(latestDate, endOfMonth);
+                    const endOfMonth = new Date(item.y, item.m + 1, 0); // last day of month
+                    const days = daysUntil(baseDate, endOfMonth);
                     const projected = Math.round(totalSoFar + (avgDaily * days));
-                    const label = ['septembre','octobre','novembre','decembre'][item.m - 8] || `${item.m+1}/${item.y}`;
+                    const label = monthNames[item.m] || `${item.m+1}/${item.y}`;
                     projections[label] = { projectedTotal: projected, daysRemaining: days };
                 });
 
-                // Determine achievability for September target: check projected at end of septembre vs monthly.target
-                const septProj = projections['septembre'] ? projections['septembre'].projectedTotal : null;
-                const achievable = septProj !== null ? (septProj >= monthly.target) : false;
+                // Determine achievability for the current projected month (month of latestDate)
+                const currentLabel = monthNames[startMonth];
+                const currentProj = projections[currentLabel] ? projections[currentLabel].projectedTotal : null;
+                const achievable = currentProj !== null ? (currentProj >= monthly.target) : false;
                 monthly.forecast = { avgDaily: Math.round(avgDaily), totalSoFar: Math.round(totalSoFar), projections, achievable };
                 monthly.achievable = achievable;
                 monthly.alert = achievable ? 'Atteignable au rythme actuel' : 'Non atteignable au rythme actuel';
