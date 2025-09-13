@@ -284,92 +284,50 @@
         });
     }
 
-    async function init(){
+    async function init() {
         const toggleBtn = document.getElementById('columnChooserBtn');
-        const tbody = document.getElementById('communeTableBody');
-        tbody.innerHTML = '';
+        const controls = document.getElementById('communeTableControls');
+        if (toggleBtn && controls) toggleBtn.addEventListener('click', () => { controls.classList.toggle('hidden'); });
+        // Show a lightweight loading state without destroying the table DOM
+        const container = document.getElementById('communeTableContainer');
+        // Ensure the table exists (do not overwrite it) so thead/tbody references remain stable
+        let table = document.getElementById('communeStatusTable');
+        if (!table) {
+            table = document.createElement('table');
+            table.id = 'communeStatusTable';
+            table.className = 'min-w-full table-auto border-collapse';
+            const the = document.createElement('thead'); the.id = 'communeTableHead';
+            const tbo = document.createElement('tbody'); tbo.id = 'communeTableBody';
+            table.appendChild(the); table.appendChild(tbo);
+            if (container) container.appendChild(table);
+        }
+        // Create or update a loading element so we don't remove the table
+        let loadingEl = document.getElementById('communeTableLoading');
+        if (!loadingEl && container) {
+            loadingEl = document.createElement('div');
+            loadingEl.id = 'communeTableLoading';
+            loadingEl.className = 'p-6 text-gray-500';
+            container.insertBefore(loadingEl, table);
+        }
+        if (loadingEl) loadingEl.textContent = 'Chargement des données...';
 
-        // Build a stable mapping from column (label) -> row key or index to avoid fuzzy per-cell searches
-        const colsToUse = settings.order && settings.order.length ? settings.order : columns;
-        const keyMap = {}; // col -> (string key) or (numeric index) or null
-        const sampleRow = rows && rows.length ? rows[0] : null;
-        const rowIsArray = Array.isArray(sampleRow);
-        if (rowIsArray) {
-            // If rows are arrays (CSV parsed without header objects), map by index position
-            colsToUse.forEach((col, idx) => { keyMap[col] = idx; });
-        } else if (sampleRow && typeof sampleRow === 'object') {
-            // Precompute normalized keys map for faster lookups
-            const rowKeys = Object.keys(sampleRow || {});
-            const normKeyMap = {};
-            rowKeys.forEach(k => { normKeyMap[normalizeHeaderKey(k)] = k; });
-            colsToUse.forEach(col => {
-                const normCol = normalizeHeaderKey(col);
-                let found = normKeyMap[normCol];
-                if (!found) {
-                    // try fuzzy strategies: startsWith, contains
-                    const keys = Object.keys(normKeyMap);
-                    for (const nk of keys) {
-                        if (!nk) continue;
-                        if (nk.indexOf(normCol) === 0 || normCol.indexOf(nk) === 0 || nk.includes(normCol) || normCol.includes(nk)) { found = normKeyMap[nk]; break; }
-                    }
+        // Try fetching rows, with short retries to allow enhancedDashboard to finish loading
+        let rows = await fetchCommuneStatus();
+        if (!rows || !rows.length) {
+            // Retry a few times, waiting for enhancedDashboard/rawData to be available
+            for (let attempt = 0; attempt < 5 && (!rows || !rows.length); attempt++) {
+                // If enhancedDashboard has rawData, try to pull from it directly
+                if (window.enhancedDashboard && window.enhancedDashboard.rawData) {
+                    rows = window.enhancedDashboard.rawData['Commune Analysis'] || window.enhancedDashboard.rawData['Commune Status'] || rows || [];
                 }
-                keyMap[col] = found || null;
-            });
-        } else {
-            // No sample row - map by order as graceful fallback
-            colsToUse.forEach((col, idx) => { keyMap[col] = idx; });
+                if (rows && rows.length) break;
+                // Otherwise wait a bit then try the fetch fallback again
+                await new Promise(r => setTimeout(r, 800));
+                try { rows = await fetchCommuneStatus(); } catch(e){ console.warn('communeTable: retry fetch failed', e); }
+            }
         }
 
-        rows.forEach(row => {
-            const trr = document.createElement('tr');
-            trr.className = 'hover:bg-gray-50';
-            colsToUse.forEach(col => {
-                const td = document.createElement('td');
-                // default padding
-                td.className = 'px-4 py-2 border-b align-top';
-                const visible = settings.visible && settings.visible[col] !== false;
-                if (!visible) td.style.display = 'none';
-
-                // Use precomputed map to retrieve raw value
-                let raw = '';
-                const mapVal = keyMap[col];
-                if (typeof mapVal === 'number') {
-                    raw = Array.isArray(row) && row.length > mapVal ? row[mapVal] : '';
-                } else if (typeof mapVal === 'string') {
-                    raw = row[mapVal] != null ? row[mapVal] : '';
-                } else {
-                    // last-resort: try any direct property match (case-insensitive)
-                    const foundKey = row && typeof row === 'object' ? Object.keys(row).find(k => normalizeHeaderKey(k) === normalizeHeaderKey(col)) : null;
-                    raw = foundKey ? row[foundKey] : '';
-                }
-
-                // Apply formatting/styling
-                const lower = String(col).toLowerCase();
-                if (/%|taux|% du|% nicad|% ctasf|taux suppression/i.test(col)) {
-                    td.className += ' text-right';
-                    td.textContent = raw;
-                } else if (/parcelles|total|doublons|nombre|count|parcels|duplicates|suppression|retir/i.test(lower)) {
-                    td.className += ' text-right';
-                    td.textContent = isNumericString(raw) ? formatNumberForDisplay(raw) : raw;
-                } else if (/statut/i.test(lower)) {
-                    // Status badge
-                    const content = renderCellContent(col, raw);
-                    if (content instanceof Element) td.appendChild(content); else td.textContent = content;
-                } else if (/message|motif|erreur|motifs/i.test(lower)) {
-                    const content = renderCellContent(col, raw);
-                    if (content instanceof Element) td.appendChild(content); else td.textContent = content;
-                } else if (/commune|région|region|geomaticien/i.test(lower)) {
-                    td.className += ' text-left';
-                    td.textContent = raw;
-                } else {
-                    // default
-                    td.textContent = raw;
-                }
-                trr.appendChild(td);
-            });
-            tbody.appendChild(trr);
-        });
-    console.debug('communeTable: fetched rows count =', (rows && rows.length) || 0, rows && rows[0] ? Object.keys(rows[0]) : null);
+        console.debug('communeTable: fetched rows count =', (rows && rows.length) || 0, rows && rows[0] ? Object.keys(rows[0]) : null);
         const settings = getSettings();
         // If no saved order, derive columns from first row
         const columns = settings.order && settings.order.length ? settings.order : (rows && rows[0] ? Object.keys(rows[0]) : (settings.order || []));
