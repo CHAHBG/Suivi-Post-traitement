@@ -341,7 +341,28 @@
             const the = document.createElement('thead'); the.id = 'communeTableHead';
             const tbo = document.createElement('tbody'); tbo.id = 'communeTableBody';
             table.appendChild(the); table.appendChild(tbo);
-            if (container) container.appendChild(table);
+
+            // Try appending to the logical container first, otherwise place next to known anchors or document.body
+            if (container && container.appendChild) {
+                container.appendChild(table);
+            } else {
+                const anchors = [
+                    document.getElementById('communeTableContainer'),
+                    document.getElementById('communeStatusPanel'),
+                    document.getElementById('commune-panel'),
+                    document.querySelector('.commune-panel')
+                ];
+                let placed = false;
+                for (const a of anchors) {
+                    if (a && a.parentElement) {
+                        a.parentElement.insertBefore(table, a.nextSibling);
+                        placed = true; break;
+                    }
+                }
+                if (!placed) {
+                    try { document.body.appendChild(table); } catch (e) { /* give up quietly */ }
+                }
+            }
         }
         // Create or update a loading element so we don't remove the table
         let loadingEl = document.getElementById('communeTableLoading');
