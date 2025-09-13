@@ -449,39 +449,109 @@
             <div data-panel="commune-table" class="panel">
                 <section class="commune-table-section">
                     <div class="section-intro mb-6">
-                        <h2 class="section-title">Tableau - Statut des Communes</h2>
-                        <p class="section-description">Liste complète des communes et champs associés (tri, affichage colonne, réorganisation)</p>
+                        <h2 class="section-title">Commune Details</h2>
+                        <p class="section-description">Liste complète des communes et champs associés</p>
                     </div>
 
-                    <div class="chart-card">
-                        <div class="chart-header flex items-center justify-between">
-                            <div>
-                                <h3 class="chart-title">Données Communes</h3>
-                                <p class="chart-subtitle">Affichez/masquez des colonnes et réorganisez-les par glisser-déposer</p>
+                    <div class="grid grid-cols-1 gap-6">
+                        <div class="data-card bg-white rounded-xl shadow-md p-6">
+                            <div class="flex justify-between items-center mb-4">
+                                <h3 class="text-lg font-bold">Commune Details</h3>
+                                <div class="flex items-center space-x-2">
+                                    <div class="relative">
+                                        <input id="communeSearch" type="text" placeholder="Search..." class="bg-gray-100 border-0 rounded-lg px-3 py-1 pl-8 text-sm focus:outline-none">
+                                        <i class="fas fa-search absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-500"></i>
+                                    </div>
+                                    <button id="columnChooserBtn" class="text-gray-500 hover:text-gray-700">Columns</button>
+                                </div>
                             </div>
-                            <div class="chart-controls flex items-center space-x-2">
-                                <label class="inline-flex items-center space-x-2">
-                                    <i class="fas fa-filter"></i>
-                                    <span>Colonnes</span>
-                                </label>
-                                <button id="columnChooserBtn" class="action-button">Gérer colonnes</button>
+
+                            <div class="overflow-x-auto">
+                                <table id="liveCommuneTable" class="min-w-full divide-y divide-gray-200">
+                                    <thead class="bg-gray-50" id="liveCommuneHead"></thead>
+                                    <tbody class="bg-white divide-y divide-gray-200" id="liveCommuneBody"></tbody>
+                                </table>
+                            </div>
+                            <div class="px-6 py-3 bg-gray-50 text-right">
+                                <button id="viewAllCommunes" class="text-sm text-indigo-600 hover:text-indigo-800 font-medium">View All Communes →</button>
                             </div>
                         </div>
-                        <div class="chart-content">
-                            <div id="communeTableControls" class="mb-4 hidden">
-                                <!-- Column chooser will be injected here -->
+
+                        <div class="data-card bg-white rounded-xl shadow-md p-6">
+                            <h3 class="text-lg font-bold mb-4">Parcel Distribution by Commune</h3>
+                            <div class="chart-container" style="height: 300px;">
+                                <canvas id="communeChart"></canvas>
                             </div>
-                            <div id="communeTableContainer" class="overflow-auto">
-                                <!-- Table will be rendered here by JS -->
-                                <table id="communeStatusTable" class="min-w-full table-auto border-collapse">
-                                    <thead id="communeTableHead"></thead>
-                                    <tbody id="communeTableBody"></tbody>
-                                </table>
+                        </div>
+
+                        <div class="data-card bg-white rounded-xl shadow-md p-6">
+                            <h3 class="text-lg font-bold mb-4">Status Comparison</h3>
+                            <div class="chart-container" style="height: 300px;">
+                                <canvas id="statusChart"></canvas>
                             </div>
                         </div>
                     </div>
-                </section>
-            </div>
+
+                    <script>
+                        // Use the shared fetchCommuneStatus if available
+                        async function getCommuneRows() {
+                            try {
+                                if (window.fetchCommuneStatus) return await window.fetchCommuneStatus();
+                                if (window.enhancedDashboard && window.enhancedDashboard.rawData) return window.enhancedDashboard.rawData['Commune Analysis'] || window.enhancedDashboard.rawData['Commune Status'] || [];
+                                return [];
+                            } catch (e) { console.warn('commune panel fetch failed', e); return []; }
+                        }
+
+                        function normalizeKey(s){ if (s==null) return ''; return String(s).trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim(); }
+
+                        function buildTableFromRows(rows){
+                            const head = document.getElementById('liveCommuneHead');
+                            const body = document.getElementById('liveCommuneBody');
+                            head.innerHTML = ''; body.innerHTML = '';
+                            if (!rows || !rows.length) { head.innerHTML = '<tr><th class="px-6 py-3">No data</th></tr>'; return; }
+                            const cols = Object.keys(rows[0]);
+                            const thr = document.createElement('tr'); thr.className='bg-gray-50';
+                            cols.forEach(c=>{ const th=document.createElement('th'); th.className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'; th.textContent=c; thr.appendChild(th); }); head.appendChild(thr);
+                            rows.forEach(r=>{ const tr=document.createElement('tr'); tr.className='hover:bg-gray-50'; cols.forEach(c=>{ const td=document.createElement('td'); td.className='px-6 py-4 whitespace-nowrap text-sm text-gray-500'; td.textContent = r[c] != null ? r[c] : ''; tr.appendChild(td); }); body.appendChild(tr); });
+                        }
+
+                        function buildCharts(rows){
+                            const labels = rows.map(r=> r['Commune'] || r['commune'] || r['Commune Name'] || Object.values(r)[0]);
+                            const total = rows.map(r=> Number(String(r['Total']||r['TOTAL']||r['total']||r['Parcels']||r['parcels']||0).replace(/[^0-9.-]/g,'')) || 0);
+                            const validated = rows.map(r=> Number(String(r['Validated']||r['validated']||r['Validated Parcels']||0).replace(/[^0-9.-]/g,'')) || 0);
+
+                            // Commune bar chart
+                            try{ const ctx = document.getElementById('communeChart').getContext('2d'); if (window._communeChart) window._communeChart.destroy(); window._communeChart = new Chart(ctx, { type: 'bar', data: { labels, datasets:[{label:'Total Parcels', data:total, backgroundColor:'rgba(79,70,229,0.7)'},{label:'Validated Parcels', data:validated, backgroundColor:'rgba(16,185,129,0.7)'}] }, options:{ responsive:true, maintainAspectRatio:false } }); } catch(e){ console.warn(e); }
+
+                            // Status radar chart (simple heuristic using percentages if available)
+                            try{
+                                const nicad = rows.map(r=> Number(String((r['NICAD']||r['nicad']||'0').toString().match(/\d+/) || 0)) || 0);
+                                const ctasf = rows.map(r=> Number(String((r['CTASF']||r['ctasf']||'0').toString().match(/\d+/) || 0)) || 0);
+                                const sctx = document.getElementById('statusChart').getContext('2d'); if (window._statusChart) window._statusChart.destroy(); window._statusChart = new Chart(sctx, { type: 'radar', data:{ labels:['NICAD','CTASF','Validated'], datasets:[{ label:'Communes (sample)', data:[ average(nicad), average(ctasf), average(validated) ], backgroundColor:'rgba(79,70,229,0.2)', borderColor:'rgba(79,70,229,1)' }] }, options:{ responsive:true, maintainAspectRatio:false, scales:{ r:{ suggestedMin:0, suggestedMax:100 } } } });
+                            } catch(e){ console.warn(e); }
+                        }
+
+                        function average(arr){ if(!arr||!arr.length) return 0; return Math.round((arr.reduce((a,b)=>a+(Number(b)||0),0)/arr.length)*10)/10; }
+
+                        async function refreshCommunePanel(){
+                            const rows = await getCommuneRows();
+                            // If rows are arrays (CSV parsed without headers), try to convert to objects using header row
+                            let normalized = rows;
+                            if (Array.isArray(rows) && rows.length && Array.isArray(rows[0])){
+                                const hdr = rows[0]; normalized = rows.slice(1).map(r=>{ const obj={}; hdr.forEach((h,i)=> obj[h]= r[i]; return obj; });
+                            }
+                            buildTableFromRows(normalized);
+                            buildCharts(normalized);
+                        }
+
+                        // Wire search
+                        document.getElementById('communeSearch').addEventListener('input', (e)=>{
+                            const q = e.target.value.trim().toLowerCase(); const tbody=document.getElementById('liveCommuneBody'); Array.from(tbody.querySelectorAll('tr')).forEach(tr=>{ tr.style.display = q ? (tr.textContent.toLowerCase().includes(q) ? '' : 'none') : ''; });
+                        });
+
+                        // Initial load
+                        (function(){ refreshCommunePanel(); })();
+                    </script>
 
             <!-- Process Panel -->
             <div data-panel="process" class="panel">

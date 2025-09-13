@@ -342,6 +342,10 @@
         renderTableWithSettings(rows, settings);
     }
 
+    // Expose helpers so other panels can reuse the same data-fetching logic
+    try { window.fetchCommuneStatus = fetchCommuneStatus; } catch(_){}
+    try { window.communeTableInit = init; } catch(_){}
+
     // Initialize when DOM is ready
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', init);
