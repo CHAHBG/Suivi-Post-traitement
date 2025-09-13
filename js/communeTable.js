@@ -258,19 +258,45 @@
     function buildColumnChooser(columns, settings, rows){
         let container = document.getElementById('communeTableControls');
         if (!container) {
-            // try to create controls container next to the table if missing
-            const tbl = document.getElementById('communeTableContainer') || document.getElementById('communeStatusTable');
-            if (tbl && tbl.parentElement) {
-                container = document.createElement('div');
-                container.id = 'communeTableControls';
-                tbl.parentElement.insertBefore(container, tbl);
+            // try to create controls container next to a few known anchors if missing
+            const anchors = [
+                document.getElementById('communeTableContainer'),
+                document.getElementById('communeStatusTable'),
+                document.getElementById('commune-panel'),
+                document.querySelector('.commune-panel')
+            ];
+            let placed = false;
+            for (const anchor of anchors) {
+                if (anchor && anchor.parentElement) {
+                    container = document.createElement('div');
+                    container.id = 'communeTableControls';
+                    // give a minimal class so it looks decent when created dynamically
+                    container.className = 'mb-3';
+                    anchor.parentElement.insertBefore(container, anchor);
+                    placed = true;
+                    break;
+                }
+            }
+            // As a last resort append to body so we never return a null container
+            if (!placed) {
+                try {
+                    container = document.createElement('div');
+                    container.id = 'communeTableControls';
+                    container.className = 'mb-3';
+                    document.body.appendChild(container);
+                } catch (e) {
+                    // If even this fails, bail out safely
+                    return;
+                }
             }
         }
-        if (!container) return; // nothing we can do
+        if (!container) return; // defensive guard
         container.innerHTML = '';
         const cols = columns;
         cols.forEach(c => {
-            const id = 'colchk_' + c.replace(/\W+/g,'_');
+            // ensure id starts with a letter to be valid and avoid collisions
+            const safe = c.replace(/\W+/g,'_');
+            const id = 'colchk_' + (safe.match(/^[0-9]/) ? '_' + safe : safe);
             const div = document.createElement('div');
             div.className = 'inline-flex items-center mr-3';
             const inp = document.createElement('input');
