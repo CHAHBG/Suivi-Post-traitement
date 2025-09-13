@@ -78,6 +78,23 @@
         try { return Number(String(v).replace(/[,\s]/g,'')).toLocaleString('fr-FR'); } catch(e){ return String(v); }
     }
 
+    // Normalize header/key strings for robust matching (remove accents, punctuation, extra spaces)
+    function normalizeHeaderKey(s) {
+        if (s == null) return '';
+        try {
+            return String(s)
+                .trim()
+                .toLowerCase()
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .replace(/[^a-z0-9 ]/g, ' ')
+                .replace(/\s+/g, ' ')
+                .trim();
+        } catch (e) {
+            return String(s).trim().toLowerCase();
+        }
+    }
+
     function renderCellContent(col, raw) {
         const val = raw == null ? '' : String(raw).trim();
         const lower = col.toLowerCase();
@@ -173,8 +190,24 @@
                 const visible = settings.visible && settings.visible[col] !== false;
                 if (!visible) td.style.display = 'none';
                 // Case-insensitive lookup
-                const foundKey = Object.keys(row).find(k => k && k.toLowerCase() === String(col).toLowerCase());
-                const raw = foundKey ? row[foundKey] : (row[col] != null ? row[col] : '');
+                // Handle rows that may be arrays (CSV parsed without headers)
+                let raw = '';
+                if (Array.isArray(row)) {
+                    const idx = colsToUse.indexOf(col);
+                    raw = idx >= 0 && idx < row.length ? row[idx] : '';
+                } else {
+                    // Robust key lookup: normalize both column header and row keys
+                    const normCol = normalizeHeaderKey(col);
+                    let foundKey = Object.keys(row).find(k => normalizeHeaderKey(k) === normCol);
+                    if (!foundKey) {
+                        // Try fuzzy match: header contained in key or vice-versa
+                        foundKey = Object.keys(row).find(k => {
+                            const nk = normalizeHeaderKey(k);
+                            return nk && (nk.indexOf(normCol) === 0 || normCol.indexOf(nk) === 0 || nk.includes(normCol) || normCol.includes(nk));
+                        });
+                    }
+                    raw = foundKey ? row[foundKey] : (row[col] != null ? row[col] : '');
+                }
                 // Apply formatting/styling
                 const lower = String(col).toLowerCase();
                 if (/%|taux|% du|% nicad|% ctasf|taux suppression/i.test(col)) {
