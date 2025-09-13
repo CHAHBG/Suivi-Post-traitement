@@ -445,119 +445,187 @@
                 </section>
             </div>
 
-            <!-- Commune Status Table Panel -->
+            <!-- Commune Status Table Panel (reshaped) -->
             <div data-panel="commune-table" class="panel">
-                <section class="commune-table-section">
-                    <div class="section-intro mb-6">
-                        <h2 class="section-title">Commune Details</h2>
-                        <p class="section-description">Liste complète des communes et champs associés</p>
+                <section class="commune-panel">
+                    <div class="tooltip" style="display:none"></div>
+
+                    <!-- Summary Cards -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                        <div class="data-card bg-white rounded-xl shadow-md p-6">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <p class="text-gray-500 font-medium">Total Parcels</p>
+                                    <h3 class="text-3xl font-bold mt-2" id="commune-total-parcels">--</h3>
+                                </div>
+                                <div class="bg-indigo-100 p-3 rounded-lg"><i class="fas fa-layer-group text-indigo-600"></i></div>
+                            </div>
+                            <div class="mt-4">
+                                <div class="flex justify-between text-sm text-gray-600 mb-1">
+                                    <span>Kédougou</span>
+                                    <span id="commune-kedougou">--</span>
+                                </div>
+                                <div class="progress-bar"><div class="progress-fill bg-indigo-500" id="commune-kedougou-fill" style="width:0%"></div></div>
+                            </div>
+                        </div>
+
+                        <div class="data-card bg-white rounded-xl shadow-md p-6">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <p class="text-gray-500 font-medium">NICAD</p>
+                                    <h3 class="text-3xl font-bold mt-2" id="commune-nicad">--</h3>
+                                    <p class="text-green-600 text-sm mt-1" id="commune-nicad-rate">--</p>
+                                </div>
+                                <div class="bg-green-100 p-3 rounded-lg"><i class="fas fa-check-circle text-green-600"></i></div>
+                            </div>
+                        </div>
+
+                        <div class="data-card bg-white rounded-xl shadow-md p-6">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <p class="text-gray-500 font-medium">CTASF</p>
+                                    <h3 class="text-3xl font-bold mt-2" id="commune-ctasf">--</h3>
+                                    <p class="text-blue-600 text-sm mt-1" id="commune-ctasf-rate">--</p>
+                                </div>
+                                <div class="bg-blue-100 p-3 rounded-lg"><i class="fas fa-file-alt text-blue-600"></i></div>
+                            </div>
+                        </div>
+
+                        <div class="data-card bg-white rounded-xl shadow-md p-6">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <p class="text-gray-500 font-medium">Rejected Parcels</p>
+                                    <h3 class="text-3xl font-bold mt-2" id="commune-rejected">--</h3>
+                                    <p class="text-red-600 text-sm mt-1" id="commune-rejected-rate">--</p>
+                                </div>
+                                <div class="bg-red-100 p-3 rounded-lg"><i class="fas fa-times-circle text-red-600"></i></div>
+                            </div>
+                        </div>
                     </div>
 
-                    <div class="grid grid-cols-1 gap-6">
+                    <!-- Charts Row -->
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
                         <div class="data-card bg-white rounded-xl shadow-md p-6">
                             <div class="flex justify-between items-center mb-4">
-                                <h3 class="text-lg font-bold">Commune Details</h3>
-                                <div class="flex items-center space-x-2">
-                                    <div class="relative">
-                                        <input id="communeSearch" type="text" placeholder="Search..." class="bg-gray-100 border-0 rounded-lg px-3 py-1 pl-8 text-sm focus:outline-none">
-                                        <i class="fas fa-search absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-500"></i>
-                                    </div>
-                                    <button id="columnChooserBtn" class="text-gray-500 hover:text-gray-700">Columns</button>
+                                <h2 class="text-lg font-bold">Parcel Distribution by Commune</h2>
+                                <div class="flex space-x-2">
+                                    <button class="text-xs bg-gray-100 px-2 py-1 rounded">Kédougou</button>
+                                    <button class="text-xs bg-gray-100 px-2 py-1 rounded">Tambacounda</button>
+                                    <button class="text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded">All</button>
                                 </div>
                             </div>
-
-                            <div class="overflow-x-auto">
-                                <table id="liveCommuneTable" class="min-w-full divide-y divide-gray-200">
-                                    <thead class="bg-gray-50" id="liveCommuneHead"></thead>
-                                    <tbody class="bg-white divide-y divide-gray-200" id="liveCommuneBody"></tbody>
-                                </table>
-                            </div>
-                            <div class="px-6 py-3 bg-gray-50 text-right">
-                                <button id="viewAllCommunes" class="text-sm text-indigo-600 hover:text-indigo-800 font-medium">View All Communes →</button>
-                            </div>
+                            <div class="chart-container" style="height:300px"><canvas id="communeChart"></canvas></div>
                         </div>
 
                         <div class="data-card bg-white rounded-xl shadow-md p-6">
-                            <h3 class="text-lg font-bold mb-4">Parcel Distribution by Commune</h3>
-                            <div class="chart-container" style="height: 300px;">
-                                <canvas id="communeChart"></canvas>
+                            <div class="flex justify-between items-center mb-4">
+                                <h2 class="text-lg font-bold">Status Comparison</h2>
+                                <div class="relative">
+                                    <select id="communeStatusFilter" class="appearance-none bg-gray-100 border-0 rounded-lg px-3 py-1 pr-8 text-sm focus:outline-none">
+                                        <option>All Communes</option>
+                                        <option>Kédougou</option>
+                                        <option>Tambacounda</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="chart-container" style="height:300px"><canvas id="statusChart"></canvas></div>
+                        </div>
+                    </div>
+
+                    <!-- Detailed Data Table -->
+                    <div class="data-card bg-white rounded-xl shadow-md overflow-hidden mb-8">
+                        <div class="p-6 pb-0 flex justify-between items-center">
+                            <h2 class="text-lg font-bold">Commune Details</h2>
+                            <div class="flex items-center space-x-2">
+                                <div class="relative">
+                                    <input id="communeSearch" type="text" placeholder="Search..." class="bg-gray-100 border-0 rounded-lg px-3 py-1 pl-8 text-sm focus:outline-none">
+                                </div>
+                                <button id="communeFilterBtn" class="text-gray-500 hover:text-gray-700"><i class="fas fa-filter"></i></button>
                             </div>
                         </div>
+                        <div class="overflow-x-auto">
+                            <table id="liveCommuneTable" class="min-w-full divide-y divide-gray-200">
+                                <thead id="liveCommuneHead" class="bg-gray-50"></thead>
+                                <tbody id="liveCommuneBody" class="bg-white divide-y divide-gray-200"></tbody>
+                            </table>
+                        </div>
+                        <div class="px-6 py-3 bg-gray-50 text-right">
+                            <button id="viewAllCommunes" class="text-sm text-indigo-600 hover:text-indigo-800 font-medium">View All Communes →</button>
+                        </div>
+                    </div>
 
-                        <div class="data-card bg-white rounded-xl shadow-md p-6">
-                            <h3 class="text-lg font-bold mb-4">Status Comparison</h3>
-                            <div class="chart-container" style="height: 300px;">
-                                <canvas id="statusChart"></canvas>
+                    <!-- Geomatician Performance (cards) -->
+                    <div class="data-card bg-white rounded-xl shadow-md p-6 mb-8">
+                        <h2 class="text-lg font-bold mb-4">Geomatician Performance</h2>
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                            <div class="bg-gray-50 p-4 rounded-lg">
+                                <div class="flex items-center mb-2"><div class="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center mr-3"><span class="text-indigo-600 font-medium">A</span></div><h3 class="font-medium">Awa</h3></div>
+                                <div class="space-y-2"><div class="flex justify-between text-sm"><span class="text-gray-500">Parcels</span><span class="font-medium">11,623</span></div><div class="flex justify-between text-sm"><span class="text-gray-500">Success Rate</span><span class="font-medium text-green-600">98.7%</span></div></div>
                             </div>
+                            <div class="bg-gray-50 p-4 rounded-lg"><div class="flex items-center mb-2"><div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center mr-3"><span class="text-blue-600 font-medium">D</span></div><h3 class="font-medium">Demba</h3></div><div class="space-y-2"><div class="flex justify-between text-sm"><span class="text-gray-500">Parcels</span><span class="font-medium">9,307</span></div><div class="flex justify-between text-sm"><span class="text-gray-500">Success Rate</span><span class="font-medium text-green-600">96.2%</span></div></div></div>
+                            <div class="bg-gray-50 p-4 rounded-lg"><div class="flex items-center mb-2"><div class="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center mr-3"><span class="text-purple-600 font-medium">B</span></div><h3 class="font-medium">Bamba</h3></div><div class="space-y-2"><div class="flex justify-between text-sm"><span class="text-gray-500">Parcels</span><span class="font-medium">7,792</span></div><div class="flex justify-between text-sm"><span class="text-gray-500">Success Rate</span><span class="font-medium text-green-600">97.5%</span></div></div></div>
+                            <div class="bg-gray-50 p-4 rounded-lg"><div class="flex items-center mb-2"><div class="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center mr-3"><span class="text-green-600 font-medium">M</span></div><h3 class="font-medium">Mariama</h3></div><div class="space-y-2"><div class="flex justify-between text-sm"><span class="text-gray-500">Parcels</span><span class="font-medium">5,961</span></div><div class="flex justify-between text-sm"><span class="text-gray-500">Success Rate</span><span class="font-medium text-red-600">85.4%</span></div></div></div>
                         </div>
                     </div>
 
                     <script>
-                        // Use the shared fetchCommuneStatus if available
-                        async function getCommuneRows() {
-                            try {
-                                if (window.fetchCommuneStatus) return await window.fetchCommuneStatus();
-                                if (window.enhancedDashboard && window.enhancedDashboard.rawData) return window.enhancedDashboard.rawData['Commune Analysis'] || window.enhancedDashboard.rawData['Commune Status'] || [];
-                                return [];
-                            } catch (e) { console.warn('commune panel fetch failed', e); return []; }
-                        }
-
-                        function normalizeKey(s){ if (s==null) return ''; return String(s).trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim(); }
-
-                        function buildTableFromRows(rows){
-                            const head = document.getElementById('liveCommuneHead');
-                            const body = document.getElementById('liveCommuneBody');
-                            head.innerHTML = ''; body.innerHTML = '';
-                            if (!rows || !rows.length) { head.innerHTML = '<tr><th class="px-6 py-3">No data</th></tr>'; return; }
-                            const cols = Object.keys(rows[0]);
-                            const thr = document.createElement('tr'); thr.className='bg-gray-50';
-                            cols.forEach(c=>{ const th=document.createElement('th'); th.className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'; th.textContent=c; thr.appendChild(th); }); head.appendChild(thr);
-                            rows.forEach(r=>{ const tr=document.createElement('tr'); tr.className='hover:bg-gray-50'; cols.forEach(c=>{ const td=document.createElement('td'); td.className='px-6 py-4 whitespace-nowrap text-sm text-gray-500'; td.textContent = r[c] != null ? r[c] : ''; tr.appendChild(td); }); body.appendChild(tr); });
-                        }
-
-                        function buildCharts(rows){
-                            const labels = rows.map(r=> r['Commune'] || r['commune'] || r['Commune Name'] || Object.values(r)[0]);
-                            const total = rows.map(r=> Number(String(r['Total']||r['TOTAL']||r['total']||r['Parcels']||r['parcels']||0).replace(/[^0-9.-]/g,'')) || 0);
-                            const validated = rows.map(r=> Number(String(r['Validated']||r['validated']||r['Validated Parcels']||0).replace(/[^0-9.-]/g,'')) || 0);
-
-                            // Commune bar chart
-                            try{ const ctx = document.getElementById('communeChart').getContext('2d'); if (window._communeChart) window._communeChart.destroy(); window._communeChart = new Chart(ctx, { type: 'bar', data: { labels, datasets:[{label:'Total Parcels', data:total, backgroundColor:'rgba(79,70,229,0.7)'},{label:'Validated Parcels', data:validated, backgroundColor:'rgba(16,185,129,0.7)'}] }, options:{ responsive:true, maintainAspectRatio:false } }); } catch(e){ console.warn(e); }
-
-                            // Status radar chart (simple heuristic using percentages if available)
-                            try{
-                                const nicad = rows.map(r=> Number(String((r['NICAD']||r['nicad']||'0').toString().match(/\d+/) || 0)) || 0);
-                                const ctasf = rows.map(r=> Number(String((r['CTASF']||r['ctasf']||'0').toString().match(/\d+/) || 0)) || 0);
-                                const sctx = document.getElementById('statusChart').getContext('2d'); if (window._statusChart) window._statusChart.destroy(); window._statusChart = new Chart(sctx, { type: 'radar', data:{ labels:['NICAD','CTASF','Validated'], datasets:[{ label:'Communes (sample)', data:[ average(nicad), average(ctasf), average(validated) ], backgroundColor:'rgba(79,70,229,0.2)', borderColor:'rgba(79,70,229,1)' }] }, options:{ responsive:true, maintainAspectRatio:false, scales:{ r:{ suggestedMin:0, suggestedMax:100 } } } });
-                            } catch(e){ console.warn(e); }
-                        }
-
-                        function average(arr){ if(!arr||!arr.length) return 0; return Math.round((arr.reduce((a,b)=>a+(Number(b)||0),0)/arr.length)*10)/10; }
-
-                        async function refreshCommunePanel(){
-                            const rows = await getCommuneRows();
-                            // If rows are arrays (CSV parsed without headers), try to convert to objects using header row
-                            let normalized = rows;
-                            if (Array.isArray(rows) && rows.length && Array.isArray(rows[0])){
-                                const hdr = rows[0];
-                                normalized = rows.slice(1).map(r => {
-                                    const obj = {};
-                                    hdr.forEach((h, i) => { obj[h] = r[i]; });
-                                    return obj;
-                                });
+                        // Basic panel initialization using existing fetch helper where available
+                        (function(){
+                            function average(arr){ if(!arr||!arr.length) return 0; return Math.round((arr.reduce((a,b)=>a+(Number(b)||0),0)/arr.length)*10)/10; }
+                            async function fetchCsvByGid(gid){
+                                try{
+                                    const base = (window.CONFIG && window.CONFIG.SHEETS_BASE_URL) ? window.CONFIG.SHEETS_BASE_URL : 'https://docs.google.com/spreadsheets/d/1CbDBJtoWWPRjEH4DOSlv4jjnJ2G-1MvW/export?format=csv&gid=';
+                                    const url = base + gid;
+                                    const resp = await fetch(url, {cache: 'no-cache'});
+                                    if (!resp || !resp.ok) return [];
+                                    const text = await resp.text();
+                                    // minimal csv parse
+                                    const lines = text.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n').filter(l=>l.trim()!=='');
+                                    if (!lines.length) return [];
+                                    const delimiter = (lines[0].includes(';') && !lines[0].includes(',')) ? ';' : ',';
+                                    const headers = lines[0].split(delimiter).map(h=>h.trim().replace(/^"|"$/g,''));
+                                    const rows = [];
+                                    for (let i=1;i<lines.length;i++){
+                                        const vals = lines[i].split(delimiter).map(v=>v.trim().replace(/^"|"$/g,''));
+                                        if (vals.every(v=>v==='')) continue;
+                                        const obj = {};
+                                        headers.forEach((h,idx)=> obj[h]= vals[idx] !== undefined ? vals[idx] : '');
+                                        rows.push(obj);
+                                    }
+                                    return rows;
+                                }catch(err){ console.warn('CSV fetch failed', err); return []; }
                             }
-                            buildTableFromRows(normalized);
-                            buildCharts(normalized);
-                        }
 
-                        // Wire search
-                        document.getElementById('communeSearch').addEventListener('input', (e)=>{
-                            const q = e.target.value.trim().toLowerCase(); const tbody=document.getElementById('liveCommuneBody'); Array.from(tbody.querySelectorAll('tr')).forEach(tr=>{ tr.style.display = q ? (tr.textContent.toLowerCase().includes(q) ? '' : 'none') : ''; });
-                        });
-
-                        // Initial load
-                        (function(){ refreshCommunePanel(); })();
+                            async function getRows(){
+                                try{
+                                    // 1) prefer shared helper
+                                    if (window.fetchCommuneStatus) {
+                                        const r = await window.fetchCommuneStatus();
+                                        if (r && r.length) return r;
+                                    }
+                                    // 2) enhancedDashboard rawData
+                                    if (window.enhancedDashboard && window.enhancedDashboard.rawData) {
+                                        const r = window.enhancedDashboard.rawData['Commune Analysis'] || window.enhancedDashboard.rawData['Commune Status'] || [];
+                                        if (r && r.length) return r;
+                                    }
+                                    // 3) Try direct CSV fetch by gid (explicit sheet)
+                                    const gid = '1421590976';
+                                    const csvRows = await fetchCsvByGid(gid);
+                                    if (csvRows && csvRows.length) return csvRows;
+                                    return [];
+                                } catch(e){ console.warn('getRows error', e); return []; }
+                            }
+                            function buildTable(rows){ const head=document.getElementById('liveCommuneHead'); const body=document.getElementById('liveCommuneBody'); head.innerHTML=''; body.innerHTML=''; if(!rows||!rows.length){ head.innerHTML='<tr><th class="px-6 py-3">No data</th></tr>'; return; } const cols=Object.keys(rows[0]); const thr=document.createElement('tr'); thr.className='bg-gray-50'; cols.forEach(c=>{ const th=document.createElement('th'); th.className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'; th.textContent=c; thr.appendChild(th); }); head.appendChild(thr); rows.forEach(r=>{ const tr=document.createElement('tr'); tr.className='hover:bg-gray-50'; cols.forEach(c=>{ const td=document.createElement('td'); td.className='px-6 py-4 whitespace-nowrap text-sm text-gray-500'; td.textContent = r[c] != null ? r[c] : ''; tr.appendChild(td); }); body.appendChild(tr); }); }
+                            function buildCharts(rows){ try{ const labels=rows.map(r=> r['Commune']||r['commune']||Object.values(r)[0]); const total=rows.map(r=> Number(String(r['Total']||r['total']||r['Parcels']||0).replace(/[^0-9.-]/g,''))||0); const validated=rows.map(r=> Number(String(r['Validated']||r['validated']||0).replace(/[^0-9.-]/g,''))||0); const ctx=document.getElementById('communeChart').getContext('2d'); if(window._communeChart) window._communeChart.destroy(); window._communeChart=new Chart(ctx,{type:'bar',data:{labels,datasets:[{label:'Total Parcels',data:total,backgroundColor:'rgba(79,70,229,0.7)'},{label:'Validated Parcels',data:validated,backgroundColor:'rgba(16,185,129,0.7)'}]},options:{responsive:true,maintainAspectRatio:false}}); const nicad=rows.map(r=>Number(String(r['NICAD']||r['nicad']||'0').match(/\d+/)||0)||0); const ctasf=rows.map(r=>Number(String(r['CTASF']||r['ctasf']||'0').match(/\d+/)||0)||0); const sctx=document.getElementById('statusChart').getContext('2d'); if(window._statusChart) window._statusChart.destroy(); window._statusChart=new Chart(sctx,{type:'radar',data:{labels:['NICAD','CTASF','Validated'],datasets:[{label:'Communes (sample)',data:[average(nicad),average(ctasf),average(validated)],backgroundColor:'rgba(79,70,229,0.2)',borderColor:'rgba(79,70,229,1)'}]},options:{responsive:true,maintainAspectRatio:false,scales:{r:{suggestedMin:0,suggestedMax:100}}}}); }catch(e){console.warn(e);} }
+                            async function refresh(){ const rows=await getRows(); let normalized=rows; if(Array.isArray(rows)&&rows.length&&Array.isArray(rows[0])){ const hdr=rows[0]; normalized=rows.slice(1).map(r=>{ const obj={}; hdr.forEach((h,i)=>obj[h]=r[i]); return obj; }); } buildTable(normalized); buildCharts(normalized); }
+                            document.getElementById('communeSearch').addEventListener('input', (e)=>{ const q=e.target.value.trim().toLowerCase(); const tbody=document.getElementById('liveCommuneBody'); Array.from(tbody.querySelectorAll('tr')).forEach(tr=>{ tr.style.display = q ? (tr.textContent.toLowerCase().includes(q) ? '' : 'none') : ''; }); });
+                            // init
+                            try{ AOS && AOS.refresh(); } catch(e){}
+                            refresh();
+                        })();
                     </script>
-
+                </section>
+            </div>
             <!-- Process Panel -->
             <div data-panel="process" class="panel">
                 <section class="process-section">
