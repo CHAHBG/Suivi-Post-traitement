@@ -134,39 +134,47 @@
 
     function ensureTableStructure() {
         // Ensure the table structure exists before trying to manipulate it
-        let table = document.getElementById('communeStatusTable');
-        if (!table) {
-            table = document.createElement('table');
-            table.id = 'communeStatusTable';
-            table.className = 'min-w-full table-auto border-collapse';
-            
-            const container = document.getElementById('communeTableContainer');
-            if (container) {
-                container.appendChild(table);
-            } else {
-                // Try to find a suitable parent or create one
-                const anchors = [
-                    document.getElementById('communeStatusPanel'),
-                    document.getElementById('commune-panel'),
-                    document.querySelector('.commune-panel')
-                ];
-                let placed = false;
-                for (const a of anchors) {
-                    if (a && a.parentElement) {
-                        a.parentElement.insertBefore(table, a.nextSibling);
-                        placed = true; 
-                        break;
-                    }
-                }
-                if (!placed) {
-                    try { 
-                        document.body.appendChild(table); 
-                    } catch (e) { 
-                        console.warn('Could not append table to DOM:', e);
-                        return false;
-                    }
-                }
+            // If the liveCommuneTable exists (panel is managed by inline script), skip table creation here
+            if (document.getElementById('liveCommuneTable')) {
+                // Table and charts are managed by the inline script in index.html
+                return true;
             }
+            // Ensure the table structure exists (do not overwrite it) so thead/tbody references remain stable
+            let table = document.getElementById('communeStatusTable');
+            if (!table) {
+                table = document.createElement('table');
+                table.id = 'communeStatusTable';
+                table.className = 'min-w-full table-auto border-collapse';
+                const thead = document.createElement('thead'); thead.id = 'communeTableHead';
+                const tbody = document.createElement('tbody'); tbody.id = 'communeTableBody';
+                table.appendChild(thead); table.appendChild(tbody);
+                const container = document.getElementById('communeTableContainer');
+                if (container) {
+                    container.appendChild(table);
+                } else {
+                    // Try to find a suitable parent or create one
+                    const anchors = [
+                        document.getElementById('communeStatusPanel'),
+                        document.getElementById('commune-panel'),
+                        document.querySelector('.commune-panel')
+                    ];
+                    let placed = false;
+                    for (const a of anchors) {
+                        if (a && a.parentElement) {
+                            a.parentElement.insertBefore(table, a.nextSibling);
+                            placed = true; 
+                            break;
+                        }
+                    }
+                    if (!placed) {
+                        try { 
+                            document.body.appendChild(table); 
+                        } catch (e) { 
+                            console.warn('Could not append table to DOM:', e);
+                            return false;
+                        }
+                    }
+                }
         }
         
         // Ensure thead exists
