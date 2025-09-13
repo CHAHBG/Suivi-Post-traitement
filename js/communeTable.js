@@ -327,8 +327,9 @@
             }
         }
 
-        console.debug('communeTable: fetched rows count =', (rows && rows.length) || 0, rows && rows[0] ? Object.keys(rows[0]) : null);
-        const settings = getSettings();
+    // Load persistent settings early to avoid temporal-dead-zone issues
+    const settings = getSettings();
+    console.debug('communeTable: fetched rows count =', (rows && rows.length) || 0, rows && rows[0] ? Object.keys(rows[0]) : null);
         // If no saved order, derive columns from first row
         const columns = settings.order && settings.order.length ? settings.order : (rows && rows[0] ? Object.keys(rows[0]) : (settings.order || []));
         // Ensure settings.order exists
