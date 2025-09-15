@@ -178,6 +178,83 @@ class ChartService {
         };
     }
 
+    /**
+     * Build the Commune bar chart (used in the Commune Details panel)
+     * Creates a bar chart on canvas id `communeChart` with Total and Validated series.
+     * @param {Array<Object>} rows
+     */
+    buildCommuneChart(rows){
+        try{
+            const canvasId = 'communeChart';
+            const canvasEl = document.getElementById(canvasId);
+            if(!canvasEl) return null;
+            if(!rows || !rows.length){ this.destroyChart(canvasId); return null; }
+
+            const labels = rows.map(r => (r.commune || r.Commune || r.CommuneName || Object.values(r)[0] || '').toString());
+            const toNum = (r, candidates) => this._getNumericField(r, candidates);
+            const total = rows.map(r => toNum(r, ['total','totalparcels','parcels','Parcelles','Total']));
+            const validated = rows.map(r => toNum(r, ['validated','validatedparcels','validated_parcels','Validated','Validated Parcels']));
+
+            const config = {
+                type: 'bar',
+                data: {
+                    labels,
+                    datasets: [
+                        { label: 'Total Parcels', data: total, backgroundColor: CONFIG.COLORS.primary, borderColor: CONFIG.COLORS.primary + 'CC', borderWidth: 1, borderRadius: 4 },
+                        { label: 'Validated Parcels', data: validated, backgroundColor: CONFIG.COLORS.success, borderColor: CONFIG.COLORS.success + 'CC', borderWidth: 1, borderRadius: 4 }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { title: { display: false } },
+                    interaction: { mode: 'index', intersect: false },
+                    scales: { y: { beginAtZero: true } }
+                }
+            };
+
+            return this._createChart(canvasId, config, { showLegend: true });
+        }catch(e){ console.warn('buildCommuneChart failed', e); return null; }
+    }
+
+    /**
+     * Build the smaller Status chart (radar) used in the Commune panel
+     * Shows average NICAD / CTASF / Validated metrics.
+     * @param {Array<Object>} rows
+     */
+    buildStatusChart(rows){
+        try{
+            const canvasId = 'statusChart';
+            const canvasEl = document.getElementById(canvasId);
+            if(!canvasEl) return null;
+            if(!rows || !rows.length){ this.destroyChart(canvasId); return null; }
+
+            const avg = (arr) => { if(!arr||!arr.length) return 0; return Math.round((arr.reduce((s,v)=>s+(Number(v)||0),0)/arr.length)*10)/10; };
+            const nicad = rows.map(r => this._getNumericField(r, ['nicad','NICAD']));
+            const ctasf = rows.map(r => this._getNumericField(r, ['ctasf','CTASF']));
+            const validated = rows.map(r => this._getNumericField(r, ['validated','Validated']));
+
+            const data = [ avg(nicad), avg(ctasf), avg(validated) ];
+            const labels = ['NICAD','CTASF','Validated'];
+
+            const cfg = {
+                type: 'radar',
+                data: {
+                    labels,
+                    datasets: [{ label: 'Communes (sample)', data, backgroundColor: CONFIG.COLORS.primary + '22', borderColor: CONFIG.COLORS.primary, pointBackgroundColor: CONFIG.COLORS.primary }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: { r: { beginAtZero: true, suggestedMax: Math.max(100, Math.max(...data) * 1.2) } },
+                    plugins: { legend: { display: false } }
+                }
+            };
+
+            return this._createChart(canvasId, cfg, { showLegend: false });
+        }catch(e){ console.warn('buildStatusChart failed', e); return null; }
+    }
+
     
 
     _initGlobalTheme(){
@@ -2393,3 +2470,4 @@ class ChartService {
 
 // Create global instance
 window.chartService = new ChartService();
+export default window.chartService;

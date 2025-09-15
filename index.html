@@ -514,7 +514,11 @@
                                     <button class="text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded">All</button>
                                 </div>
                             </div>
-                            <div class="chart-container" style="height:300px"><canvas id="communeChart"></canvas></div>
+                            <div class="chart-container relative" style="height:300px">
+                                <canvas id="communeChart"></canvas>
+                                <div id="communeChartLoader" class="absolute inset-0 flex items-center justify-center text-gray-500" style="background:rgba(255,255,255,0.7);display:none">Chargement...</div>
+                                <div id="communeChartNoData" class="absolute inset-0 flex items-center justify-center text-gray-500" style="display:none;">Aucune donnée disponible</div>
+                            </div>
                         </div>
 
                         <div class="data-card bg-white rounded-xl shadow-md p-6">
@@ -528,7 +532,11 @@
                                     </select>
                                 </div>
                             </div>
-                            <div class="chart-container" style="height:300px"><canvas id="statusChart"></canvas></div>
+                            <div class="chart-container relative" style="height:300px">
+                                <canvas id="statusChart"></canvas>
+                                <div id="statusChartLoader" class="absolute inset-0 flex items-center justify-center text-gray-500" style="background:rgba(255,255,255,0.7);display:none">Chargement...</div>
+                                <div id="statusChartNoData" class="absolute inset-0 flex items-center justify-center text-gray-500" style="display:none;">Aucune donnée disponible</div>
+                            </div>
                         </div>
                     </div>
 
@@ -536,14 +544,21 @@
                     <div class="data-card bg-white rounded-xl shadow-md overflow-hidden mb-8">
                         <div class="p-6 pb-0 flex justify-between items-center">
                             <h2 class="text-lg font-bold">Commune Details</h2>
-                            <div class="flex items-center space-x-2">
+                                <div class="flex items-center space-x-2">
                                 <div class="relative">
                                     <input id="communeSearch" type="text" placeholder="Search..." class="bg-gray-100 border-0 rounded-lg px-3 py-1 pl-8 text-sm focus:outline-none">
                                 </div>
-                                <button id="communeFilterBtn" class="text-gray-500 hover:text-gray-700"><i class="fas fa-filter"></i></button>
+                                <div class="relative" id="columnFilter">
+                                    <button id="communeFilterBtn" class="text-gray-500 hover:text-gray-700 dropdown-toggle" aria-haspopup="true" aria-expanded="false" title="Afficher/masquer colonnes"><i class="fas fa-filter"></i></button>
+                                    <div id="columnFilterMenu" class="dropdown-menu" style="display:none;position:absolute;z-index:40;min-width:220px;background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:6px;box-shadow:0 8px 24px rgba(0,0,0,0.08);">
+                                        <!-- dynamically populated -->
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                        <div class="overflow-x-auto">
+                        <div class="overflow-x-auto relative">
+                            <div id="communeTableLoader" class="absolute inset-0 flex items-center justify-center text-gray-500" style="background:rgba(255,255,255,0.7);display:none">Chargement...</div>
+                            <div id="communeTableNoData" class="absolute inset-0 flex items-center justify-center text-gray-500" style="display:none;">Aucune donnée disponible</div>
                             <table id="liveCommuneTable" class="min-w-full divide-y divide-gray-200">
                                 <thead id="liveCommuneHead" class="bg-gray-50"></thead>
                                 <tbody id="liveCommuneBody" class="bg-white divide-y divide-gray-200"></tbody>
@@ -551,27 +566,179 @@
                         </div>
                         <div class="px-6 py-3 bg-gray-50 text-right">
                             <button id="viewAllCommunes" class="text-sm text-indigo-600 hover:text-indigo-800 font-medium">View All Communes →</button>
-                        </div>
-                    </div>
+                        <script type="module" src="js/communePanel.js"></script>
+                        <script>
+                            // Column filter menu logic for Commune Details
+                            (function(){
+                                const menuEl = document.getElementById('columnFilterMenu');
+                                const toggleBtn = document.getElementById('communeFilterBtn');
+                                const tableId = 'liveCommuneTable';
 
-                    <!-- Geomatician Performance (cards) -->
-                    <div class="data-card bg-white rounded-xl shadow-md p-6 mb-8">
-                        <h2 class="text-lg font-bold mb-4">Geomatician Performance</h2>
-                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                            <div class="bg-gray-50 p-4 rounded-lg">
-                                <div class="flex items-center mb-2"><div class="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center mr-3"><span class="text-indigo-600 font-medium">A</span></div><h3 class="font-medium">Awa</h3></div>
-                                <div class="space-y-2"><div class="flex justify-between text-sm"><span class="text-gray-500">Parcels</span><span class="font-medium">11,623</span></div><div class="flex justify-between text-sm"><span class="text-gray-500">Success Rate</span><span class="font-medium text-green-600">98.7%</span></div></div>
-                            </div>
-                            <div class="bg-gray-50 p-4 rounded-lg"><div class="flex items-center mb-2"><div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center mr-3"><span class="text-blue-600 font-medium">D</span></div><h3 class="font-medium">Demba</h3></div><div class="space-y-2"><div class="flex justify-between text-sm"><span class="text-gray-500">Parcels</span><span class="font-medium">9,307</span></div><div class="flex justify-between text-sm"><span class="text-gray-500">Success Rate</span><span class="font-medium text-green-600">96.2%</span></div></div></div>
-                            <div class="bg-gray-50 p-4 rounded-lg"><div class="flex items-center mb-2"><div class="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center mr-3"><span class="text-purple-600 font-medium">B</span></div><h3 class="font-medium">Bamba</h3></div><div class="space-y-2"><div class="flex justify-between text-sm"><span class="text-gray-500">Parcels</span><span class="font-medium">7,792</span></div><div class="flex justify-between text-sm"><span class="text-gray-500">Success Rate</span><span class="font-medium text-green-600">97.5%</span></div></div></div>
-                            <div class="bg-gray-50 p-4 rounded-lg"><div class="flex items-center mb-2"><div class="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center mr-3"><span class="text-green-600 font-medium">M</span></div><h3 class="font-medium">Mariama</h3></div><div class="space-y-2"><div class="flex justify-between text-sm"><span class="text-gray-500">Parcels</span><span class="font-medium">5,961</span></div><div class="flex justify-between text-sm"><span class="text-gray-500">Success Rate</span><span class="font-medium text-red-600">85.4%</span></div></div></div>
+                                function getHeaders(){
+                                    const table = document.getElementById(tableId);
+                                    if(!table) return [];
+                                    const ths = Array.from(table.querySelectorAll('thead th'));
+                                    return ths.map(th => ({ key: th.dataset.key || th.textContent.trim(), label: th.textContent.trim() }));
+                                }
+
+                                function buildMenu(){
+                                    if(!menuEl) return;
+                                    const headers = getHeaders();
+                                    if(!headers.length){ menuEl.innerHTML = '<div style="padding:8px;color:#6b7280">Aucune colonne détectée</div>'; return; }
+                                    const vis = JSON.parse(localStorage.getItem('communes_table_visibility')||'{}');
+                                    menuEl.innerHTML = headers.map(h=>{
+                                        const checked = vis[h.key] === undefined ? true : !!vis[h.key];
+                                        return `<label style="display:block;padding:6px 10px;white-space:nowrap;font-size:13px;color:#111827"><input type="checkbox" data-col="${h.key.replace(/"/g,'&quot;')}" ${checked? 'checked': ''} style="margin-right:8px"/> ${h.label}</label>`;
+                                    }).join('');
+
+                                    // wire up checkboxes
+                                    menuEl.querySelectorAll('input[type=checkbox]').forEach(cb=>{
+                                        cb.addEventListener('change', ()=>{
+                                            const key = cb.getAttribute('data-col');
+                                            const table = document.getElementById(tableId);
+                                            if(!table) return;
+                                            const ths = Array.from(table.querySelectorAll('thead th'));
+                                            const idx = ths.findIndex(th => (th.dataset.key || th.textContent.trim()) === key);
+                                            if(idx === -1) return;
+                                            const show = cb.checked;
+                                            // header
+                                            const th = ths[idx]; if(th) th.style.display = show ? '' : 'none';
+                                            // body
+                                            table.querySelectorAll('tbody tr').forEach(tr=>{ const td = tr.children[idx]; if(td) td.style.display = show ? '' : 'none'; });
+                                            const curr = JSON.parse(localStorage.getItem('communes_table_visibility')||'{}'); curr[key] = show; localStorage.setItem('communes_table_visibility', JSON.stringify(curr));
+                                        });
+                                    });
+                                }
+
+                                function toggleMenu(e){
+                                    e && e.stopPropagation && e.stopPropagation();
+                                    if(!menuEl || !toggleBtn) return;
+
+                                    // determine current visibility
+                                    const currentlyVisible = menuEl.classList.contains('show') && window.getComputedStyle(menuEl).display !== 'none';
+                                    if(currentlyVisible){
+                                        // hide
+                                        menuEl.classList.remove('show');
+                                        menuEl.style.display = 'none';
+                                        // if we moved it to body, keep it there (no need to restore parent)
+                                        return;
+                                    }
+
+                                    // show via portal: append to body so it won't be clipped by overflow:hidden parents
+                                    buildMenu();
+                                    // ensure appended to body
+                                    if(menuEl.parentElement !== document.body){
+                                        menuEl.__originalParent = menuEl.parentElement;
+                                        document.body.appendChild(menuEl);
+                                    }
+
+                                    // prepare for measurement
+                                    menuEl.style.position = 'fixed';
+                                    menuEl.style.display = 'block';
+                                    menuEl.style.visibility = 'hidden';
+                                    menuEl.classList.add('show');
+                                    menuEl.style.zIndex = 9999;
+
+                                    // measure
+                                    const menuRect = menuEl.getBoundingClientRect();
+                                    const btnRect = toggleBtn.getBoundingClientRect();
+                                    const vw = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
+                                    const vh = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0);
+
+                                    // target: menu top-right aligns with button bottom-right (menu appears below button)
+                                    let left = btnRect.right - menuRect.width;
+                                    let top = btnRect.bottom + 6; // 6px gap
+
+                                    // if not enough space below, show above
+                                    if (top + menuRect.height > vh - 8){
+                                        const altTop = btnRect.top - menuRect.height - 6;
+                                        if (altTop > 8) top = altTop; // place above if it fits
+                                        else {
+                                            // not enough space either way, clamp top and allow internal scroll
+                                            top = Math.max(8, vh - menuRect.height - 8);
+                                        }
+                                    }
+
+                                    // clamp left to viewport with 8px padding
+                                    if (left + menuRect.width > vw - 8) left = vw - menuRect.width - 8;
+                                    if (left < 8) left = 8;
+
+                                    menuEl.style.left = `${Math.round(left)}px`;
+                                    menuEl.style.top = `${Math.round(top)}px`;
+
+                                    // recompute available height and set maxHeight
+                                    const availableBelow = vh - (btnRect.bottom + 6) - 8;
+                                    const availableAbove = btnRect.top - 6 - 8;
+                                    const maxH = Math.max(120, Math.min(600, Math.max(availableBelow, availableAbove)));
+                                    menuEl.style.maxHeight = `${maxH}px`;
+                                    menuEl.style.overflowY = 'auto';
+
+                                    // reveal
+                                    menuEl.style.visibility = 'visible';
+                                }
+
+                                // Close on outside click / escape — works when menu is appended to body
+                                document.addEventListener('click', (ev)=>{
+                                    if(!menuEl) return;
+                                    const target = ev.target;
+                                    if (target === toggleBtn) return; // toggle logic handles this
+                                    // if click is outside menu and outside the original toggle button, hide
+                                    if (!menuEl.contains(target)) {
+                                        menuEl.style.display='none';
+                                        menuEl.classList.remove('show');
+                                    }
+                                });
+                                document.addEventListener('keydown', (ev)=>{
+                                    if(ev.key==='Escape' && menuEl && menuEl.classList.contains('show')) {
+                                        menuEl.style.display='none';
+                                        menuEl.classList.remove('show');
+                                    }
+                                });
+
+                                toggleBtn && toggleBtn.addEventListener('click', toggleMenu);
+
+                                // Rebuild menu after table render; observe DOM for changes
+                                const table = document.getElementById(tableId);
+                                if(table){
+                                    const obs = new MutationObserver(()=>{ setTimeout(buildMenu, 50); });
+                                    obs.observe(table, { childList: true, subtree: true });
+                                    // Apply saved visibility on load
+                                    const applySaved = ()=>{
+                                        const vis = JSON.parse(localStorage.getItem('communes_table_visibility')||'{}');
+                                        const ths = Array.from(table.querySelectorAll('thead th'));
+                                        ths.forEach((th, idx)=>{
+                                            const key = th.dataset.key || th.textContent.trim();
+                                            const show = vis[key] === undefined ? true : !!vis[key];
+                                            if(!show) { th.style.display = 'none'; table.querySelectorAll('tbody tr').forEach(tr=>{ const td = tr.children[idx]; if(td) td.style.display='none'; }); }
+                                        });
+                                    };
+                                    applySaved();
+                                }
+                            })();
+                        </script>
                         </div>
                     </div>
 
                     <script>
-                        // Basic panel initialization using existing fetch helper where available
+                        // Basic panel initialization using existing fetch helper
                         (function(){
                             function average(arr){ if(!arr||!arr.length) return 0; return Math.round((arr.reduce((a,b)=>a+(Number(b)||0),0)/arr.length)*10)/10; }
+
+                            // Normalize header keys: lowercase, strip diacritics, remove non-alnum
+                            function normalizeKey(k){ if(!k && k!==0) return ''; try{ return k.toString().normalize('NFD').replace(/\p{Diacritic}/gu,'').toLowerCase().replace(/[^a-z0-9]/g,'').trim(); }catch(e){ return String(k).toLowerCase().replace(/[^a-z0-9]/g,'').trim(); } }
+
+                            // Normalize rows: accept array-of-objects or array-of-arrays with headers
+                            function normalizeRows(rows){
+                                if(!rows || !rows.length) return [];
+                                // If rows are arrays (first row headers)
+                                if (Array.isArray(rows[0]) ){
+                                    const hdr = rows[0];
+                                    return rows.slice(1).map(r=>{ const obj={}; hdr.forEach((h,i)=> obj[normalizeKey(h||`col${i}`)] = r[i] != null ? r[i] : ''); return obj; });
+                                }
+                                // else assume array of objects: normalize keys
+                                return rows.map(raw=>{ const obj={}; Object.keys(raw||{}).forEach(k=> obj[normalizeKey(k)] = raw[k]); return obj; });
+                            }
+
                             async function fetchCsvByGid(gid){
                                 try{
                                     const base = (window.CONFIG && window.CONFIG.SHEETS_BASE_URL) ? window.CONFIG.SHEETS_BASE_URL : 'https://docs.google.com/spreadsheets/d/1CbDBJtoWWPRjEH4DOSlv4jjnJ2G-1MvW/export?format=csv&gid=';
@@ -579,19 +746,24 @@
                                     const resp = await fetch(url, {cache: 'no-cache'});
                                     if (!resp || !resp.ok) return [];
                                     const text = await resp.text();
-                                    // minimal csv parse
-                                    const lines = text.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n').filter(l=>l.trim()!=='');
-                                    if (!lines.length) return [];
-                                    const delimiter = (lines[0].includes(';') && !lines[0].includes(',')) ? ';' : ',';
-                                    const headers = lines[0].split(delimiter).map(h=>h.trim().replace(/^"|"$/g,''));
+                                    // RFC4180-ish parse that handles quoted fields
                                     const rows = [];
-                                    for (let i=1;i<lines.length;i++){
-                                        const vals = lines[i].split(delimiter).map(v=>v.trim().replace(/^"|"$/g,''));
-                                        if (vals.every(v=>v==='')) continue;
-                                        const obj = {};
-                                        headers.forEach((h,idx)=> obj[h]= vals[idx] !== undefined ? vals[idx] : '');
-                                        rows.push(obj);
+                                    const lines = text.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n');
+                                    if (!lines.length) return [];
+                                    // simple delimiter detection
+                                    const sample = lines.slice(0,4).join('\n');
+                                    const delimiter = (sample.includes(';') && !sample.includes(',')) ? ';' : ',';
+                                    // basic parser supporting quoted fields
+                                    const parseLine = (line)=>{
+                                        const out=[]; let cur=''; let inQuotes=false; for(let i=0;i<line.length;i++){ const ch=line[i]; if(ch==='"'){ if(inQuotes && line[i+1]==='"'){ cur+='"'; i++; } else { inQuotes=!inQuotes; } } else if(ch===delimiter && !inQuotes){ out.push(cur); cur=''; } else { cur+=ch; } } out.push(cur); return out.map(s=>s.trim().replace(/^"|"$/g,''));
+                                    };
+                                    for(let i=0;i<lines.length;i++){
+                                        if(!lines[i] || lines[i].trim()==='') continue;
+                                        const parsed = parseLine(lines[i]);
+                                        rows.push(parsed);
                                     }
+                                    if(!rows.length) return [];
+                                    // if first row is headers, return array-of-arrays (let normalizeRows handle it)
                                     return rows;
                                 }catch(err){ console.warn('CSV fetch failed', err); return []; }
                             }
@@ -615,9 +787,102 @@
                                     return [];
                                 } catch(e){ console.warn('getRows error', e); return []; }
                             }
-                            function buildTable(rows){ const head=document.getElementById('liveCommuneHead'); const body=document.getElementById('liveCommuneBody'); head.innerHTML=''; body.innerHTML=''; if(!rows||!rows.length){ head.innerHTML='<tr><th class="px-6 py-3">No data</th></tr>'; return; } const cols=Object.keys(rows[0]); const thr=document.createElement('tr'); thr.className='bg-gray-50'; cols.forEach(c=>{ const th=document.createElement('th'); th.className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'; th.textContent=c; thr.appendChild(th); }); head.appendChild(thr); rows.forEach(r=>{ const tr=document.createElement('tr'); tr.className='hover:bg-gray-50'; cols.forEach(c=>{ const td=document.createElement('td'); td.className='px-6 py-4 whitespace-nowrap text-sm text-gray-500'; td.textContent = r[c] != null ? r[c] : ''; tr.appendChild(td); }); body.appendChild(tr); }); }
-                            function buildCharts(rows){ try{ const labels=rows.map(r=> r['Commune']||r['commune']||Object.values(r)[0]); const total=rows.map(r=> Number(String(r['Total']||r['total']||r['Parcels']||0).replace(/[^0-9.-]/g,''))||0); const validated=rows.map(r=> Number(String(r['Validated']||r['validated']||0).replace(/[^0-9.-]/g,''))||0); const ctx=document.getElementById('communeChart').getContext('2d'); if(window._communeChart) window._communeChart.destroy(); window._communeChart=new Chart(ctx,{type:'bar',data:{labels,datasets:[{label:'Total Parcels',data:total,backgroundColor:'rgba(79,70,229,0.7)'},{label:'Validated Parcels',data:validated,backgroundColor:'rgba(16,185,129,0.7)'}]},options:{responsive:true,maintainAspectRatio:false}}); const nicad=rows.map(r=>Number(String(r['NICAD']||r['nicad']||'0').match(/\d+/)||0)||0); const ctasf=rows.map(r=>Number(String(r['CTASF']||r['ctasf']||'0').match(/\d+/)||0)||0); const sctx=document.getElementById('statusChart').getContext('2d'); if(window._statusChart) window._statusChart.destroy(); window._statusChart=new Chart(sctx,{type:'radar',data:{labels:['NICAD','CTASF','Validated'],datasets:[{label:'Communes (sample)',data:[average(nicad),average(ctasf),average(validated)],backgroundColor:'rgba(79,70,229,0.2)',borderColor:'rgba(79,70,229,1)'}]},options:{responsive:true,maintainAspectRatio:false,scales:{r:{suggestedMin:0,suggestedMax:100}}}}); }catch(e){console.warn(e);} }
-                            async function refresh(){ const rows=await getRows(); let normalized=rows; if(Array.isArray(rows)&&rows.length&&Array.isArray(rows[0])){ const hdr=rows[0]; normalized=rows.slice(1).map(r=>{ const obj={}; hdr.forEach((h,i)=>obj[h]=r[i]); return obj; }); } buildTable(normalized); buildCharts(normalized); }
+
+                            function setChartVisibility(hasData){
+                                const communeLoader = document.getElementById('communeChartLoader');
+                                const communeNoData = document.getElementById('communeChartNoData');
+                                const statusLoader = document.getElementById('statusChartLoader');
+                                const statusNoData = document.getElementById('statusChartNoData');
+                                if(communeLoader) communeLoader.style.display = 'none';
+                                if(statusLoader) statusLoader.style.display = 'none';
+                                if(hasData){ if(communeNoData) communeNoData.style.display='none'; if(statusNoData) statusNoData.style.display='none'; }
+                                else { if(communeNoData) communeNoData.style.display='flex'; if(statusNoData) statusNoData.style.display='flex'; }
+                            }
+
+                            function buildTable(rows){
+                                const head=document.getElementById('liveCommuneHead');
+                                const body=document.getElementById('liveCommuneBody');
+                                head.innerHTML=''; body.innerHTML='';
+                                if(!rows||!rows.length){ head.innerHTML='<tr><th class="px-6 py-3">Aucune donnée</th></tr>'; return; }
+                                const cols=Object.keys(rows[0]);
+                                const thr=document.createElement('tr'); thr.className='bg-gray-50';
+                                cols.forEach(c=>{ const th=document.createElement('th'); th.dataset.key = c; th.className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'; th.textContent=c; thr.appendChild(th); });
+                                head.appendChild(thr);
+                                rows.forEach(r=>{ const tr=document.createElement('tr'); tr.className='hover:bg-gray-50'; cols.forEach(c=>{ const td=document.createElement('td'); td.className='px-6 py-4 whitespace-nowrap text-sm text-gray-500'; td.textContent = r[c] != null ? r[c] : ''; tr.appendChild(td); }); body.appendChild(tr); });
+                            }
+
+                            // pick numeric arrays from normalized rows
+                            function pickNumericField(rows, possibleKeys){
+                                if(!rows||!rows.length) return null;
+                                for(const k of possibleKeys){
+                                    const nk = normalizeKey(k);
+                                    if(rows[0].hasOwnProperty(nk)){
+                                        const arr = rows.map(r=>{ const v = r[nk]; if(v==null||v==='') return 0; const num = Number(String(v).replace(/[^0-9.-]/g,'')); return Number.isFinite(num)? num : 0; });
+                                        return { key: nk, values: arr };
+                                    }
+                                }
+                                // fallback: try first numeric-like column
+                                const keys = Object.keys(rows[0]);
+                                for(const k of keys){ const sample = String(rows[0][k]||''); if(sample.match(/\d/)) return { key:k, values: rows.map(r=> Number(String(r[k]||'').replace(/[^0-9.-]/g,''))||0) }; }
+                                return null;
+                            }
+
+                            async function buildCharts(rows){
+                                try{
+                                    const normalized = normalizeRows(rows);
+                                    const labels = normalized.map(r=> r[normalizeKey('Commune')] || r[normalizeKey('commune')] || Object.values(r)[0] || '');
+
+                                    const totalField = pickNumericField(normalized, ['Total','Parcels','total','parcels']);
+                                    const validatedField = pickNumericField(normalized, ['Validated','validated','Validés','valides']);
+
+                                    const total = totalField ? totalField.values : normalized.map(()=>0);
+                                    const validated = validatedField ? validatedField.values : normalized.map(()=>0);
+
+                                    const hasData = normalized.length && (total.some(v=>v>0) || validated.some(v=>v>0));
+                                    setChartVisibility(!!hasData);
+
+                                    // delegate to chartService if available
+                                    if(window.chartService && typeof window.chartService.buildCommuneChart === 'function'){
+                                        try{ window.chartService.buildCommuneChart(normalized); }catch(e){ console.warn('chartService.buildCommuneChart failed', e); }
+                                    } else {
+                                        // fallback: inline Chart creation (safe)
+                                        const ctxEl = document.getElementById('communeChart');
+                                        if(ctxEl && ctxEl.getContext){
+                                            const ctx = ctxEl.getContext('2d');
+                                            if(window._communeChart) try{ window._communeChart.destroy(); }catch(e){}
+                                            window._communeChart = new Chart(ctx,{type:'bar',data:{labels,total:[],datasets:[{label:'Total Parcels',data:total,backgroundColor:'rgba(79,70,229,0.7)'},{label:'Validated Parcels',data:validated,backgroundColor:'rgba(16,185,129,0.7)'}]},options:{responsive:true,maintainAspectRatio:false}});
+                                        }
+                                    }
+
+                                    // status chart
+                                    const nicadField = pickNumericField(normalized, ['NICAD','nicad']);
+                                    const ctasfField = pickNumericField(normalized, ['CTASF','ctasf']);
+                                    const nicad = nicadField ? nicadField.values : normalized.map(()=>0);
+                                    const ctasf = ctasfField ? ctasfField.values : normalized.map(()=>0);
+
+                                    if(window.chartService && typeof window.chartService.buildStatusChart === 'function'){
+                                        try{ window.chartService.buildStatusChart(normalized); }catch(e){ console.warn('chartService.buildStatusChart failed', e); }
+                                    } else {
+                                        const sEl = document.getElementById('statusChart');
+                                        if(sEl && sEl.getContext){
+                                            const sctx = sEl.getContext('2d');
+                                            if(window._statusChart) try{ window._statusChart.destroy(); }catch(e){}
+                                            window._statusChart = new Chart(sctx,{type:'radar',data:{labels:['NICAD','CTASF','Validated'],datasets:[{label:'Communes (sample)',data:[average(nicad),average(ctasf),average(validated)],backgroundColor:'rgba(79,70,229,0.2)',borderColor:'rgba(79,70,229,1)'}]},options:{responsive:true,maintainAspectRatio:false,scales:{r:{suggestedMin:0,suggestedMax:100}}}});
+                                        }
+                                    }
+
+                                }catch(e){console.warn(e);} }
+
+                            async function refresh(){
+                                const rows=await getRows();
+                                let normalized = rows;
+                                // if rows are array-of-arrays, normalizeRows will convert
+                                normalized = normalizeRows(rows);
+                                if(!normalized || !normalized.length){ setChartVisibility(false); buildTable([]); return; }
+                                buildTable(normalized);
+                                await buildCharts(normalized);
+                            }
+
                             document.getElementById('communeSearch').addEventListener('input', (e)=>{ const q=e.target.value.trim().toLowerCase(); const tbody=document.getElementById('liveCommuneBody'); Array.from(tbody.querySelectorAll('tr')).forEach(tr=>{ tr.style.display = q ? (tr.textContent.toLowerCase().includes(q) ? '' : 'none') : ''; }); });
                             // init
                             try{ AOS && AOS.refresh(); } catch(e){}
@@ -1040,7 +1305,7 @@
     
     <!-- Services -->
     <script src="js/dataService.js"></script>
-    <script src="js/chartService.js"></script>
+    <script type="module" src="js/chartService.js"></script>
     <script src="js/enhancedGoogleSheetsService.js"></script>
     
     <!-- Dashboard Components -->
