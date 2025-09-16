@@ -455,14 +455,14 @@
                         <div class="data-card bg-white rounded-xl shadow-md p-6">
                             <div class="flex justify-between items-start">
                                 <div>
-                                    <p class="text-gray-500 font-medium">Total Parcels</p>
+                                    <p class="text-gray-500 font-medium">Parcelles Totales</p>
                                     <h3 class="text-3xl font-bold mt-2" id="commune-total-parcels">--</h3>
                                 </div>
                                 <div class="bg-indigo-100 p-3 rounded-lg"><i class="fas fa-layer-group text-indigo-600"></i></div>
                             </div>
                             <div class="mt-4">
                                 <div class="flex justify-between text-sm text-gray-600 mb-1">
-                                    <span>Kédougou</span>
+                                    <span>Boundou</span>
                                     <span id="commune-kedougou">--</span>
                                 </div>
                                 <div class="progress-bar"><div class="progress-fill bg-indigo-500" id="commune-kedougou-fill" style="width:0%"></div></div>
@@ -491,10 +491,34 @@
                             </div>
                         </div>
 
+                        <!-- Validated Parcels KPI -->
                         <div class="data-card bg-white rounded-xl shadow-md p-6">
                             <div class="flex justify-between items-start">
                                 <div>
-                                    <p class="text-gray-500 font-medium">Rejected Parcels</p>
+                                    <p class="text-gray-500 font-medium">Parcelles Validées</p>
+                                    <h3 class="text-3xl font-bold mt-2" id="commune-validated">--</h3>
+                                    <p class="text-blue-600 text-sm mt-1" id="commune-validated-rate">--</p>
+                                </div>
+                                <div class="bg-emerald-100 p-3 rounded-lg"><i class="fas fa-check text-emerald-600"></i></div>
+                            </div>
+                        </div>
+
+                        <!-- Deliberated Parcels KPI -->
+                        <div class="data-card bg-white rounded-xl shadow-md p-6">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <p class="text-gray-500 font-medium">Parcelles Délibérées</p>
+                                    <h3 class="text-3xl font-bold mt-2" id="commune-deliberated">--</h3>
+                                    <p class="text-blue-600 text-sm mt-1" id="commune-deliberated-rate">--</p>
+                                </div>
+                                <div class="bg-indigo-100 p-3 rounded-lg"><i class="fas fa-gavel text-indigo-600"></i></div>
+                            </div>
+                        </div>
+
+                        <div class="data-card bg-white rounded-xl shadow-md p-6">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <p class="text-gray-500 font-medium">Parcelles Rejetéees</p>
                                     <h3 class="text-3xl font-bold mt-2" id="commune-rejected">--</h3>
                                     <p class="text-red-600 text-sm mt-1" id="commune-rejected-rate">--</p>
                                 </div>
@@ -503,42 +527,7 @@
                         </div>
                     </div>
 
-                    <!-- Charts Row -->
-                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-                        <div class="data-card bg-white rounded-xl shadow-md p-6">
-                            <div class="flex justify-between items-center mb-4">
-                                <h2 class="text-lg font-bold">Parcel Distribution by Commune</h2>
-                                <div class="flex space-x-2">
-                                    <button class="text-xs bg-gray-100 px-2 py-1 rounded">Kédougou</button>
-                                    <button class="text-xs bg-gray-100 px-2 py-1 rounded">Tambacounda</button>
-                                    <button class="text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded">All</button>
-                                </div>
-                            </div>
-                            <div class="chart-container relative" style="height:300px">
-                                <canvas id="communeChart"></canvas>
-                                <div id="communeChartLoader" class="absolute inset-0 flex items-center justify-center text-gray-500" style="background:rgba(255,255,255,0.7);display:none">Chargement...</div>
-                                <div id="communeChartNoData" class="absolute inset-0 flex items-center justify-center text-gray-500" style="display:none;">Aucune donnée disponible</div>
-                            </div>
-                        </div>
-
-                        <div class="data-card bg-white rounded-xl shadow-md p-6">
-                            <div class="flex justify-between items-center mb-4">
-                                <h2 class="text-lg font-bold">Status Comparison</h2>
-                                <div class="relative">
-                                    <select id="communeStatusFilter" class="appearance-none bg-gray-100 border-0 rounded-lg px-3 py-1 pr-8 text-sm focus:outline-none">
-                                        <option>All Communes</option>
-                                        <option>Kédougou</option>
-                                        <option>Tambacounda</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="chart-container relative" style="height:300px">
-                                <canvas id="statusChart"></canvas>
-                                <div id="statusChartLoader" class="absolute inset-0 flex items-center justify-center text-gray-500" style="background:rgba(255,255,255,0.7);display:none">Chargement...</div>
-                                <div id="statusChartNoData" class="absolute inset-0 flex items-center justify-center text-gray-500" style="display:none;">Aucune donnée disponible</div>
-                            </div>
-                        </div>
-                    </div>
+                    <!-- Charts removed: Commune panel now focuses on table only -->
 
                     <!-- Detailed Data Table -->
                     <div class="data-card bg-white rounded-xl shadow-md overflow-hidden mb-8">
@@ -554,6 +543,7 @@
                                         <!-- dynamically populated -->
                                     </div>
                                 </div>
+                                <button id="communeResetColumnsBtn" class="text-sm text-gray-500 hover:text-gray-700" title="Reset column order" style="margin-left:6px;padding:6px 8px;border-radius:6px;background:#f3f4f6;border:1px solid #e5e7eb">Reset columns</button>
                             </div>
                         </div>
                         <div class="overflow-x-auto relative">
@@ -568,7 +558,7 @@
                             <button id="viewAllCommunes" class="text-sm text-indigo-600 hover:text-indigo-800 font-medium">View All Communes →</button>
                         <script type="module" src="js/communePanel.js"></script>
                         <script>
-                            // Column filter menu logic for Commune Details
+                            // Simple absolute-in-parent column filter menu
                             (function(){
                                 const menuEl = document.getElementById('columnFilterMenu');
                                 const toggleBtn = document.getElementById('communeFilterBtn');
@@ -613,87 +603,53 @@
                                 function toggleMenu(e){
                                     e && e.stopPropagation && e.stopPropagation();
                                     if(!menuEl || !toggleBtn) return;
-
-                                    // determine current visibility
-                                    const currentlyVisible = menuEl.classList.contains('show') && window.getComputedStyle(menuEl).display !== 'none';
-                                    if(currentlyVisible){
-                                        // hide
-                                        menuEl.classList.remove('show');
+                                    if(menuEl.style.display === 'block'){
                                         menuEl.style.display = 'none';
-                                        // if we moved it to body, keep it there (no need to restore parent)
                                         return;
                                     }
-
-                                    // show via portal: append to body so it won't be clipped by overflow:hidden parents
                                     buildMenu();
-                                    // ensure appended to body
-                                    if(menuEl.parentElement !== document.body){
-                                        menuEl.__originalParent = menuEl.parentElement;
-                                        document.body.appendChild(menuEl);
-                                    }
-
-                                    // prepare for measurement
-                                    menuEl.style.position = 'fixed';
-                                    menuEl.style.display = 'block';
+                                    // ensure menu is positioned as absolute child of its parent
+                                    menuEl.style.position = 'absolute';
+                                    // temporarily show hidden and invisible to measure
                                     menuEl.style.visibility = 'hidden';
-                                    menuEl.classList.add('show');
-                                    menuEl.style.zIndex = 9999;
+                                    menuEl.style.display = 'block';
 
-                                    // measure
-                                    const menuRect = menuEl.getBoundingClientRect();
+                                    // compute coordinates relative to parent so top-right aligns with button bottom-right
                                     const btnRect = toggleBtn.getBoundingClientRect();
-                                    const vw = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
-                                    const vh = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0);
+                                    const parent = menuEl.parentElement || menuEl.offsetParent || document.body;
+                                    const parentRect = parent.getBoundingClientRect();
+                                    const menuRect = menuEl.getBoundingClientRect();
 
-                                    // target: menu top-right aligns with button bottom-right (menu appears below button)
-                                    let left = btnRect.right - menuRect.width;
-                                    let top = btnRect.bottom + 6; // 6px gap
+                                    // top: button bottom relative to parent + small gap
+                                    let top = btnRect.bottom - parentRect.top + 6;
 
-                                    // if not enough space below, show above
-                                    if (top + menuRect.height > vh - 8){
-                                        const altTop = btnRect.top - menuRect.height - 6;
-                                        if (altTop > 8) top = altTop; // place above if it fits
-                                        else {
-                                            // not enough space either way, clamp top and allow internal scroll
-                                            top = Math.max(8, vh - menuRect.height - 8);
-                                        }
-                                    }
+                                    // use 'right' so the menu's right edge aligns with the button's right edge
+                                    // desiredRight is distance from parent's right edge to button's right edge
+                                    let desiredRight = Math.round(parentRect.right - btnRect.right);
 
-                                    // clamp left to viewport with 8px padding
-                                    if (left + menuRect.width > vw - 8) left = vw - menuRect.width - 8;
-                                    if (left < 8) left = 8;
+                                    // clamp desiredRight so menu stays visible within parent (leave 8px padding)
+                                    const minRight = 8;
+                                    const maxRight = Math.max(8, Math.round(parentRect.width - menuRect.width - 8));
+                                    if (desiredRight < minRight) desiredRight = minRight;
+                                    if (desiredRight > maxRight) desiredRight = maxRight;
 
-                                    menuEl.style.left = `${Math.round(left)}px`;
+                                    // apply positioning using right/top; clear left to avoid conflicts
+                                    menuEl.style.left = 'auto';
+                                    menuEl.style.right = `${desiredRight}px`;
                                     menuEl.style.top = `${Math.round(top)}px`;
-
-                                    // recompute available height and set maxHeight
-                                    const availableBelow = vh - (btnRect.bottom + 6) - 8;
-                                    const availableAbove = btnRect.top - 6 - 8;
-                                    const maxH = Math.max(120, Math.min(600, Math.max(availableBelow, availableAbove)));
-                                    menuEl.style.maxHeight = `${maxH}px`;
-                                    menuEl.style.overflowY = 'auto';
-
-                                    // reveal
                                     menuEl.style.visibility = 'visible';
                                 }
 
-                                // Close on outside click / escape — works when menu is appended to body
+                                // Close on outside click / escape
                                 document.addEventListener('click', (ev)=>{
                                     if(!menuEl) return;
+                                    if (menuEl.style.display !== 'block') return;
                                     const target = ev.target;
-                                    if (target === toggleBtn) return; // toggle logic handles this
-                                    // if click is outside menu and outside the original toggle button, hide
-                                    if (!menuEl.contains(target)) {
-                                        menuEl.style.display='none';
-                                        menuEl.classList.remove('show');
-                                    }
+                                    if (toggleBtn && (toggleBtn === target || toggleBtn.contains(target))) return;
+                                    if (menuEl.contains(target)) return;
+                                    menuEl.style.display = 'none';
                                 });
-                                document.addEventListener('keydown', (ev)=>{
-                                    if(ev.key==='Escape' && menuEl && menuEl.classList.contains('show')) {
-                                        menuEl.style.display='none';
-                                        menuEl.classList.remove('show');
-                                    }
-                                });
+                                document.addEventListener('keydown', (ev)=>{ if(ev.key==='Escape' && menuEl) menuEl.style.display='none'; });
 
                                 toggleBtn && toggleBtn.addEventListener('click', toggleMenu);
 
@@ -850,7 +806,7 @@
                                         if(ctxEl && ctxEl.getContext){
                                             const ctx = ctxEl.getContext('2d');
                                             if(window._communeChart) try{ window._communeChart.destroy(); }catch(e){}
-                                            window._communeChart = new Chart(ctx,{type:'bar',data:{labels,total:[],datasets:[{label:'Total Parcels',data:total,backgroundColor:'rgba(79,70,229,0.7)'},{label:'Validated Parcels',data:validated,backgroundColor:'rgba(16,185,129,0.7)'}]},options:{responsive:true,maintainAspectRatio:false}});
+                                            window._communeChart = new Chart(ctx,{type:'bar',data:{labels,total:[],datasets:[{label:'Total Parcelles',data:total,backgroundColor:'rgba(79,70,229,0.7)'},{label:'Parcelles Validées',data:validated,backgroundColor:'rgba(16,185,129,0.7)'}]},options:{responsive:true,maintainAspectRatio:false}});
                                         }
                                     }
 

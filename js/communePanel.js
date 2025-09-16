@@ -1,5 +1,4 @@
-// communePanel.js - moved from index.html inline
-import chartService from './chartService';
+// communePanel.js - Commune table and KPIs (charts removed per requested simplification)
 
 (function(){
     function average(arr){ if(!arr||!arr.length) return 0; return Math.round((arr.reduce((a,b)=>a+(Number(b)||0),0)/arr.length)*10)/10; }
@@ -84,12 +83,11 @@ import chartService from './chartService';
     }
 
     function setLoading(visible){
-        const els = ['communeChartLoader','statusChartLoader','communeTableLoader'];
-        els.forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display = visible ? 'flex' : 'none'; });
+        const el = document.getElementById('communeTableLoader'); if(el) el.style.display = visible ? 'flex' : 'none';
     }
     function setNoData(hasNo){
-        const pairs = [['communeChartNoData','communeChartLoader'],['statusChartNoData','statusChartLoader'],['communeTableNoData','communeTableLoader']];
-        pairs.forEach(([nod,ldr])=>{ const a=document.getElementById(nod); const b=document.getElementById(ldr); if(a) a.style.display = hasNo ? 'flex' : 'none'; if(b && hasNo) b.style.display='none'; });
+        const nod = document.getElementById('communeTableNoData'); if(nod) nod.style.display = hasNo ? 'flex' : 'none';
+        const ldr = document.getElementById('communeTableLoader'); if(ldr && hasNo) ldr.style.display='none';
     }
 
     function normalizeKey(key) {
@@ -100,17 +98,43 @@ import chartService from './chartService';
     }
 
     function normalizeRows(rows) {
+        // If rows are empty or not an array, return as-is
+        if (!rows || !rows.length) return rows;
+
+        // Build mapping from original header -> unique normalized key
+        const first = rows[0];
+        const mapping = {};
+        const used = {};
+        Object.keys(first).forEach(orig => {
+            const base = normalizeKey(orig);
+            let finalKey = base;
+            if (used[finalKey]) {
+                const low = String(orig || '').toLowerCase();
+                if (low.includes('%') || low.includes('pourcentage') || low.includes('pct') || /\bpercent/i.test(low)) {
+                    finalKey = base + '_pct';
+                } else {
+                    let i = 2;
+                    while (used[finalKey]) { finalKey = base + '_' + i; i++; }
+                }
+            }
+            used[finalKey] = true;
+            mapping[orig] = finalKey;
+        });
+
+        // Apply mapping to every row
         return rows.map(row => {
             const normalizedRow = {};
-            Object.keys(row).forEach(key => {
-                const normalizedKey = normalizeKey(key);
-                normalizedRow[normalizedKey] = row[key];
+            Object.keys(row).forEach(orig => {
+                const finalKey = mapping.hasOwnProperty(orig) ? mapping[orig] : normalizeKey(orig);
+                normalizedRow[finalKey] = row[orig];
             });
             return normalizedRow;
         });
     }
 
     function buildTable(rows){
+        // store current rows for re-render after reorder
+        buildTable._currentRows = rows;
         const head = document.getElementById('liveCommuneHead');
         const body = document.getElementById('liveCommuneBody');
         if (!head || !body) return;
@@ -120,12 +144,197 @@ import chartService from './chartService';
             return;
         }
 
-        const cols = Object.keys(rows[0]);
+        // Respect persisted column order if available
+        const savedOrderKey = 'communes_table_order';
+        const detected = Object.keys(rows[0]);
+        let cols = detected.slice();
+        try{
+            const saved = localStorage.getItem(savedOrderKey);
+            if (saved) {
+                const arr = JSON.parse(saved);
+                // keep only columns that exist in detected, append any new detected cols
+                cols = arr.filter(a => detected.includes(a)).concat(detected.filter(d => !arr.includes(d)));
+            }
+        }catch(e){ /* ignore */ }
+
+        // user-friendly header labels dictionary (use normalized keys)
+        const headerLabelMap = {
+            'commne': 'Commune',
+            'commune': 'Commune',
+            'region': 'Région',
+            'totalparcelles': 'Total Parcelles',
+            'dtotal': "% du total",
+            'nicad': 'NICAD',
+            'nicad_pct': '% NICAD',
+            'ctas': "CTASF",
+            'ctasf': "CTASF",
+            'ctasf_pct': '% CTASF',
+            'deliberees': 'Délibérées',
+            'deliberee': '% Délibérée',
+            'parcellesbrtes': 'Parcelles brutes',
+            'parcellesbrutes': 'Parcelles brutes',
+            'parcellescollecteessansdoblongeometriqe': 'Parcelles collectées (sans doublon géométrique)',
+            'parcellesenqetees': 'Parcelles enquêtées',
+            'motisderejetposttraitement': 'Motifs de rejet post-traitement',
+            'parcellesretenesapresposttraitement': 'Parcelles retenues après post-traitement',
+            'parcellesvalideesparlurm': "Parcelles validées par l’URM",
+            'parcellesrejeteesparlurm': "Parcelles rejetées par l’URM",
+            'motisderejetrm': 'Motifs de rejet URM',
+            'parcellescorrigees': 'Parcelles corrigées',
+            'geomaticien': 'Geomaticien',
+            'parcellesindividellesjointes': 'Parcelles individuelles jointes',
+            'parcellescollectivesjointes': 'Parcelles collectives jointes',
+            'parcellesnonjointes': 'Parcelles non jointes',
+            'doblonsspprimes': 'Doublons supprimés',
+            'taxsppressiondoblons': 'Taux suppression doublons (%)',
+            'parcellesenconlit': 'Parcelles en conflit',
+            'signiicantdplicates': 'Significant Duplicates',
+            'parcellesposttraiteeslot': 'Parcelles post-traitées lot 1-46',
+            'stattjointre': 'Statut jointure',
+            'messagederrerjointre': "Message d’erreur jointure"
+        };
+
+        function humanizeKey(k){
+            if(!k) return '';
+            if (String(k).endsWith('_pct')) {
+                const base = k.slice(0, -4);
+                const s = String(base).replace(/[^a-z0-9]+/gi,' ').trim();
+                return '% ' + s.split(/\s+/).map(w=> w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+            }
+            const s = String(k).replace(/[^a-z0-9]+/gi,' ').trim();
+            return s.split(/\s+/).map(w=> w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+        }
+
         const thr = document.createElement('tr'); thr.className = 'bg-gray-50';
-        cols.forEach(c => {
+        // insertion indicator (visual) - single element reused
+        let insertionIndicator = document.getElementById('column-insert-indicator');
+        if (!insertionIndicator) {
+            insertionIndicator = document.createElement('div');
+            insertionIndicator.id = 'column-insert-indicator';
+            insertionIndicator.style.position = 'absolute';
+            insertionIndicator.style.width = '4px';
+            insertionIndicator.style.background = '#2563eb';
+            insertionIndicator.style.top = '0';
+            insertionIndicator.style.bottom = '0';
+            insertionIndicator.style.zIndex = '60';
+            insertionIndicator.style.display = 'none';
+            const container = document.querySelector('#liveCommuneTable').closest('.overflow-x-auto') || document.body;
+            container.appendChild(insertionIndicator);
+        }
+        cols.forEach((c, idx) => {
             const th = document.createElement('th');
             th.className = 'px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider';
-            th.textContent = c;
+            // keep dataset.key as the canonical internal key, but show a friendly label
+            th.dataset.key = c;
+            th.draggable = true;
+            th.setAttribute('tabindex','0'); // make focusable for keyboard
+            th.dataset.colIndex = idx;
+            const label = headerLabelMap[c] || humanizeKey(c);
+            th.textContent = label;
+
+            // Drag handlers
+            // Desktop drag-n-drop
+            th.addEventListener('dragstart', (ev) => {
+                ev.dataTransfer.setData('text/plain', c);
+                ev.dataTransfer.effectAllowed = 'move';
+                th.classList.add('opacity-50');
+            });
+            th.addEventListener('dragend', (ev) => { th.classList.remove('opacity-50'); insertionIndicator.style.display='none'; });
+            th.addEventListener('dragover', (ev) => { ev.preventDefault(); ev.dataTransfer.dropEffect = 'move'; th.classList.add('bg-gray-100');
+                // show insertion indicator at left or right depending on pointer
+                const rect = th.getBoundingClientRect();
+                const mid = rect.left + rect.width/2;
+                const containerRect = (document.querySelector('#liveCommuneTable').closest('.overflow-x-auto') || document.body).getBoundingClientRect();
+                insertionIndicator.style.display = 'block';
+                if (ev.clientX < mid) {
+                    insertionIndicator.style.left = (rect.left - containerRect.left) + 'px';
+                } else {
+                    insertionIndicator.style.left = (rect.right - containerRect.left) + 'px';
+                }
+            });
+            th.addEventListener('dragleave', (ev) => { th.classList.remove('bg-gray-100'); insertionIndicator.style.display='none'; });
+            th.addEventListener('drop', (ev) => {
+                ev.preventDefault(); th.classList.remove('bg-gray-100'); insertionIndicator.style.display='none';
+                try{
+                    const fromKey = ev.dataTransfer.getData('text/plain');
+                    const toKey = c;
+                    if (!fromKey || fromKey === toKey) return;
+                    const fromIdx = cols.indexOf(fromKey);
+                    let toIdx = cols.indexOf(toKey);
+                    if (fromIdx === -1 || toIdx === -1) return;
+                    // If dropping on right half, insert after
+                    const rect = th.getBoundingClientRect();
+                    const mid = rect.left + rect.width/2;
+                    if (ev.clientX > mid) toIdx = toIdx + 1;
+                    cols.splice(fromIdx, 1);
+                    cols.splice(toIdx > fromIdx ? toIdx-1 : toIdx, 0, fromKey);
+                    localStorage.setItem(savedOrderKey, JSON.stringify(cols));
+                    const current = buildTable._currentRows || rows;
+                    buildTable(current);
+                }catch(e){ console.warn('column drop handling failed', e); }
+            });
+
+            // Touch / pointer support (pointer events fallback)
+            let pointerState = null;
+            th.addEventListener('pointerdown', (ev) => {
+                if (ev.pointerType === 'touch') {
+                    pointerState = { startX: ev.clientX, key: c };
+                    th.setPointerCapture(ev.pointerId);
+                }
+            });
+            th.addEventListener('pointermove', (ev) => {
+                if (!pointerState) return;
+                ev.preventDefault();
+                // show indicator following finger roughly
+                const rect = th.getBoundingClientRect();
+                const containerRect = (document.querySelector('#liveCommuneTable').closest('.overflow-x-auto') || document.body).getBoundingClientRect();
+                insertionIndicator.style.display='block';
+                insertionIndicator.style.left = (ev.clientX - containerRect.left) + 'px';
+            });
+            th.addEventListener('pointerup', (ev) => {
+                if (!pointerState) return;
+                try {
+                    // find target column under pointer
+                    const elems = document.elementsFromPoint(ev.clientX, ev.clientY);
+                    const targetTh = elems.find(el => el.tagName === 'TH' && el.dataset && el.dataset.key);
+                    const fromKey = pointerState.key;
+                    if (targetTh && fromKey && targetTh.dataset.key !== fromKey) {
+                        const toKey = targetTh.dataset.key;
+                        const fromIdx = cols.indexOf(fromKey);
+                        let toIdx = cols.indexOf(toKey);
+                        if (fromIdx !== -1 && toIdx !== -1) {
+                            cols.splice(fromIdx, 1);
+                            cols.splice(toIdx, 0, fromKey);
+                            localStorage.setItem(savedOrderKey, JSON.stringify(cols));
+                            const current = buildTable._currentRows || rows;
+                            buildTable(current);
+                        }
+                    }
+                } catch(e) { console.warn('pointer reorder failed', e); }
+                insertionIndicator.style.display='none';
+                pointerState = null;
+            });
+
+            // Keyboard accessibility: left/right arrows move focused column
+            th.addEventListener('keydown', (ev) => {
+                if (ev.key === 'ArrowLeft' || ev.key === 'ArrowRight') {
+                    ev.preventDefault();
+                    const fromKey = c;
+                    const fromIdx = cols.indexOf(fromKey);
+                    if (fromIdx === -1) return;
+                    const toIdx = ev.key === 'ArrowLeft' ? Math.max(0, fromIdx-1) : Math.min(cols.length-1, fromIdx+1);
+                    if (toIdx === fromIdx) return;
+                    cols.splice(fromIdx, 1);
+                    cols.splice(toIdx, 0, fromKey);
+                    localStorage.setItem(savedOrderKey, JSON.stringify(cols));
+                    const current = buildTable._currentRows || rows;
+                    buildTable(current);
+                    // focus moved column header
+                    const newTh = document.querySelector(`#liveCommuneHead th[data-key="${cols[toIdx]}"]`);
+                    if (newTh) newTh.focus();
+                }
+            });
+
             thr.appendChild(th);
         });
         head.appendChild(thr);
@@ -142,31 +351,22 @@ import chartService from './chartService';
         });
     }
 
-    function buildCharts(rows) {
-        try {
-            chartService.buildCommuneChart(rows);
-            chartService.buildStatusChart(rows);
-        } catch (e) {
-            console.warn('buildCharts failed', e);
-        }
-    }
+    // charts removed: this panel focuses on table and KPIs only
 
     async function refresh(){
         setLoading(true);
         setNoData(false);
         const rows = await getRows();
         const normalized = normalizeRows(rows);
-
         setLoading(false);
         const has = normalized && normalized.length;
         setNoData(!has);
         if (has) {
             buildTable(normalized);
-            buildCharts(normalized);
             const kpis = calculateKPIs(normalized);
             updateKPIs(kpis);
         } else {
-            console.warn('No data available to render charts or KPIs.');
+            console.warn('No data available to render table or KPIs.');
         }
     }
 
@@ -190,14 +390,14 @@ import chartService from './chartService';
     function parseCSV(text) {
         try {
             if (window.Papa) {
+                // Use PapaParse to get rows with original header names preserved.
                 const parsed = window.Papa.parse(String(text || ''), { header: true, skipEmptyLines: true, dynamicTyping: false });
+                // Return rows as-is (original headers) so later normalizeRows can
+                // disambiguate duplicate headers like 'NICAD' and '% NICAD'.
                 return parsed.data.map(row => {
-                    const normalizedRow = {};
-                    Object.keys(row).forEach(key => {
-                        const normalizedKey = normalizeKey(key);
-                        normalizedRow[normalizedKey] = row[key];
-                    });
-                    return normalizedRow;
+                    const cloned = {};
+                    Object.keys(row).forEach(orig => { cloned[orig] = row[orig]; });
+                    return cloned;
                 });
             }
         } catch (_) {
@@ -207,7 +407,8 @@ import chartService from './chartService';
         const lines = text.split('\n').filter(line => line.trim() !== '');
         if (lines.length < 2) return [];
 
-        const headers = lines[0].split(',').map(h => normalizeKey(h.trim()));
+        // Keep original header strings (do not normalize here)
+        const headers = lines[0].split(',').map(h => h.trim());
         return lines.slice(1).map(line => {
             const values = line.split(',').map(v => v.trim());
             const row = {};
@@ -231,12 +432,14 @@ import chartService from './chartService';
 
         const headers = Object.keys(rows[0]);
 
-        // Build table header
+        // Build table header with friendly labels if possible
         const thead = document.createElement('thead');
         const headerRow = document.createElement('tr');
         headers.forEach(header => {
             const th = document.createElement('th');
-            th.textContent = header;
+            // Reuse headerLabelMap for consistency
+            const label = headerLabelMap[header] || humanizeKey(header);
+            th.textContent = label;
             headerRow.appendChild(th);
         });
         thead.appendChild(headerRow);
@@ -268,12 +471,32 @@ import chartService from './chartService';
 
         console.log('Rows for KPI calculation:', rows);
 
-        const totalParcels = rows.reduce((sum, r) => sum + (Number(String(r['totalparcels'] || 0).replace(/[^0-9.-]/g, '')) || 0), 0);
-        const nicadParcels = rows.reduce((sum, r) => sum + (Number(String(r['nicad'] || 0).replace(/[^0-9.-]/g, '')) || 0), 0);
-        const ctasfParcels = rows.reduce((sum, r) => sum + (Number(String(r['ctasf'] || 0).replace(/[^0-9.-]/g, '')) || 0), 0);
-        const rejectedParcels = rows.reduce((sum, r) => sum + (Number(String(r['rejected'] || 0).replace(/[^0-9.-]/g, '')) || 0), 0);
-        const validatedParcels = rows.reduce((sum, r) => sum + (Number(String(r['validated'] || 0).replace(/[^0-9.-]/g, '')) || 0), 0);
-        const deliberatedParcels = rows.reduce((sum, r) => sum + (Number(String(r['deliberated'] || 0).replace(/[^0-9.-]/g, '')) || 0), 0);
+        // helper: try a list of candidate keys (already-normalized) and sum the first matching column
+        function sumByCandidates(candidates){
+            if(!candidates || !candidates.length) return 0;
+            for(const cand of candidates){
+                const nk = normalizeKey(cand);
+                if(rows[0].hasOwnProperty(nk)){
+                    return rows.reduce((s,r)=>{
+                        const v = r[nk];
+                        if (v == null || v === '') return s;
+                        const num = Number(String(v).replace(/[^0-9.-]/g,''));
+                        return s + (Number.isFinite(num) ? num : 0);
+                    }, 0);
+                }
+            }
+            // fallback: try to find any numeric column
+            const keys = Object.keys(rows[0]);
+            for(const k of keys){ const sample = String(rows[0][k]||''); if(sample.match(/\d/)) return rows.reduce((s,r)=>{ const n = Number(String(r[k]||'').replace(/[^0-9.-]/g,'')); return s + (Number.isFinite(n)? n : 0); },0); }
+            return 0;
+        }
+
+        const totalParcels = sumByCandidates(['totalparcelles','totalparcels','parcelles','parcellesbrtes','parcellesbrutes']);
+        const nicadParcels = sumByCandidates(['nicad','nicadparcels','nicad_parcels']);
+        const ctasfParcels = sumByCandidates(['ctasf','ctas','ctas_parcels']);
+        const rejectedParcels = sumByCandidates(['parcellesrejeteesparlurm','rejected','rejectedparcels','rejected_parcels']);  // Fixed to 'parlurm'
+        const validatedParcels = sumByCandidates(['parcellesvalideesparlurm','validated','validatedparcels','validated_parcels']);  // Fixed to 'parlurm'
+        const deliberatedParcels = sumByCandidates(['deliberees','deliberee','deliberated','deliberatedparcels']);
 
         console.log('Calculated KPI values:', {
             totalParcels,
@@ -308,33 +531,31 @@ import chartService from './chartService';
 
         console.log('Updating KPIs with values:', kpis);
 
-        // Wait for DOM elements to be fully loaded
-        document.addEventListener('DOMContentLoaded', () => {
-            const updateKPI = (id, value, percentage) => {
-                const el = document.getElementById(id);
-                if (el) {
-                    if (id.includes('-rate')) {
-                        el.textContent = percentage !== undefined ? `${percentage}%` : '--';
-                    } else {
-                        el.textContent = value.toLocaleString();
-                    }
+        // Directly update since called after DOM load; removed unnecessary addEventListener
+        const updateKPI = (id, value, percentage) => {
+            const el = document.getElementById(id);
+            if (el) {
+                if (id.includes('-rate')) {
+                    el.textContent = percentage !== undefined ? `${percentage}%` : '--';
                 } else {
-                    console.warn(`KPI element with ID '${id}' not found in the DOM.`);
+                    el.textContent = value.toLocaleString();
                 }
-            };
+            } else {
+                console.warn(`KPI element with ID '${id}' not found in the DOM.`);
+            }
+        };
 
-            updateKPI('commune-total-parcels', kpis.totalParcels);
-            updateKPI('commune-nicad', kpis.nicadParcels);
-            updateKPI('commune-nicad-rate', kpis.nicadPercentage);
-            updateKPI('commune-ctasf', kpis.ctasfParcels);
-            updateKPI('commune-ctasf-rate', kpis.ctasfPercentage);
-            updateKPI('commune-rejected', kpis.rejectedParcels);
-            updateKPI('commune-rejected-rate', kpis.rejectedPercentage);
-            updateKPI('commune-validated', kpis.validatedParcels);
-            updateKPI('commune-validated-rate', kpis.validatedPercentage);
-            updateKPI('commune-deliberated', kpis.deliberatedParcels);
-            updateKPI('commune-deliberated-rate', kpis.deliberatedPercentage);
-        });
+        updateKPI('commune-total-parcels', kpis.totalParcels);
+        updateKPI('commune-nicad', kpis.nicadParcels);
+        updateKPI('commune-nicad-rate', kpis.nicadPercentage);
+        updateKPI('commune-ctasf', kpis.ctasfParcels);
+        updateKPI('commune-ctasf-rate', kpis.ctasfPercentage);
+        updateKPI('commune-rejected', kpis.rejectedParcels);
+        updateKPI('commune-rejected-rate', kpis.rejectedPercentage);
+        updateKPI('commune-validated', kpis.validatedParcels);
+        updateKPI('commune-validated-rate', kpis.validatedPercentage);
+        updateKPI('commune-deliberated', kpis.deliberatedParcels);
+        updateKPI('commune-deliberated-rate', kpis.deliberatedPercentage);
     }
 
     // Initialize table rendering on page load
@@ -345,5 +566,16 @@ import chartService from './chartService';
         try{ AOS && AOS.refresh(); }catch(e){}
         refresh();
         renderCommuneTable();
+
+        // Reset columns button
+        const resetBtn = document.getElementById('communeResetColumnsBtn');
+        if (resetBtn) {
+            resetBtn.addEventListener('click', () => {
+                localStorage.removeItem('communes_table_order');
+                localStorage.removeItem('communes_table_visibility');
+                // re-fetch and re-render
+                refresh();
+            });
+        }
     });
 })();
