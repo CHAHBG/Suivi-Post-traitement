@@ -172,7 +172,7 @@
                 bar.style.position = 'absolute';
                 bar.style.left = Math.max(0,left) + '%';
                 bar.style.width = Math.max(0,width) + '%';
-                bar.style.background = '#6366F1';
+                bar.style.background = it.color || '#6366F1';
                 bar.title = `${it.task}: ${it.start.toISOString().split('T')[0]} → ${it.end.toISOString().split('T')[0]}`;
 
                 // date badge on the right inside the timeline
@@ -349,23 +349,42 @@
 
     // init on DOM ready
     document.addEventListener('DOMContentLoaded', ()=>{
-        // If a static HTML block was provided via js/chronogramContent.js, use it.
         const container = document.getElementById('projectTimelineGantt');
         let items = [];
-        if(window.chronogramRowsHtml && container){
-            // inject the static rows
+
+        // 1) Prefer structured data from js/chronogramData.js
+        if(window.chronogramData && Array.isArray(window.chronogramData.tasks) && container){
+            items = window.chronogramData.tasks.map((t, idx) => {
+                const s = t.start ? new Date(t.start) : null;
+                const e = t.end ? new Date(t.end) : null;
+                return { task: t.name || (`task-${idx}`), region: t.section || '', start: s, end: e, color: t.color || '#6366F1' };
+            });
+            renderChrono(items);
+
+        // 2) fallback: prefer static injected HTML from chronogramContent.js
+        } else if(window.chronogramRowsHtml && container){
             container.innerHTML = window.chronogramRowsHtml;
-            // try to build a lightweight items array for alert checks by reading date-badges
+            // build lightweight items[] from date-badges for alerts & filtering
             const rows = Array.from(container.querySelectorAll('.gantt-row'));
             items = rows.map((r, idx) => {
-                const task = (r.querySelector('.gantt-label') || {}).textContent || `item-${idx}`;
+                const labelEl = r.querySelector('.gantt-label');
+                const task = labelEl ? labelEl.textContent.trim() : `item-${idx}`;
                 const badge = r.querySelector('.date-badge');
                 if(badge){
                     const m = badge.textContent.match(/(\d{4}-\d{2}-\d{2})\s*→\s*(\d{4}-\d{2}-\d{2})/);
-                    if(m){ return { task: task.trim(), start: new Date(m[1]), end: new Date(m[2]) }; }
+                    if(m){
+                        const start = new Date(m[1]);
+                        const end = new Date(m[2]);
+                        // ensure data-start / data-end exist for filtering
+                        r.setAttribute('data-start', m[1]);
+                        r.setAttribute('data-end', m[2]);
+                        return { task, start, end, color: '#6366F1' };
+                    }
                 }
-                return { task: task.trim(), start: null, end: null };
+                return { task, start: null, end: null, color: '#6366F1' };
             });
+
+        // 3) final fallback: build from CHRONO JSON and render
         } else {
             items = buildItemsFromChrono(CHRONO);
             renderChrono(items);
