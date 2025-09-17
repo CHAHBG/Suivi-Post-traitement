@@ -487,7 +487,9 @@ body {
 @media (max-width: 768px) {
     #projectTimelineGantt .gantt-label { display:none; }
     #projectTimelineGantt .gantt-timeline { flex: 1 1 100%; }
-    .chrono-legend { display:none; }
+    /* Keep legend but make it compact on small screens */
+    .chrono-legend { display:flex; gap:8px; align-items:center; font-size:12px; flex-wrap:wrap; }
+    .chrono-legend .legend-row { gap:8px; }
 }
 
 /* allow forcing labels hidden (still supported via toggle) */
@@ -862,30 +864,61 @@ body {
 .chart-header--chronogram .chart-title { margin:0 0 4px 0; }
 .chart-header--chronogram .chart-subtitle { margin:0; color:var(--color-gray-500); font-size:13px; }
 
-.chrono-legend { display:flex; gap:12px; align-items:center; }
+.chrono-legend { display:flex; gap:12px; align-items:center; flex-wrap:wrap; max-width:420px; }
 .chrono-legend .legend-row { display:flex; align-items:center; gap:10px; font-size:13px; color:var(--color-gray-600); }
 .chrono-legend .legend-row span { display:inline-block; }
-.chrono-legend .legend-swatch { margin-right:6px; }
+.chrono-legend .legend-swatch { margin-right:6px; width:16px; height:12px; border-radius:3px; border:1px solid rgba(0,0,0,0.06); }
 .chrono-legend .legend-note { color:var(--color-gray-500); font-size:12px; }
 .chrono-legend, .chronogram-toggle { white-space:nowrap; }
 .chart-header--chronogram .chrono-legend { margin-right:8px; }
 
-/* compact toggle button that sits inline with legend */
+/* Make the right-side header responsive so the toggle cannot overlap other elements */
+.chart-header--chronogram .chart-header-right { flex-wrap:wrap; min-width:0; }
+.chart-header--chronogram .chart-header-right .chrono-legend { display:flex; align-items:center; }
 .chart-header--chronogram .chronogram-toggle {
-    margin-top: 0 !important;
-    padding: 6px 10px;
-    height: 34px;
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    border-radius: 8px;
-    background: #ffffff;
-    border: 1px solid rgba(0,0,0,0.06);
-    color: var(--color-gray-800);
-    font-size: 13px;
+        margin-top: 0 !important;
+        padding: 6px 10px;
+        height: 36px;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        border-radius: 8px;
+        background: #ffffff;
+        border: 1px solid rgba(0,0,0,0.06);
+        color: var(--color-gray-800);
+        font-size: 13px;
 }
 .chart-header--chronogram .chronogram-toggle i { margin-right: 6px; }
 .chronogram-toggle { padding:6px 10px; border-radius:8px; background:transparent; border:1px solid rgba(0,0,0,0.06); }
+
+/* Override generic .chart-action square sizing for this toggle so its text can show */
+.chart-action.chronogram-toggle,
+.chart-header--chronogram .chronogram-toggle {
+    width: auto !important;
+    min-width: 140px;
+    max-width: 420px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Legend swatch color variants */
+.legend-swatch--planned { background: #6366F1; }
+.legend-swatch--inprogress { background: #f59e0b; }
+.legend-swatch--review { background: #06b6d4; }
+.legend-swatch--completed { background: #10b981; }
+.legend-swatch--nodate { background: #f3f4f6; border:1px solid rgba(0,0,0,0.06); }
+.legend-swatch--urgent { background: #ef4444; box-shadow: 0 0 0 4px rgba(239,68,68,0.06); }
+
+/* Slight spacing tweak to keep legend readable */
+.chart-header--chronogram .chrono-legend { gap: 10px; }
+
+/* On small screens put the toggle on its own line to avoid overlap */
+@media (max-width: 880px) {
+    .chart-header--chronogram { align-items:flex-start; }
+    .chart-header--chronogram .chart-header-right { width:100%; gap:8px; }
+    .chart-header--chronogram .chronogram-toggle { width:100%; margin-top:6px; text-align:center; }
+}
 
 .chronogram-timeline-header { margin-bottom:8px; }
 .chronogram-timeline-header .month { padding:8px 6px; font-size:13px; color:var(--color-gray-600); }
@@ -907,7 +940,10 @@ body {
 
 @media (max-width: 768px) {
     .chronogram-gantt .gantt-label { display:none; }
-    .chrono-legend { display:none; }
+    .chronogram-gantt .gantt-timeline { flex: 1 1 100%; }
+    /* Keep legend visible but compact on small screens */
+    .chrono-legend { display:flex; gap:8px; align-items:center; font-size:12px; flex-wrap:wrap; }
+    .chrono-legend .legend-row { gap:8px; }
     .chronogram-toggle { font-size:13px; }
     .chronogram-timeline-header { padding-left: 0; }
     .chart-header--chronogram { flex-wrap:wrap; gap:8px; }

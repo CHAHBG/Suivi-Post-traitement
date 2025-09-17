@@ -439,14 +439,30 @@
             <p class="chart-subtitle">Début / fin par lot pour le suivi global</p>
         </div>
         <div class="chart-header-right">
-            <div class="chrono-legend" aria-hidden="false">
-                <div class="legend-row flex items-center gap-2 mb-2">
-                    <span class="legend-swatch legend-swatch--planned"></span>
+            <div class="chrono-legend" aria-hidden="false" role="list" aria-label="Légende chronogramme">
+                <div class="legend-row flex items-center gap-2 mb-1" role="listitem">
+                    <span class="legend-swatch legend-swatch--planned" aria-hidden="true"></span>
                     <span>Période planifiée</span>
                 </div>
-                <div class="legend-row flex items-center gap-2">
-                    <span class="legend-swatch legend-swatch--nodate"></span>
+                <div class="legend-row flex items-center gap-2 mb-1" role="listitem">
+                    <span class="legend-swatch legend-swatch--inprogress" aria-hidden="true"></span>
+                    <span>En cours</span>
+                </div>
+                <div class="legend-row flex items-center gap-2 mb-1" role="listitem">
+                    <span class="legend-swatch legend-swatch--review" aria-hidden="true"></span>
+                    <span>En revue</span>
+                </div>
+                <div class="legend-row flex items-center gap-2 mb-1" role="listitem">
+                    <span class="legend-swatch legend-swatch--completed" aria-hidden="true"></span>
+                    <span>Terminé</span>
+                </div>
+                <div class="legend-row flex items-center gap-2 mb-1" role="listitem">
+                    <span class="legend-swatch legend-swatch--nodate" aria-hidden="true"></span>
                     <span class="legend-note">Dates non précisées</span>
+                </div>
+                <div class="legend-row flex items-center gap-2" role="listitem">
+                    <span class="legend-swatch legend-swatch--urgent" aria-hidden="true"></span>
+                    <span class="legend-note">Urgent / Proche échéance</span>
                 </div>
             </div>
             <button id="chronogram-toggle-labels" class="chart-action chronogram-toggle mt-2" title="Basculer étiquettes">Afficher / Masquer étiquettes</button>

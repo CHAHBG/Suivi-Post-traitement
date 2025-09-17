@@ -98,6 +98,93 @@
         return items;
     }
 
+    // Build or refresh the chronogram legend based on current items
+    function updateLegend(items){
+        const legendRoot = document.querySelector('.chrono-legend');
+        if(!legendRoot) return;
+        legendRoot.innerHTML = '';
+
+        // helpers: parse hex -> rgb -> hsl
+        function hexToRgb(hex){
+            if(!hex) return null;
+            hex = hex.replace('#','');
+            if(hex.length===3) hex = hex.split('').map(c=>c+c).join('');
+            const num = parseInt(hex,16);
+            return { r:(num>>16)&255, g:(num>>8)&255, b:num&255 };
+        }
+        function rgbToHsl(r,g,b){
+            r/=255; g/=255; b/=255;
+            const max=Math.max(r,g,b), min=Math.min(r,g,b);
+            let h=0, s=0, l=(max+min)/2;
+            if(max!==min){
+                const d = max-min;
+                s = l>0.5? d/(2-max-min) : d/(max+min);
+                switch(max){
+                    case r: h = (g-b)/d + (g<b?6:0); break;
+                    case g: h = (b-r)/d + 2; break;
+                    case b: h = (r-g)/d + 4; break;
+                }
+                h /= 6;
+            }
+            return { h: Math.round(h*360), s: Math.round(s*100), l: Math.round(l*100) };
+        }
+
+        const seen = new Map();
+        let hasNodate = false, hasUrgent = false;
+        items.forEach(it=>{
+            const color = (it.color || '#6366F1').toString().trim();
+            // normalize to 6-char hex if possible
+            const c = (color[0]==='#')? color.toLowerCase() : color;
+            if(!it.start || !it.end) hasNodate = true;
+            else {
+                const daysAway = Math.round((it.end - new Date())/(1000*60*60*24));
+                if(daysAway <= 3) hasUrgent = true;
+            }
+            if(!seen.has(c)) seen.set(c, 0);
+            seen.set(c, seen.get(c)+1);
+        });
+
+        // order colors by frequency (descending)
+        const colors = Array.from(seen.keys()).sort((a,b)=> seen.get(b)-seen.get(a));
+
+        // map hue ranges to friendly labels
+        function labelForColor(hex){
+            const rgb = hexToRgb(hex.replace('#','')) || hexToRgb(hex);
+            if(!rgb) return 'Période planifiée';
+            const hsl = rgbToHsl(rgb.r,rgb.g,rgb.b);
+            const h = hsl.h;
+            if(h <= 20 || h >= 340) return 'Urgent'; // red
+            if(h > 20 && h < 60) return 'En cours'; // orange/yellow
+            if(h >= 60 && h < 170) return 'Terminé'; // green
+            if(h >= 170 && h < 200) return 'En revue'; // cyan
+            if(h >= 200 && h < 280) return 'Période planifiée'; // blue
+            return 'Période planifiée';
+        }
+
+        // Explicit legend entries: green (normal), orange (<30d), red (<14d), nodate (gray)
+        const makeRow = (swClass, swColor, text) => {
+            const row = document.createElement('div'); row.className = 'legend-row flex items-center gap-2 mb-1'; row.setAttribute('role','listitem');
+            const sw = document.createElement('span'); sw.className = 'legend-swatch'; sw.setAttribute('aria-hidden','true');
+            if(swClass) sw.classList.add(swClass); else if(swColor) sw.style.background = swColor;
+            const t = document.createElement('span'); t.textContent = text;
+            row.appendChild(sw); row.appendChild(t); legendRoot.appendChild(row);
+        };
+
+        makeRow(null, '#10b981', 'Période planifiée (vert)');
+        makeRow(null, '#f59e0b', 'Proche échéance (< 1 mois)');
+        makeRow(null, '#ef4444', 'Urgent (< 2 semaines)');
+        if(hasNodate) makeRow('legend-swatch--nodate', null, 'Dates non précisées');
+    }
+
+    // Shared color decision function used across rendering paths
+    function colorForItem(item){
+        if(!item || !item.start || !item.end) return '#9CA3AF'; // gray for no date
+        const daysAway = Math.round((item.end - new Date())/(1000*60*60*24));
+        if(daysAway <= 14) return '#ef4444'; // red
+        if(daysAway <= 30) return '#f59e0b'; // orange
+        return '#10b981'; // green
+    }
+
     function renderChrono(items){
         const container = document.getElementById('projectTimelineGantt');
         if(!container) return;
@@ -172,7 +259,15 @@
                 bar.style.position = 'absolute';
                 bar.style.left = Math.max(0,left) + '%';
                 bar.style.width = Math.max(0,width) + '%';
-                bar.style.background = it.color || '#6366F1';
+                // dynamic color: default green, orange if <30d, red if <14d
+                function colorForItem(item){
+                    if(!item.start || !item.end) return '#9CA3AF'; // gray for no date
+                    const daysAway = Math.round((item.end - new Date())/(1000*60*60*24));
+                    if(daysAway <= 14) return '#ef4444'; // red
+                    if(daysAway <= 30) return '#f59e0b'; // orange
+                    return '#10b981'; // green
+                }
+                bar.style.background = colorForItem(it);
                 bar.title = `${it.task}: ${it.start.toISOString().split('T')[0]} → ${it.end.toISOString().split('T')[0]}`;
 
                 // date badge on the right inside the timeline
@@ -297,6 +392,7 @@
                 <div class="actions">
                     <button id="chronogram-ack">Marquer comme lu</button>
                     <button id="chronogram-hide">Ne plus afficher</button>
+                    <button id="chronogram-view" class="btn-primary" title="Voir la chronologie">Voir chronogramme</button>
                 </div>
             </div>
         `;
@@ -338,6 +434,40 @@
         modal.querySelector('#chronogram-ack').onclick = ()=>{ modal.remove(); localStorage.setItem('chronogram_ack', new Date().toISOString()); };
         modal.querySelector('#chronogram-hide').onclick = ()=>{ modal.remove(); localStorage.setItem('chronogram_ack', 'never'); };
 
+        // View chronogram button: close modal and scroll/focus the enclosing chart-card for the chronogram
+        const viewBtn = modal.querySelector('#chronogram-view');
+        if(viewBtn){
+            viewBtn.onclick = ()=>{
+                modal.remove();
+                // Prefer the chart card that contains the chronogram header; fallback to the gantt div or any .chart-card
+                const headerEl = document.querySelector('.chart-header--chronogram');
+                const chartCard = headerEl ? headerEl.closest('.chart-card') : null;
+                const ganttEl = document.getElementById('projectTimelineGantt');
+                const target = chartCard || ganttEl || document.querySelector('.chart-card');
+
+                // If there's a tab to activate, click it first (keeps single-page apps consistent)
+                const regionalTab = document.querySelector('.nav-tab[data-tab="regional"]');
+                const doScroll = () => {
+                    if(!target) return;
+                    // temporarily make focusable if not
+                    const hadTab = target.hasAttribute('tabindex');
+                    if(!hadTab) target.setAttribute('tabindex', '-1');
+                    try{ target.scrollIntoView({ behavior: 'smooth', block: 'start' }); }catch(e){}
+                    try{ target.focus(); }catch(e){}
+                    // remove temporary tabindex after a short delay
+                    if(!hadTab) setTimeout(()=>{ target.removeAttribute('tabindex'); }, 1200);
+                };
+
+                if(regionalTab){
+                    regionalTab.click();
+                    // allow tab switch animation/logic to run, then scroll
+                    setTimeout(doScroll, 250);
+                } else {
+                    doScroll();
+                }
+            };
+        }
+
         // Try browser Notification
         if('Notification' in window && Notification.permission === 'granted'){
             const body = upcoming.map(it=>`${it.task} — ${it.end.toISOString().split('T')[0]}`).join('\n');
@@ -378,10 +508,24 @@
                         // ensure data-start / data-end exist for filtering
                         r.setAttribute('data-start', m[1]);
                         r.setAttribute('data-end', m[2]);
-                        return { task, start, end, color: '#6366F1' };
+                        return { task, start, end, color: colorForItem({ start, end }) };
                     }
                 }
                 return { task, start: null, end: null, color: '#6366F1' };
+            });
+            // recolor any existing gantt-bar elements to match dynamic rules
+            rows.forEach((r,idx)=>{
+                const ds = r.getAttribute('data-start');
+                const de = r.getAttribute('data-end');
+                const bar = r.querySelector('.gantt-bar');
+                if(bar){
+                    if(ds && de){
+                        const start = new Date(ds), end = new Date(de);
+                        bar.style.background = colorForItem({ start, end });
+                    } else {
+                        bar.style.background = colorForItem(null);
+                    }
+                }
             });
 
         // 3) final fallback: build from CHRONO JSON and render
@@ -390,7 +534,10 @@
             renderChrono(items);
         }
 
-        const upcoming = checkUpcoming(items,7);
+    // Update the legend to reflect actual task colors and flags
+    try{ if(typeof updateLegend === 'function') updateLegend(items); }catch(e){ /* ignore */ }
+
+    const upcoming = checkUpcoming(items,7);
         const lastAck = localStorage.getItem('chronogram_ack');
         if(!lastAck) showAlerts(upcoming);
 
