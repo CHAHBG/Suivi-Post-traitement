@@ -482,6 +482,51 @@
         const container = document.getElementById('projectTimelineGantt');
         let items = [];
 
+        // Helper: try to (re)load structured data
+        function fetchChronogramData(){
+            // If a JSON endpoint is provided by the page, prefer fetching JSON
+            const url = (window.chronogramData && window.chronogramData.url) || window.chronogramDataUrl || null;
+            if(url){
+                // add cache-busting param
+                const u = new URL(url, location.href);
+                u.searchParams.set('_ts', Date.now());
+                return fetch(u.toString(), { cache: 'no-store', credentials: 'same-origin' })
+                    .then(r => r.ok ? r.json() : Promise.reject(new Error('Fetch failed')))
+                    .then(json => {
+                        if(json && Array.isArray(json.tasks)){
+                            window.chronogramData = json; // update global
+                            const newItems = json.tasks.map((t, idx) => ({ task: t.name||`task-${idx}`, region: t.section||'', start: t.start? new Date(t.start): null, end: t.end? new Date(t.end): null, color: t.color||'#10b981' }));
+                            items = newItems;
+                            renderChrono(items);
+                            try{ updateLegend(items); }catch(e){}
+                        }
+                    }).catch(err=>{ console.warn('chronogram fetch failed', err); });
+            }
+
+            // Otherwise attempt to reload the local js/chronogramData.js script to refresh globals
+            const scriptPath = 'js/chronogramData.js';
+            return new Promise((resolve)=>{
+                try{
+                    // remove any previous dynamic script
+                    const existing = document.querySelector('script[data-dynamic="chronogramData"]');
+                    if(existing) existing.remove();
+                    const s = document.createElement('script');
+                    s.setAttribute('data-dynamic','chronogramData');
+                    s.src = scriptPath + '?_ts=' + Date.now();
+                    s.onload = ()=>{
+                        if(window.chronogramData && Array.isArray(window.chronogramData.tasks)){
+                            items = window.chronogramData.tasks.map((t, idx) => ({ task: t.name||`task-${idx}`, region: t.section||'', start: t.start? new Date(t.start): null, end: t.end? new Date(t.end): null, color: t.color||'#10b981' }));
+                            renderChrono(items);
+                            try{ updateLegend(items); }catch(e){}
+                        }
+                        resolve();
+                    };
+                    s.onerror = ()=>{ resolve(); };
+                    document.head.appendChild(s);
+                }catch(e){ resolve(); }
+            });
+        }
+
         // 1) Prefer structured data from js/chronogramData.js
         if(window.chronogramData && Array.isArray(window.chronogramData.tasks) && container){
             items = window.chronogramData.tasks.map((t, idx) => {
@@ -557,8 +602,49 @@
             });
         }
 
-        // periodic check every hour
+        // periodic check every hour for alerts
         setInterval(()=>{ const up = checkUpcoming(items,7); showAlerts(up); }, 1000*60*60);
+
+        // --- Auto-refresh chronogram data every 5 minutes and when page becomes visible ---
+        const FIVE_MIN = 1000 * 60 * 5;
+        // initial fetch if a remote source is configured
+        fetchChronogramData().catch(()=>{});
+        // refresh on visibility change (when tab becomes visible)
+        document.addEventListener('visibilitychange', ()=>{
+            if(document.visibilityState === 'visible'){
+                // fetch fresh data and don't rely on cache
+                fetchChronogramData();
+            }
+        });
+        // periodic refresh every 5 minutes
+        setInterval(()=>{ fetchChronogramData(); }, FIVE_MIN);
+
+        // Listen for global data updates dispatched by dataRefresher
+        document.addEventListener('data:update', (ev)=>{
+            try{
+                const detail = ev.detail || {};
+                const data = detail.data;
+                const url = detail.url;
+                // If the incoming data looks like the chronogram structure, update it
+                if(data && Array.isArray(data.tasks)){
+                    window.chronogramData = data;
+                    items = data.tasks.map((t, idx) => ({ task: t.name||`task-${idx}`, region: t.section||'', start: t.start? new Date(t.start): null, end: t.end? new Date(t.end): null, color: t.color||'#10b981' }));
+                    renderChrono(items);
+                    try{ updateLegend(items); }catch(e){}
+                } else {
+                    // optional: if the URL matches the configured window.chronogramDataUrl, try to parse as JSON.tasks
+                    const configured = window.chronogramDataUrl || (window.chronogramData && window.chronogramData.url) || null;
+                    if(configured && url && url.indexOf(configured) !== -1){
+                        if(data && Array.isArray(data.tasks)){
+                            window.chronogramData = data;
+                            items = data.tasks.map((t, idx) => ({ task: t.name||`task-${idx}`, region: t.section||'', start: t.start? new Date(t.start): null, end: t.end? new Date(t.end): null, color: t.color||'#10b981' }));
+                            renderChrono(items);
+                            try{ updateLegend(items); }catch(e){}
+                        }
+                    }
+                }
+            }catch(e){ console.warn('data:update handler error', e); }
+        });
     });
 
 })();
