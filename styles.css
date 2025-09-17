@@ -398,10 +398,106 @@ body {
 /* Panels */
 .panel {
     display: none;
-    opacity: 0;
-    transform: translateY(20px);
-    transition: all var(--transition-normal);
 }
+
+/* Chronogram specific styles */
+.chronogram-fullbleed { position: relative; left: 50%; margin-left: -50vw; width: 100vw; }
+.chronogram-inner { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+.chronogram-card { width: 100%; }
+
+#projectTimelineGantt { min-height: 220px; }
+#projectTimelineGantt .gantt-row { display:flex; align-items:center; padding:10px 0; }
+#projectTimelineGantt .gantt-label { flex:0 0 34%; padding-right:16px; color:#111827; display:block; }
+#projectTimelineGantt .gantt-timeline { flex:1 1 66%; position:relative; height:48px; background:transparent; }
+#projectTimelineGantt .gantt-bar { height:60%; border-radius:6px; box-shadow:0 1px 2px rgba(0,0,0,0.04); }
+#projectTimelineGantt .gantt-row:nth-child(odd) { background: rgba(99,102,241,0.03); }
+#projectTimelineGantt .date-badge { display:inline-block; min-width:110px; text-align:center; padding:6px 8px; border-radius:999px; background:#f3f4f6; color:#6b7280; font-size:12px; }
+
+/* Timeline header (months) */
+.chronogram-timeline-header { display:flex; gap:8px; align-items:center; padding:8px 0 12px 0; font-size:13px; color:#374151; }
+.chronogram-timeline-header .month { flex:1 1 0; text-align:center; padding:6px 4px; background:transparent; }
+
+/* Modal styles */
+#chronogram-modal .modal-title { font-size:18px; color:#92400e; }
+#chronogram-modal .modal-body { margin-top:8px; max-height:320px; overflow:auto; }
+#chronogram-modal .modal-item { display:flex; justify-content:space-between; gap:12px; padding:8px 0; border-bottom:1px dashed rgba(0,0,0,0.04); }
+#chronogram-modal .modal-item .item-task { flex:1 1 auto; color:#111827; }
+#chronogram-modal .modal-item .item-date { flex:0 0 150px; text-align:right; }
+#chronogram-modal .btn { padding:8px 12px; border-radius:6px; cursor:pointer; }
+#chronogram-modal .btn-primary { background:#4f46e5; color:white; border:none; }
+#chronogram-modal .btn-ghost { background:transparent; border:1px solid rgba(0,0,0,0.08); }
+
+/* Enhanced chronogram alert modal styles */
+#chronogram-modal .modal-inner {
+    background: linear-gradient(180deg, #fffbeb, #fff6e6);
+    border-left: 4px solid #f59e0b;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.12);
+    border-radius: 10px;
+    padding: 18px;
+}
+#chronogram-modal .modal-title {
+    color: #92400e;
+    font-weight: 700;
+}
+#chronogram-modal ul { list-style:none; padding:0; margin:0; }
+#chronogram-modal li { padding:10px 0; display:flex; justify-content:space-between; align-items:center; border-bottom:1px dashed rgba(0,0,0,0.04); }
+#chronogram-modal li:last-child { border-bottom:none; }
+#chronogram-modal .due-chip {
+    display:inline-block; min-width:110px; text-align:center; padding:6px 10px; border-radius:999px; font-size:12px; font-weight:600;
+}
+
+/* color variations for due chips */
+.due-chip.soon { background: #fee2e2; color:#b91c1c; border:1px solid rgba(185,28,28,0.08); }
+.due-chip.warn { background: #fff7ed; color:#92400e; border:1px solid rgba(146,64,14,0.06); }
+.due-chip.ok { background: #ecfdf5; color:#065f46; border:1px solid rgba(6,95,70,0.06); }
+
+/* action buttons */
+#chronogram-modal .actions { display:flex; gap:8px; margin-top:8px; }
+#chronogram-ack { background:#10b981; color:#fff; border:none; padding:8px 12px; border-radius:8px; }
+#chronogram-hide { background:#f3f4f6; color:#374151; border:1px solid rgba(0,0,0,0.06); padding:8px 12px; border-radius:8px; }
+#chronogram-close { background:transparent; border:none; font-size:20px; color:#374151; }
+
+/* date-badge variations in timeline */
+.date-badge.due-soon { background: #fee2e2; color:#b91c1c; border:1px solid rgba(185,28,28,0.06); }
+.date-badge.due-warn { background: #fff7ed; color:#92400e; border:1px solid rgba(146,64,14,0.06); }
+.date-badge.due-ok { background: #ecfdf5; color:#065f46; border:1px solid rgba(6,95,70,0.06); }
+
+/* Attention animation for modal items */
+@keyframes chronogram-pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.03); }
+    100% { transform: scale(1); }
+}
+
+/* smoother, GPU-friendly continuous pulse (forward/backward) */
+.chronogram-attention {
+    will-change: transform;
+    animation: chronogram-pulse 1600ms cubic-bezier(.4,0,.2,1) infinite alternate;
+}
+
+/* respect users who prefer reduced motion */
+@media (prefers-reduced-motion: reduce) {
+    .chronogram-attention { animation: none; }
+}
+
+/* small text helper for chips */
+.due-chip .chip-text { font-weight:600; }
+
+/* Responsive: collapse labels on small screens */
+@media (max-width: 768px) {
+    #projectTimelineGantt .gantt-label { display:none; }
+    #projectTimelineGantt .gantt-timeline { flex: 1 1 100%; }
+    .chrono-legend { display:none; }
+}
+
+/* allow forcing labels hidden (still supported via toggle) */
+#projectTimelineGantt.labels-hidden .gantt-label { display:none !important; }
+
+/* Chronogram legend swatches */
+.chrono-legend { flex:0 0 auto; display:flex; gap:10px; align-items:center; font-size:13px; color:#374151; }
+.legend-swatch { display:inline-block; width:14px; height:10px; border-radius:3px; border:1px solid rgba(0,0,0,0.05); }
+.legend-swatch--planned { background:#6366F1; }
+.legend-swatch--nodate { background:#f3f4f6; }
 
 /* Forecast flash animations */
 .forecast-flash-success {
@@ -756,6 +852,65 @@ body {
     white-space: normal;
     word-wrap: break-word;
     overflow: visible;
+}
+
+/* Additional chronogram polish */
+.chart-header--chronogram { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.chart-header--chronogram .chart-header-left { flex:1 1 auto; min-width:0; overflow:hidden; }
+.chart-header--chronogram .chart-header-left .chart-title { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:block; }
+.chart-header--chronogram .chart-header-right { display:flex; align-items:center; gap:12px; flex-shrink:0; white-space:nowrap; min-width:260px; }
+.chart-header--chronogram .chart-title { margin:0 0 4px 0; }
+.chart-header--chronogram .chart-subtitle { margin:0; color:var(--color-gray-500); font-size:13px; }
+
+.chrono-legend { display:flex; gap:12px; align-items:center; }
+.chrono-legend .legend-row { display:flex; align-items:center; gap:10px; font-size:13px; color:var(--color-gray-600); }
+.chrono-legend .legend-row span { display:inline-block; }
+.chrono-legend .legend-swatch { margin-right:6px; }
+.chrono-legend .legend-note { color:var(--color-gray-500); font-size:12px; }
+.chrono-legend, .chronogram-toggle { white-space:nowrap; }
+.chart-header--chronogram .chrono-legend { margin-right:8px; }
+
+/* compact toggle button that sits inline with legend */
+.chart-header--chronogram .chronogram-toggle {
+    margin-top: 0 !important;
+    padding: 6px 10px;
+    height: 34px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    border-radius: 8px;
+    background: #ffffff;
+    border: 1px solid rgba(0,0,0,0.06);
+    color: var(--color-gray-800);
+    font-size: 13px;
+}
+.chart-header--chronogram .chronogram-toggle i { margin-right: 6px; }
+.chronogram-toggle { padding:6px 10px; border-radius:8px; background:transparent; border:1px solid rgba(0,0,0,0.06); }
+
+.chronogram-timeline-header { margin-bottom:8px; }
+.chronogram-timeline-header .month { padding:8px 6px; font-size:13px; color:var(--color-gray-600); }
+
+/* Align months header with timeline area (leave space for activity labels) */
+.chronogram-timeline-header { padding-left: calc(34% + 24px); }
+.chronogram-timeline-header.labels-hidden { padding-left: 0; }
+/* clickable month chips */
+.chronogram-timeline-header .month { cursor:pointer; border-radius:8px; padding:6px 8px; transition: background-color 160ms, color 160ms, transform 120ms; }
+.chronogram-timeline-header .month:hover { background: rgba(99,102,241,0.06); }
+.chronogram-timeline-header .month.active { background:#6366F1; color: white; transform: translateY(-1px); }
+
+.chronogram-gantt { width:100%; min-height:200px; border-radius:8px; padding:8px 6px; background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.00)); }
+.chronogram-gantt .gantt-row { display:flex; align-items:center; gap:12px; padding:10px 8px; }
+.chronogram-gantt .gantt-label { flex:0 0 34%; padding-right:12px; color:var(--color-gray-800); font-weight:600; }
+.chronogram-gantt .gantt-timeline { flex:1 1 66%; position:relative; height:44px; padding-right:64px; }
+.chronogram-gantt .gantt-bar { position:absolute; height:60%; border-radius:6px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); z-index:1; }
+.chronogram-gantt .date-badge { position:absolute; right:8px; top:50%; transform:translateY(-50%); display:inline-block; min-width:110px; text-align:center; padding:6px 8px; border-radius:999px; background:#f8fafc; color:var(--color-gray-600); font-size:12px; z-index:12; }
+
+@media (max-width: 768px) {
+    .chronogram-gantt .gantt-label { display:none; }
+    .chrono-legend { display:none; }
+    .chronogram-toggle { font-size:13px; }
+    .chronogram-timeline-header { padding-left: 0; }
+    .chart-header--chronogram { flex-wrap:wrap; gap:8px; }
 }
 
 /* Keep the retention donut at a comfortable height so analysis fits */
