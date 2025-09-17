@@ -444,21 +444,29 @@ class EnhancedDashboard {
         const total2 = sumArr(proc2);
     // Phase Pilote
     const pp = getNum(proc1, 'Phase Pilote');
-    this.updateProgressBar('phasePiloteProgress', total1 > 0 ? (pp / total1) * 100 : 0);
-    this.updateProgressValue('phasePiloteValue', `${Math.round(pp).toLocaleString()} / ${Math.round(total1).toLocaleString()}`);
+    if(document.getElementById('phasePiloteProgress') || document.getElementById('phasePiloteValue')){
+        this.updateProgressBar('phasePiloteProgress', total1 > 0 ? (pp / total1) * 100 : 0);
+        this.updateProgressValue('phasePiloteValue', `${Math.round(pp).toLocaleString()} / ${Math.round(total1).toLocaleString()}`);
+    }
     // QField
     const qf = getNum(proc1, 'QField');
-    this.updateProgressBar('qfieldProgress', total1 > 0 ? (qf / total1) * 100 : 0);
-    this.updateProgressValue('qfieldValue', `${Math.round(qf).toLocaleString()} / ${Math.round(total1).toLocaleString()}`);
+    if(document.getElementById('qfieldProgress') || document.getElementById('qfieldValue')){
+        this.updateProgressBar('qfieldProgress', total1 > 0 ? (qf / total1) * 100 : 0);
+        this.updateProgressValue('qfieldValue', `${Math.round(qf).toLocaleString()} / ${Math.round(total1).toLocaleString()}`);
+    }
         // Total Parcels (combined phases)
         const combinedTotal = total1 + total2;
         const combinedCurrent = total1;
-    this.updateProgressBar('totalParcelsProgress', combinedTotal > 0 ? (combinedCurrent / combinedTotal) * 100 : 0);
-    this.updateProgressValue('totalParcelsValue', `${Math.round(combinedCurrent).toLocaleString()} / ${Math.round(combinedTotal).toLocaleString()}`);
+    if(document.getElementById('totalParcelsProgress') || document.getElementById('totalParcelsValue')){
+        this.updateProgressBar('totalParcelsProgress', combinedTotal > 0 ? (combinedCurrent / combinedTotal) * 100 : 0);
+        this.updateProgressValue('totalParcelsValue', `${Math.round(combinedCurrent).toLocaleString()} / ${Math.round(combinedTotal).toLocaleString()}`);
+    }
         // Phase KoboCollect
     const kc = getNum(proc2, 'Phase KoboCollect');
-    this.updateProgressBar('koboCollectProgress', total2 > 0 ? (kc / total2) * 100 : 0);
-    this.updateProgressValue('koboCollectValue', `${Math.round(kc).toLocaleString()} / ${Math.round(total2).toLocaleString()}`);
+    if(document.getElementById('koboCollectProgress') || document.getElementById('koboCollectValue')){
+        this.updateProgressBar('koboCollectProgress', total2 > 0 ? (kc / total2) * 100 : 0);
+        this.updateProgressValue('koboCollectValue', `${Math.round(kc).toLocaleString()} / ${Math.round(total2).toLocaleString()}`);
+    }
         
         // Update Progress Cards
         if (kpis.ctasf && typeof kpis.ctasf.rate !== 'undefined') {
