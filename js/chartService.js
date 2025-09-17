@@ -1742,23 +1742,39 @@ class ChartService {
     createParcelTypeDistributionChart(rawData) {
         const ctx = document.getElementById('parcelTypeDistributionChart');
         if (!ctx) return;
-        // Combine processing1 and processing2 data using case-insensitive lookup
-        const processing1 = this.findSheet('Processing Phase 1', rawData) || [];
-        const processing2 = this.findSheet('Processing Phase 2', rawData) || [];
-        
-        // Group by parcel type
+        // Prefer Commune Status sheet with explicit columns
+        const communeStatus = this.findSheet('Commune Status', rawData) || this.findSheet('Commune Analysis', rawData) || [];
+
+        // Columns we prefer
+        const INDIV = 'Parcelles individuelles jointes';
+        const COLLECT = 'Parcelles collectives jointes';
+        const NONJOINED = 'Parcelles non jointes';
+
         const parcelTypes = new Map();
-        
-        // Process data from both sheets
-        [...processing1, ...processing2].forEach(row => {
-            const type = row['Parcel Type'] || row['ParcelType'] || row['parcel type'] || row['Type'] || 'Unknown';
-            const total = this._getNumericField(row, ['Total','total']);
-            
-            if (type && total) {
-                const current = parcelTypes.get(type) || 0;
-                parcelTypes.set(type, current + total);
-            }
-        });
+
+        if(communeStatus && communeStatus.length && (communeStatus[0][INDIV] !== undefined || communeStatus[0][COLLECT] !== undefined || communeStatus[0][NONJOINED] !== undefined)){
+            // Sum across the sheet for each column
+            const indivTotal = communeStatus.reduce((s, r) => s + this._getNumericField(r, [INDIV, INDIV.toLowerCase()]), 0);
+            const collectTotal = communeStatus.reduce((s, r) => s + this._getNumericField(r, [COLLECT, COLLECT.toLowerCase()]), 0);
+            const nonjoinedTotal = communeStatus.reduce((s, r) => s + this._getNumericField(r, [NONJOINED, NONJOINED.toLowerCase()]), 0);
+
+            parcelTypes.set('Parcelles individuelles jointes', indivTotal);
+            parcelTypes.set('Parcelles collectives jointes', collectTotal);
+            parcelTypes.set('Parcelles non jointes', nonjoinedTotal);
+        } else {
+            // Fallback: Combine processing1 and processing2 data using case-insensitive lookup
+            const processing1 = this.findSheet('Processing Phase 1', rawData) || [];
+            const processing2 = this.findSheet('Processing Phase 2', rawData) || [];
+            // Process data from both sheets grouping by 'Parcel Type'
+            [...processing1, ...processing2].forEach(row => {
+                const type = row['Parcel Type'] || row['ParcelType'] || row['parcel type'] || row['Type'] || 'Unknown';
+                const total = this._getNumericField(row, ['Total','total']);
+                if (type && total) {
+                    const current = parcelTypes.get(type) || 0;
+                    parcelTypes.set(type, current + total);
+                }
+            });
+        }
         
         // Prepare chart data
         const types = Array.from(parcelTypes.keys());
