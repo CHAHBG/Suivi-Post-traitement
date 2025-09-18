@@ -93,22 +93,73 @@
 
 /* Dark Theme Variables */
 [data-theme="dark"] {
-    --color-white: #0F172A;
-    --color-gray-50: #1E293B;
-    --color-gray-100: #334155;
-    --color-gray-200: #475569;
-    --color-gray-300: #64748B;
-    --color-gray-400: #94A3B8;
-    --color-gray-500: #CBD5E1;
-    --color-gray-600: #E2E8F0;
-    --color-gray-700: #F1F5F9;
-    --color-gray-800: #F8FAFC;
-    --color-gray-900: #FFFFFF;
-    
-    --glass-bg: rgba(30, 41, 59, 0.85);
-    --glass-border: rgba(148, 163, 184, 0.2);
-    --gradient-surface: linear-gradient(135deg, #1E293B 0%, #334155 100%);
+    /* Semantic overrides for dark theme */
+    --text-color: #FFFFFF;
+    --muted-color: #cbd5e1;
+    --surface-1: #0b1220; /* page background */
+    --surface-2: #0f1724; /* slightly lighter for panels */
+    --card-bg: rgba(17,24,39,0.72);
+    --card-border: rgba(255,255,255,0.06);
+    --glass-bg: rgba(6,10,18,0.6);
+    --glass-border: rgba(255,255,255,0.06);
+    --gradient-surface: linear-gradient(180deg,#071428 0%, #0b1220 100%);
+    --accent-glow: rgba(139,92,246,0.18);
+    --shadow-glow: 0 10px 30px rgba(2,6,23,0.6);
 }
+
+/* Dark-mode component styles (override where necessary) */
+[data-theme="dark"] body {
+    background: var(--gradient-surface);
+    color: var(--text-color);
+}
+
+[data-theme="dark"] .nav-glass {
+    background: linear-gradient(180deg, rgba(3,7,18,0.6), rgba(6,10,18,0.45));
+    border-color: rgba(255,255,255,0.04);
+}
+
+[data-theme="dark"] .dashboard-title,
+[data-theme="dark"] .dashboard-subtitle,
+[data-theme="dark"] .section-header,
+[data-theme="dark"] .metric-title { color: var(--text-color); }
+
+[data-theme="dark"] .commune-card {
+    background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+    background-color: var(--card-bg);
+    border: 1px solid var(--card-border);
+    box-shadow: var(--shadow-glow);
+    color: var(--text-color);
+}
+
+[data-theme="dark"] .commune-card .kpi-small {
+    background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+    border: 1px solid rgba(255,255,255,0.03);
+}
+
+[data-theme="dark"] .kpi-value,
+[data-theme="dark"] .kpi-label,
+[data-theme="dark"] .small { color: var(--text-color); }
+
+[data-theme="dark"] .kpi-pct.pct-low { color: #fecaca; }
+[data-theme="dark"] .kpi-pct.pct-warn { color: #ffd8a8; }
+[data-theme="dark"] .kpi-pct.pct-ok { color: #bbf7d0; }
+
+[data-theme="dark"] .geomaticien-bar { background: linear-gradient(90deg,#7c3aed,#5b21b6); color: white; }
+
+[data-theme="dark"] .btn { background: linear-gradient(90deg, #4f46e5, #7c3aed); color: white; box-shadow: 0 6px 20px rgba(76,29,149,0.18); }
+[data-theme="dark"] .btn-ghost { background: transparent; border: 1px solid rgba(255,255,255,0.06); color: var(--text-color); }
+
+[data-theme="dark"] .table-wrap { background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); border:1px solid rgba(255,255,255,0.04); }
+
+[data-theme="dark"] .region-legend .legend-item { color: var(--muted-color); }
+
+[data-theme="dark"] .chronogram-timeline-header { background: transparent; color: var(--muted-color); }
+
+[data-theme="dark"] #chronogram-modal .modal-inner { background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); color: var(--text-color); border:1px solid rgba(255,255,255,0.04); }
+
+[data-theme="dark"] .data-table thead th { color: var(--muted-color); border-bottom-color: rgba(255,255,255,0.04); }
+[data-theme="dark"] .data-table tbody td { color: var(--text-color); border-bottom-color: rgba(255,255,255,0.02); }
+
 
 /* Base Styles */
 * {
@@ -127,8 +178,8 @@ body {
     font-size: var(--font-size-base);
     line-height: 1.6;
     color: var(--color-gray-900);
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    background-attachment: fixed;
+    /* Neutral surface background to match the rest of the site (no purple) */
+    background: linear-gradient(180deg, var(--color-gray-50) 0%, #f8fafc 100%);
     min-height: 100vh;
     overflow-x: hidden;
     transition: color var(--transition-normal), background var(--transition-normal);
@@ -400,6 +451,98 @@ body {
     display: none;
 }
 
+/* Communes card grid and KPI tiles */
+.communes-grid { margin-top: 10px; }
+.commune-card {
+        background: var(--color-white);
+        border-radius: 14px;
+        padding: 18px;
+        box-shadow: 0 10px 30px rgba(12, 9, 39, 0.08);
+        border: 1px solid rgba(255,255,255,0.6);
+        transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+.commune-card:hover{ transform: translateY(-6px); box-shadow: var(--shadow-xl); }
+.kpi-small { background: linear-gradient(180deg,#fbfdff,#f3f6ff); border-radius:10px; padding:12px; text-align:center; border:1px solid rgba(15,23,42,0.04); }
+.kpi-value{ font-size:1.1rem; font-weight:800; color:var(--color-gray-900); }
+.kpi-label{ font-size:0.75rem; color:var(--color-gray-500); text-transform:uppercase; margin-top:6px; }
+.communes-page .controls { justify-content:flex-start; gap:16px; }
+.communes-page .summary-item .summary-value{ color:var(--color-white); }
+
+@media (max-width: 720px){
+    .commune-card{ padding:14px; }
+    .kpi-small{ padding:10px; }
+}
+
+/* Top summary KPI cards for communes page */
+.communes-hero { display:flex; justify-content:center; }
+.stats-summary { display:flex; gap:22px; justify-content:center; align-items:center; flex-wrap:wrap; }
+.summary-card { background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03)); padding:18px 28px; border-radius:14px; box-shadow: 0 10px 30px rgba(12,9,39,0.08); min-width:180px; text-align:center; border:1px solid rgba(255,255,255,0.06); }
+.summary-value { font-size:1.8rem; font-weight:800; color:white; margin-bottom:6px; }
+.summary-label { font-size:0.85rem; color:rgba(255,255,255,0.85); font-weight:600; letter-spacing:0.08em; text-transform:uppercase; }
+
+/* Refine commune-card visual to match example */
+.commune-card { background: var(--glass-bg); backdrop-filter: var(--glass-backdrop); border:1px solid var(--glass-border); }
+.commune-card header { color: var(--color-gray-800); }
+.commune-card .kpi-small { background: linear-gradient(180deg,#fbfdff,#f7fafc); border-radius:10px; padding:14px; }
+.commune-card .kpi-value { font-size:1.25rem; color: var(--color-gray-900); }
+.commune-card .small { color: var(--color-gray-500); }
+
+/* entrance animation for cards (subtle fade + lift) */
+.enter-fade { opacity: 0; transform: translateY(8px) scale(0.995); animation: enterFade 420ms ease forwards; }
+@keyframes enterFade { to { opacity: 1; transform: translateY(0) scale(1); } }
+
+/* compact mode tweaks: shrink KPI tiles and stack fewer items */
+.commune-kpis.compact .kpi-small { padding:8px; }
+.commune-kpis.compact .kpi-value { font-size:1rem; }
+
+/* summary cards: keep neutral background on this page for legibility */
+.summary-card { background: var(--glass-bg); border:1px solid var(--glass-border); color: var(--color-gray-900); }
+
+/* New enhanced card visuals to match screenshot */
+.commune-card { padding: 22px; border-radius: 14px; }
+.commune-card header { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
+.commune-card .region-pill { padding:6px 12px; border-radius:999px; background:#fde9d0; color:#7a4a20; font-weight:700; font-size:0.85rem; }
+.commune-card .kpi-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:12px; }
+.commune-card .kpi-small { padding:16px; border-radius:10px; background: linear-gradient(180deg,#fbfdff,#f3f6ff); box-shadow: 0 6px 18px rgba(15,23,42,0.04); text-align:center; }
+.commune-card .kpi-value { font-size:1.5rem; font-weight:800; color:var(--color-gray-900); }
+.commune-card .kpi-label { font-size:0.75rem; color:var(--color-gray-500); text-transform:uppercase; margin-top:6px; }
+.commune-card .joined-panel { background: linear-gradient(180deg,#f3f4ff,#fbfbff); border-radius:10px; padding:12px; border-left:4px solid rgba(99,102,241,0.12); margin-bottom:14px; }
+.commune-card .joined-values { display:flex; gap:28px; justify-content:space-between; }
+.commune-card .joined-num { font-weight:800; color:#6d28d9; font-size:1.15rem; }
+.commune-card .geomaticien-bar { background: linear-gradient(90deg,#6d28d9,#7c3aed); color:white; padding:12px; border-radius:10px; text-align:center; font-weight:700; }
+
+/* Make controls row compact on small screens */
+@media (max-width:900px){ .controls-row { gap:8px; } .commune-card { padding:16px; } }
+
+/* Region legend and color mapping */
+.region-legend { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+.region-pill--kedougou { background:#FFE8E8; color:#991B1B; }
+.region-pill--tambacounda { background:#FFF4E6; color:#92400E; }
+.region-pill--kedoug { background:#EFF6FF; color:#1E3A8A; }
+.region-pill--dakar { background:#ECFCCB; color:#365314; }
+.legend-item { display:flex; align-items:center; gap:8px; font-size:0.9rem; color:var(--color-gray-700); }
+.legend-swatch { width:14px; height:14px; border-radius:6px; border:1px solid rgba(0,0,0,0.06); }
+
+/* Card animation: expose --i to tune stagger from JS */
+.commune-card { --i: 0; opacity: 0; transform: translateY(12px) scale(0.995); transition: transform 420ms var(--timing, cubic-bezier(.2,.8,.2,1)), opacity 420ms ease; }
+.commune-card.is-visible { opacity:1; transform: translateY(0) scale(1); }
+
+/* finer KPI tile spacing to match example */
+.commune-card .kpi-grid { grid-template-columns: repeat(3, 1fr); gap:14px; }
+.commune-card .kpi-small { padding:14px 12px; }
+.commune-card .kpi-value { font-size:1.4rem; }
+
+/* percent badges below KPI values */
+.kpi-pct { margin-top:6px; font-weight:700; font-size:0.95rem; }
+.kpi-pct.pct-low { color:#dc2626; }
+.kpi-pct.pct-warn { color:#b45309; }
+.kpi-pct.pct-ok { color:#047857; }
+
+@media (max-width:900px){
+    .stats-summary { gap:12px; }
+    .summary-card { min-width:140px; padding:12px 16px; }
+}
+
 /* Chronogram specific styles */
 .chronogram-fullbleed { position: relative; left: 50%; margin-left: -50vw; width: 100vw; }
 .chronogram-inner { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
@@ -504,6 +647,50 @@ body {
 .due-chip .chip-text { font-weight:600; }
 
 /* Responsive: collapse labels on small screens */
+
+/* --------------------------------------------------------------------------
+     Responsive adjustments (mobile-first)
+     Ensure modals/popups, gantt/chronogram and commune cards remain usable
+     on small viewports while preserving ratios and allowing scrolling where needed
+     -------------------------------------------------------------------------- */
+@media (max-width: 900px) {
+    .controls-row { flex-direction: column; align-items: stretch; gap: 8px; }
+    .communes-grid { grid-template-columns: 1fr !important; gap: 12px; }
+    .commune-card { padding: 14px; border-radius: 10px; }
+    .commune-card .kpi-grid { grid-template-columns: repeat(2, 1fr); gap:10px; }
+    .commune-card .kpi-small { padding: 10px; }
+    .commune-card .kpi-value { font-size: 1.1rem; }
+    .geomaticien-bar { padding: 10px; font-size: 0.95rem; }
+}
+
+@media (max-width: 480px) {
+    /* Cards stack and compress for small phones */
+    .communes-grid { grid-template-columns: 1fr !important; gap: 10px; }
+    .commune-card { padding: 12px; border-radius: 10px; }
+    .commune-card .kpi-grid { grid-template-columns: repeat(2, 1fr); gap:8px; }
+    .commune-card .kpi-small { padding: 8px; }
+    .commune-card .kpi-value { font-size: 1rem; }
+
+    /* Chronogram: allow horizontal scrolling of month header and gantt timeline */
+    .chronogram-timeline-header { overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; }
+    .chronogram-timeline-header .month { display: inline-block; min-width: 80px; flex: 0 0 auto; }
+    #projectTimelineGantt { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+    /* Modal / popup layout — ensure center + fitting with safe padding */
+    .modal, #chronogram-modal, .modal-overlay { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; padding: 12px; z-index: 1100; }
+    .modal .modal-inner, #chronogram-modal .modal-inner, .modal-inner { width: 100%; max-width: 720px; max-height: 92vh; overflow: auto; border-radius: 12px; box-shadow: 0 18px 50px rgba(2,6,23,0.2); }
+    #chronogram-modal .modal-inner { padding: 12px; }
+
+    /* Sticky actions at bottom inside modal keep visible on small screens */
+    .modal .actions, #chronogram-modal .actions { position: sticky; bottom: 0; background: linear-gradient(transparent, rgba(255,255,255,0.9)); padding: 8px 12px; display: flex; gap: 8px; justify-content: flex-end; }
+
+    /* Make canvases and SVGs responsive within containers */
+    canvas, svg { max-width: 100%; height: auto !important; }
+
+    /* Prevent body scroll when a modal is open if the app toggles `body.modal-open` */
+    body.modal-open { overflow: hidden; height: 100%; }
+}
+
 @media (max-width: 768px) {
     #projectTimelineGantt .gantt-label { display:none; }
     #projectTimelineGantt .gantt-timeline { flex: 1 1 100%; }
@@ -1454,6 +1641,72 @@ body {
         padding-left: var(--spacing-md);
         padding-right: var(--spacing-md);
     }
+
+    /* Mobile layout fixes: ensure main/content centers and pages use full width */
+    .communes-page {
+        max-width: 100% !important;
+        padding-left: var(--spacing-md);
+        padding-right: var(--spacing-md);
+        margin: 12px auto !important;
+        box-sizing: border-box;
+    }
+
+    .communes-grid {
+        grid-template-columns: 1fr !important;
+        width: 100% !important;
+    }
+
+    /* Disable the full-bleed trick on very small viewports so content doesn't shift left */
+    .chronogram-fullbleed {
+        position: static !important;
+        left: auto !important;
+        margin-left: 0 !important;
+        width: auto !important;
+    }
+
+    /* Ensure the general max-width container remains centered on tiny screens */
+    .nav-glass .max-w-8xl,
+    main.max-w-8xl {
+        margin-left: auto !important;
+        margin-right: auto !important;
+        box-sizing: border-box;
+    }
+
+    /* Mobile-first app-like header: compact, sticky and touch-friendly */
+    .nav-glass { height: 56px; padding: 6px 12px; }
+    .nav-glass .logo-container { width: 40px; height: 40px; }
+    .nav-glass .nav-actions { display:flex; gap:8px; align-items:center; }
+
+    /* Floating action button (refresh) */
+    .fab-refresh {
+        position: fixed;
+        right: 14px;
+        bottom: 18px;
+        width: 56px;
+        height: 56px;
+        border-radius: 999px;
+        background: linear-gradient(90deg,#4f46e5,#7c3aed);
+        color: white;
+        display:flex; align-items:center; justify-content:center;
+        box-shadow: 0 10px 30px rgba(79,70,229,0.18);
+        z-index: 1400;
+    }
+
+    /* Touch-friendly controls row: stack and enlarge controls for tap targets */
+    .controls-row { display:flex; flex-direction:column; gap:10px; align-items:stretch; }
+    .controls-row .filter-select, .controls-row .search-input, .controls-row .btn { width:100%; padding:12px 14px; font-size:1rem; }
+    .controls-row label { width:100%; display:flex; justify-content:flex-start; gap:8px; align-items:center; }
+
+    /* Cards: full width with larger spacing for comfortable touch */
+    .commune-card { border-radius: 12px; padding: 16px; margin-left: 0; margin-right: 0; }
+    .communes-grid { grid-template-columns: 1fr !important; gap: 14px; }
+
+    /* Make the small KPI tiles more tappable and readable */
+    .kpi-small { padding: 12px; }
+    .kpi-value { font-size: 1.2rem; }
+
+    /* Reduce side gutters that add visual left-alignment impression */
+    body, .communes-page, .table-wrap { padding-left: 12px; padding-right: 12px; }
     
     .tab-navigation {
         padding: var(--spacing-lg);

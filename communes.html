@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Communes — KPI</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    /* Minimal page-specific tweaks to keep design coherent */
+    .communes-page { max-width: 1200px; margin: 28px auto; padding: 20px; }
+    .communes-header { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:18px; }
+    .communes-title { font-size:1.5rem; font-weight:700; color:var(--color-gray-900); }
+    .controls-row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+    .table-wrap { background:var(--color-white); border-radius:12px; padding:12px; box-shadow:var(--shadow-sm); }
+    table.commune-table { width:100%; border-collapse:collapse; font-size:0.95rem; }
+    table.commune-table thead th { text-align:left; padding:10px 8px; border-bottom:1px solid var(--color-gray-200); background:transparent; font-weight:600; }
+    table.commune-table tbody td { padding:10px 8px; border-bottom:1px solid #f3f4f6; color:var(--color-gray-700); }
+    table.commune-table tbody tr:hover { background: linear-gradient(90deg, rgba(99,102,241,0.03), transparent); }
+    .small { font-size:0.85rem; color:var(--color-gray-500); }
+    .btn { padding:8px 12px; border-radius:8px; background:var(--color-primary); color:white; border:none; cursor:pointer; }
+    .btn-ghost { background:transparent; border:1px solid var(--color-gray-200); color:var(--color-gray-700); }
+    .controls-row .filter-select, .controls-row .search-input { padding:8px 10px; border-radius:8px; border:1px solid var(--color-gray-200); }
+    @media (max-width:900px){ .communes-header{flex-direction:column; align-items:stretch} }
+  </style>
+</head>
+<body class="font-inter">
+  <div class="communes-page">
+    <div class="communes-header">
+      <div>
+        <div class="communes-title">KPIs par Commune</div>
+        <div class="small">Données issues de la feuille <strong>Commune Status</strong> (dernier refresh automatique)</div>
+      </div>
+      <div class="controls-row">
+        <select id="regionFilter" class="filter-select">
+          <option value="all">Toutes régions</option>
+        </select>
+  <input id="searchInput" class="search-input" placeholder="Rechercher commune ou géomaticien..." />
+  <input id="searchGeom" class="search-input" placeholder="Rechercher géomaticien..." style="display:none" />
+        <select id="sortBy" class="filter-select" title="Trier par">
+          <option value="name">Nom</option>
+          <option value="total-desc">Total (haut→bas)</option>
+          <option value="total-asc">Total (bas→haut)</option>
+          <option value="nicad-desc">NICAD (haut→bas)</option>
+        </select>
+        <select id="pageSize" class="filter-select" title="Taille page">
+          <option value="6">6 / page</option>
+          <option value="9">9 / page</option>
+          <option value="12" selected>12 / page</option>
+        </select>
+        <button id="exportFiltered" class="btn">Exporter (filtré)</button>
+        <button id="exportAll" class="btn btn-ghost">Exporter (tous)</button>
+        <button id="compactToggle" class="btn btn-ghost" title="Mode compact">Compact</button>
+        <label style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="ctasfOnly"/>CTASF &gt; 0</label>
+        <a href="index.html#commune-table" class="btn btn-ghost">Retour dashboard</a>
+      </div>
+
+      <!-- Floating action button for mobile quick actions (rendered visually via CSS) -->
+      <div id="fabContainer">
+        <button id="fabRefresh" class="fab-refresh" title="Actualiser" aria-label="Actualiser">⟳</button>
+      </div>
+    </div>
+
+    <!-- Top summary removed per request (cards now carry per-commune KPIs) -->
+
+    <div class="table-wrap">
+      <div class="region-legend" id="regionLegend" style="display:flex;gap:10px;align-items:center;margin-bottom:12px"></div>
+      <!-- Card grid for KPI cards -->
+  <div class="communes-grid" id="communesGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:20px"></div>
+    </div>
+  </div>
+
+  <script src="js/communes.js" defer></script>
+  <script>
+    // If landing on index with #commune-table, ensure the dashboard activates that tab.
+    // This small helper also helps when users return from the communes page using the anchor above.
+    if(typeof window !== 'undefined'){
+      const activateHashTab = () => {
+        try{
+          const hash = location.hash.replace('#','');
+          if(!hash) return;
+          // Defer to parent index's dashboard tab handler if available
+          if(window.opener && window.opener.document){
+            const btn = window.opener.document.querySelector(`.nav-tab[data-tab="${hash}"]`);
+            if(btn) btn.click();
+          }
+        }catch(e){/* silent */}
+      };
+      // If this page was opened via target=_blank or similar, attempt activation on opener when unloading.
+      window.addEventListener('beforeunload', activateHashTab);
+    }
+  </script>
+  <script>
+    // FAB refresh wiring: try to call fetchData from communes.js if present, otherwise dispatch a custom event
+    document.addEventListener('DOMContentLoaded', function(){
+      const fab = document.getElementById('fabRefresh');
+      if(!fab) return;
+      fab.addEventListener('click', function(){
+        if(window.fetchData && typeof window.fetchData === 'function'){
+          try{ window.fetchData(); }
+          catch(e){ window.dispatchEvent(new CustomEvent('data:refresh')); }
+        } else {
+          window.dispatchEvent(new CustomEvent('data:refresh'));
+        }
+      });
+    });
+  </script>
+</body>
+</html>

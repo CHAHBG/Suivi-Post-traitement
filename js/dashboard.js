@@ -88,6 +88,7 @@ class Dashboard {
             this.rawData = data;
 
             // Calculate KPIs
+
             const kpis = dataService.calculateKPIs(data);
             
             // Update liquid progress indicators
@@ -616,3 +617,26 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }, 200); // Wait a bit longer than the enhanced dashboard initialization
 });
+
+// Activate tab from URL hash when present (e.g. index.html#commune-table)
+function activateTabFromHash(){
+    try{
+        const hash = (location.hash||'').replace('#','');
+        if(!hash) return;
+        // Prefer enhancedDashboard if available
+        if(window.enhancedDashboard && typeof window.enhancedDashboard.switchTab === 'function'){
+            window.enhancedDashboard.switchTab(hash);
+            return;
+        }
+        if(window.dashboard && typeof window.dashboard.switchTab === 'function'){
+            window.dashboard.switchTab(hash);
+            return;
+        }
+        // Fallback: simulate click on nav-tab
+        const btn = document.querySelector(`.nav-tab[data-tab="${hash}"]`) || document.querySelector(`.nav-tab[data-tab='${hash}']`);
+        if(btn) btn.click();
+    }catch(e){ console.debug('activateTabFromHash failed', e); }
+}
+
+window.addEventListener('hashchange', activateTabFromHash, false);
+setTimeout(activateTabFromHash, 400);

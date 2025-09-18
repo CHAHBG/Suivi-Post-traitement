@@ -1292,5 +1292,13 @@
     <script src="js/chronogramData.js"></script>
     <script src="js/chronogramIntegration.js"></script>
 
+        <script>
+            // wire the "View All Communes" button to the new communes page
+            document.addEventListener('DOMContentLoaded', function(){
+                const btn = document.getElementById('viewAllCommunes');
+                if(btn) btn.addEventListener('click', function(ev){ ev.preventDefault(); window.location.href = 'communes.html'; });
+            });
+        </script>
+
 </body>
 </html>
