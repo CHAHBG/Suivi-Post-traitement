@@ -375,4 +375,6 @@
       }
     ]
   };
+  // Also expose a simple array for other modules that expect CHRONO_TASKS
+  try{ window.CHRONO_TASKS = window.chronogramData && window.chronogramData.tasks ? window.chronogramData.tasks : []; }catch(e){ window.CHRONO_TASKS = []; }
 })();

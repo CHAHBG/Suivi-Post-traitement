@@ -8,8 +8,9 @@
     --color-secondary: #10B981;
     --color-accent: #8B5CF6;
     --color-success: #22C55E;
-    --color-warning: #F59E0B;
-    --color-danger: #EF4444;
+    /* Adjusted for better contrast (WCAG AA) */
+    --color-warning: #D97706; /* darker amber */
+    --color-danger: #DC2626; /* slightly darker red */
     --color-info: #06B6D4;
     
     /* Neutral Colors */
@@ -179,6 +180,9 @@
 :focus:not(:focus-visible) { outline: none; }
 :focus-visible { outline: 3px solid rgba(79,70,229,0.18); outline-offset: 3px; }
 
+/* utility: visually hidden (for labels) */
+.visually-hidden { border: 0 !important; clip: rect(1px, 1px, 1px, 1px) !important; -webkit-clip-path: inset(50%); clip-path: inset(50%); height: 1px !important; margin: -1px !important; overflow: hidden !important; padding: 0 !important; position: absolute !important; width: 1px !important; white-space: nowrap !important; }
+
 html {
     scroll-behavior: smooth;
     font-size: 16px;
@@ -195,6 +199,35 @@ body {
     overflow-x: hidden;
     transition: color var(--transition-normal), background var(--transition-normal);
 }
+
+/* Modal / Dialog styles (accessible, low-impact) */
+#chronogram-alerts {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(2,6,23,0.4);
+    z-index: var(--z-modal);
+}
+
+#chronogram-alerts .modal-inner {
+    background: var(--color-white);
+    padding: 1rem;
+    max-width: 720px;
+    width: 94%;
+    border-radius: 10px;
+    box-shadow: var(--shadow-2xl);
+}
+
+#chronogram-alerts h2 { margin-bottom: 0.5rem; font-size: 1.125rem; }
+#chronogram-alerts .chronogram-alerts-list { max-height: 320px; overflow:auto; margin-bottom: 0.75rem; }
+#chronogram-alerts .chronogram-alert { padding: 8px; border-bottom: 1px solid var(--color-gray-100); display:flex; justify-content:space-between; gap:8px; }
+#chronogram-alerts .chronogram-alert .title { font-weight:600; }
+#chronogram-alerts .modal-actions { display:flex; gap:0.5rem; justify-content:flex-end; }
+
+/* Hide by default (kept visually-hidden semantics) */
+[aria-hidden="true"][role="dialog"], #chronogram-alerts[aria-hidden="true"] { display:none; }
 
 .font-inter {
     font-family: var(--font-family);

@@ -1,0 +1,39 @@
+name: Lighthouse audits
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  lighthouse:
+    name: Run Lighthouse audits
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: |
+          npm ci --no-audit --no-fund || true
+
+      - name: Start http-server
+        run: |
+          npx http-server -p 8080 > /tmp/http.log 2>&1 &
+          sleep 2
+
+      - name: Run Lighthouse (accessibility,performance,best-practices)
+        run: |
+          npx -y lighthouse http://127.0.0.1:8080 --output=json --output-path=./lighthouse_report.json --only-categories=accessibility,performance,best-practices --chrome-flags='--headless --no-sandbox'
+
+      - name: Upload report
+        uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse-report
+          path: lighthouse_report.json

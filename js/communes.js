@@ -126,17 +126,19 @@
     // post-process NICAD / CTASF to detect percentage-like inputs
     try{
       const total = out.Total || 0;
-      const rawNicad = (n['nicad'] !== undefined) ? n['nicad'] : (n['nicad_parcelles'] !== undefined ? n['nicad_parcelles'] : (n['parcelles_nicad'] !== undefined ? n['parcelles_nicad'] : ''));
+  const rawNicad = (n['nicad'] !== undefined) ? n['nicad'] : (n['nicad_parcelles'] !== undefined ? n['nicad_parcelles'] : (n['parcelles_nicad'] !== undefined ? n['parcelles_nicad'] : ''));
       const nic = parsePotentialPercent(rawNicad, total);
       out.NICAD_pct = nic.isPercent ? nic.percent : null;
       out.NICAD_count = nic.count;
       out.NICAD = out.NICAD_count;
+  out.NICAD_raw = rawNicad;
 
-      const rawCt = (n['ctasf'] !== undefined) ? n['ctasf'] : (n['ctasf_parcelles'] !== undefined ? n['ctasf_parcelles'] : '');
+  const rawCt = (n['ctasf'] !== undefined) ? n['ctasf'] : (n['ctasf_parcelles'] !== undefined ? n['ctasf_parcelles'] : '');
       const ct = parsePotentialPercent(rawCt, total);
       out.CTASF_pct = ct.isPercent ? ct.percent : null;
       out.CTASF_count = ct.count;
       out.CTASF = out.CTASF_count;
+  out.CTASF_raw = rawCt;
     }catch(e){ /* ignore */ }
     return out;
   }
@@ -330,16 +332,23 @@
   function downloadFiltered(){
     const visible = getVisibleRows();
     if(!visible || !visible.length){ alert('Aucune ligne visible à exporter'); return; }
-    const csv = toCsv(visible);
+    const headers = ['Commune','Région','Total Parcelles','NICAD_raw','NICAD_pct','NICAD_count','CTASF_raw','CTASF_pct','CTASF_count','Délibérées','Parcelles brutes','Parcelles collectées','Parcelles retenues','Parcelles validées URM','Geomaticien','Individuelles jointes','Collectives jointes','Non jointes'];
+    const csv = toCsvWithHeaders(visible, headers);
     downloadText(csv, 'communes-filtered.csv');
   }
 
   function toCsv(rows){
+    // deprecated: use toCsvWithHeaders for deterministic ordering
     if(!rows || !rows.length) return '';
     const keys = Object.keys(rows[0]);
+    return toCsvWithHeaders(rows, keys);
+  }
+
+  function toCsvWithHeaders(rows, headers){
+    if(!rows || !rows.length) return '';
     const esc = v=> '"'+String(v||'').replace(/"/g,'""')+'"';
-    const header = keys.map(esc).join(',');
-    const lines = rows.map(r=> keys.map(k=> esc(r[k])).join(','));
+    const header = headers.map(esc).join(',');
+    const lines = rows.map(r=> headers.map(k=> esc(r[k] !== undefined ? r[k] : '')).join(','));
     return [header].concat(lines).join('\n');
   }
 
@@ -416,8 +425,29 @@
 
   function downloadCsv(){
     if(!communes.length) return;
-    const headers = ['Commune','Région','Total Parcelles','NICAD','CTASF','Délibérées','Parcelles brutes','Parcelles collectées','Parcelles retenues','Parcelles validées URM','Geomaticien','Individuelles jointes','Collectives jointes','Non jointes'];
-    const rows = communes.map(r => [r.Commune,r.Région,r.Total,r.NICAD,r.CTASF,r.Délibérées,r.Parcelles_brutes,r.Parcelles_collectees,r.Parcelles_retenues,r.Parcelles_validees,r.Geomaticien,r.Individuelles,r.Collectives,r.Non_jointes]);
+    // Deterministic headers: include raw inputs and computed counts
+    const headers = ['Commune','Région','Total Parcelles','NICAD_raw','NICAD_pct','NICAD_count','CTASF_raw','CTASF_pct','CTASF_count','Délibérées','Parcelles brutes','Parcelles collectées','Parcelles retenues','Parcelles validées URM','Geomaticien','Individuelles jointes','Collectives jointes','Non jointes'];
+    const rows = communes.map(r => [
+      r.Commune,
+      r.Région,
+      r.Total,
+      // raw fields: we attempt to keep original pct strings if available
+      (r.NICAD_pct != null ? (r.NICAD_pct + '%') : (r.NICAD_raw || '')),
+      (r.NICAD_pct != null ? r.NICAD_pct : ''),
+      r.NICAD,
+      (r.CTASF_pct != null ? (r.CTASF_pct + '%') : (r.CTASF_raw || '')),
+      (r.CTASF_pct != null ? r.CTASF_pct : ''),
+      r.CTASF,
+      r.Délibérées,
+      r.Parcelles_brutes,
+      r.Parcelles_collectees,
+      r.Parcelles_retenues,
+      r.Parcelles_validees,
+      r.Geomaticien,
+      r.Individuelles,
+      r.Collectives,
+      r.Non_jointes
+    ]);
     const csv = [headers].concat(rows).map(row=> row.map(cell=> `"${String(cell).replace(/"/g,'""')}"`).join(',')).join('\n');
     const blob = new Blob([csv],{type:'text/csv;charset=utf-8;'});
     const url = URL.createObjectURL(blob);
