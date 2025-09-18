@@ -168,6 +168,17 @@
     box-sizing: border-box;
 }
 
+/* Accessibility helpers */
+.skip-link{
+    position: absolute; left: -9999px; top: auto; width: 1px; height: 1px; overflow: hidden; z-index: -9999;
+}
+.skip-link:focus {
+    position: fixed; left: 12px; top: 12px; width: auto; height: auto; padding: 8px 12px; background: #fff; color: #111827; border-radius: 6px; box-shadow: 0 6px 18px rgba(2,6,23,0.08); z-index: 2000;
+}
+
+:focus:not(:focus-visible) { outline: none; }
+:focus-visible { outline: 3px solid rgba(79,70,229,0.18); outline-offset: 3px; }
+
 html {
     scroll-behavior: smooth;
     font-size: 16px;
