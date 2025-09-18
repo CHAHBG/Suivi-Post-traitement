@@ -218,10 +218,33 @@ body {
     width: 94%;
     border-radius: 10px;
     box-shadow: var(--shadow-2xl);
+    /* allow modal to grow on tall viewports so more list items are visible */
+    max-height: calc(100vh - 80px);
+    overflow: auto;
 }
 
 #chronogram-alerts h2 { margin-bottom: 0.5rem; font-size: 1.125rem; }
-#chronogram-alerts .chronogram-alerts-list { max-height: 320px; overflow:auto; margin-bottom: 0.75rem; }
+#chronogram-alerts .chronogram-alerts-list { max-height: 60vh; overflow:auto; margin-bottom: 0.75rem; }
+#chronogram-alerts .chronogram-alerts-list { position: relative; }
+#chronogram-alerts .chronogram-alerts-list::before,
+#chronogram-alerts .chronogram-alerts-list::after{
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 22px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 160ms ease;
+}
+#chronogram-alerts .chronogram-alerts-list::before{ top: 0; background: linear-gradient(to bottom, rgba(2,6,23,0.08), transparent); }
+#chronogram-alerts .chronogram-alerts-list::after{ bottom: 0; background: linear-gradient(to top, rgba(2,6,23,0.06), transparent); }
+#chronogram-alerts .chronogram-alerts-list.shadow-top::before{ opacity: 1; }
+#chronogram-alerts .chronogram-alerts-list.shadow-bottom::after{ opacity: 1; }
+#chronogram-alerts .chronogram-attention { display:block; padding: 0.5rem 0; border-bottom: 1px solid var(--color-gray-100); }
+#chronogram-alerts .item-task { margin-bottom: 0.25rem; }
+#chronogram-alerts .item-date { text-align:right; }
+#chronogram-alerts .due-chip { display:inline-block; padding:0.5rem 0.75rem; border-radius:999px; background:var(--color-danger-muted, #fde2e2); color:var(--color-danger, #b91c1c); font-weight:600; }
 #chronogram-alerts .chronogram-alert { padding: 8px; border-bottom: 1px solid var(--color-gray-100); display:flex; justify-content:space-between; gap:8px; }
 #chronogram-alerts .chronogram-alert .title { font-weight:600; }
 #chronogram-alerts .modal-actions { display:flex; gap:0.5rem; justify-content:flex-end; }
@@ -642,6 +665,63 @@ body {
     border-radius: 10px;
     padding: 18px;
 }
+
+/* Modal action buttons: compact and pleasant */
+/* Modern modal card */
+:root{
+    --brand-muted-1: #f5f7fb; /* card background */
+    --brand-muted-2: #eef2ff; /* subtle accent */
+    --brand-text-1: #0f172a; /* title */
+    --brand-text-2: #475569; /* body */
+    --brand-accent: #4f46e5; /* primary accent (still subtle in usage) */
+}
+
+#chronogram-modal { z-index: 1200; }
+#chronogram-modal .modal-inner {
+    background: var(--brand-muted-1);
+    border-radius: 12px;
+    padding: 14px;
+    box-shadow: 0 8px 22px rgba(2,6,23,0.08), 0 2px 6px rgba(2,6,23,0.04);
+    border: 1px solid rgba(15,23,42,0.03);
+    max-width: 720px;
+}
+#chronogram-modal .modal-inner .modal-title { font-size:1.05rem; font-weight:700; color:var(--brand-text-1); }
+#chronogram-modal .modal-inner p { color:var(--brand-text-2); margin-top:6px; margin-bottom:10px; font-size:0.95rem; }
+
+/* list styling: card-like items */
+#chronogram-modal .chronogram-alerts-list { list-style:none; padding:0; margin:0; max-height:48vh; overflow:auto; display:block; }
+#chronogram-modal .chronogram-alerts-list li { display:flex; align-items:center; gap:10px; padding:8px; border-radius:10px; margin-bottom:8px; background:linear-gradient(180deg, var(--brand-muted-1), rgba(255,255,255,0.6)); border:1px solid rgba(15,23,42,0.03); }
+#chronogram-modal .chronogram-alerts-list li.chronogram-attention { border-left:4px solid rgba(239,68,68,0.12); background: linear-gradient(180deg, rgba(255,245,245,0.6), rgba(255,255,255,0.6)); }
+#chronogram-modal .chronogram-alerts-list .item-task { flex:1 1 auto; font-weight:600; color:var(--brand-text-1); font-size:0.95rem; }
+#chronogram-modal .chronogram-alerts-list .item-date { white-space:nowrap; color:var(--brand-text-2); font-size:0.875rem; }
+#chronogram-modal .due-chip { display:inline-flex; align-items:center; gap:8px; padding:6px 10px; border-radius:999px; font-size:0.8rem; }
+#chronogram-modal .due-chip.soon { background: linear-gradient(90deg, rgba(255,235,238,0.6), rgba(255,249,250,0.6)); color: rgba(153,27,27,0.9); }
+#chronogram-modal .due-chip.warn { background: linear-gradient(90deg, rgba(255,250,235,0.6), rgba(255,253,245,0.6)); color: rgba(146,64,14,0.9); }
+#chronogram-modal .due-chip.ok { background: linear-gradient(90deg, rgba(236,253,245,0.6), rgba(240,249,255,0.6)); color: rgba(6,95,70,0.9); }
+
+/* actions: compact, separated, visually light */
+#chronogram-modal .actions { display:flex; gap:8px; justify-content:flex-end; margin-top:10px; }
+#chronogram-modal .actions button { padding:7px 10px; font-size:0.875rem; border-radius:8px; border:1px solid rgba(15,23,42,0.05); background:transparent; color:var(--brand-text-1); cursor:pointer; transition: transform 120ms ease, box-shadow 120ms ease; }
+#chronogram-modal .actions button.btn-primary { background: linear-gradient(180deg, rgba(79,70,229,0.12), rgba(67,56,202,0.12)); color:var(--brand-text-1); border:none; box-shadow:0 6px 14px rgba(67,56,202,0.04); }
+#chronogram-modal .actions button.small { padding:6px 9px; font-size:0.8125rem; }
+#chronogram-modal .actions button:hover { transform: translateY(-1px); }
+#chronogram-modal .actions button:active { transform: translateY(0); }
+#chronogram-modal .actions button:focus { outline:3px solid rgba(79,70,229,0.08); outline-offset:3px; }
+
+/* responsive adjustments */
+@media (max-width:640px){
+    #chronogram-modal .modal-inner { padding:14px; margin:12px; }
+    #chronogram-modal .chronogram-alerts-list li { padding:10px 8px; }
+    #chronogram-modal .actions { flex-direction:column-reverse; align-items:stretch; }
+    #chronogram-modal .actions button { width:100%; }
+}
+
+/* highlight for targeted gantt row */
+.chronogram-highlight { box-shadow: 0 8px 30px rgba(79,70,229,0.09), 0 0 0 3px rgba(79,70,229,0.08) inset; transition: box-shadow 300ms ease; }
+
+/* subtle entrance animation */
+.animate-fadein { animation: popIn 260ms cubic-bezier(.2,.9,.3,1); }
+@keyframes popIn{ from{ transform: translateY(-6px) scale(.99); opacity:0 } to{ transform: translateY(0) scale(1); opacity:1 } }
 #chronogram-modal .modal-title {
     color: #92400e;
     font-weight: 700;

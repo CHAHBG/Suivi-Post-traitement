@@ -30,12 +30,17 @@
         <div class="communes-title">KPIs par Commune</div>
         <div class="small">Données issues de la feuille <strong>Commune Status</strong> (dernier refresh automatique)</div>
       </div>
-      <div class="controls-row">
-        <select id="regionFilter" class="filter-select">
+      <div class="controls-row" role="search" aria-label="Filtres des communes">
+        <label for="regionFilter" class="visually-hidden">Filtrer par région</label>
+        <select id="regionFilter" class="filter-select" aria-label="Filtrer par région">
           <option value="all">Toutes régions</option>
         </select>
-  <input id="searchInput" class="search-input" placeholder="Rechercher commune ou géomaticien..." />
-  <input id="searchGeom" class="search-input" placeholder="Rechercher géomaticien..." style="display:none" />
+
+        <label for="searchInput" class="visually-hidden">Rechercher commune ou géomaticien</label>
+        <input id="searchInput" class="search-input" placeholder="Rechercher commune ou géomaticien..." aria-label="Rechercher commune ou géomaticien" />
+
+        <label for="searchGeom" class="visually-hidden">Rechercher géomaticien</label>
+        <input id="searchGeom" class="search-input" placeholder="Rechercher géomaticien..." style="display:none" aria-label="Rechercher géomaticien" />
         <select id="sortBy" class="filter-select" title="Trier par">
           <option value="name">Nom</option>
           <option value="total-desc">Total (haut→bas)</option>

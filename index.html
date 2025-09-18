@@ -18,7 +18,8 @@
     <link rel="manifest" href="/manifest.webmanifest">
     <meta name="theme-color" content="#4f46e5">
     <!-- Minimal Content Security Policy (meta fallback) - recommend setting on server for production -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https:; script-src 'self' https: 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: https:; connect-src 'self' https: https://docs.google.com; font-src 'self' https://fonts.gstatic.com;">
+    <!-- CSP: allow HTTPS-hosted fonts and data URIs (keeps policy permissive for CDNs; tighten on server if possible) -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https:; script-src 'self' https: 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: https:; connect-src 'self' https: https://docs.google.com; font-src 'self' https: data:;">
     
     <!-- JavaScript Libraries -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
@@ -489,17 +490,7 @@
         <canvas id="projectTimelineChart" width="300" height="150" class="hidden"></canvas>
     </div>
 </div>
-            <!-- Chronogram alerts modal (hidden) -->
-            <div id="chronogram-alerts" role="dialog" aria-modal="true" aria-labelledby="chronogram-alerts-title" aria-hidden="true" class="visually-hidden" data-visible="false">
-                <div class="modal-inner" id="chronogram-alerts-inner">
-                    <h2 id="chronogram-alerts-title">Échéances à venir</h2>
-                    <div id="chronogram-alerts-list" class="chronogram-alerts-list"></div>
-                    <div class="modal-actions">
-                        <button id="chronogram-alerts-open" class="action-button">Ouvrir le chronogramme</button>
-                        <button id="chronogram-alerts-close" class="control-button">Fermer</button>
-                    </div>
-                </div>
-            </div>
+            <!-- chronogram reminders removed per user request -->
                     </div>
                 </section>
             </div>

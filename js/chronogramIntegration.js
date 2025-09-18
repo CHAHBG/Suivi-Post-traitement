@@ -18,6 +18,47 @@
         'janvier':0,'fevrier':1,'février':1,'mars':2,'avril':3,'mai':4,'juin':5,'juillet':6,'aout':7,'août':7,'septembre':8,'octobre':9,'novembre':10,'decembre':11,'décembre':11
     };
 
+    // small slug helper for deterministic ids
+    function slugify(text){
+        if(!text) return '';
+        return String(text).toLowerCase().trim()
+            .replace(/[^a-z0-9\s-]/g,'')
+            .replace(/\s+/g,'-')
+            .replace(/-+/g,'-');
+    }
+
+    // expose a small API so other modules can focus a task in the chronogram
+    window.chronogram = window.chronogram || {};
+    window.chronogram.focusTask = function(taskIdOrName){
+        try{
+            if(!taskIdOrName) return false;
+            const id = String(taskIdOrName).trim();
+            const container = document.getElementById('projectTimelineGantt');
+            if(!container) return false;
+            // try exact data-task-id match first
+            let row = container.querySelector(`[data-task-id="${id}"]`);
+            if(!row){
+                // fallback: match by title substring (case-insensitive)
+                const rows = Array.from(container.querySelectorAll('.gantt-row'));
+                row = rows.find(r => {
+                    const title = (r.querySelector('.gantt-label') && r.querySelector('.gantt-label').textContent) || '';
+                    return title.toLowerCase().indexOf(id.toLowerCase()) !== -1;
+                });
+            }
+            if(!row) return false;
+            // make temporarily focusable and scroll into view
+            const hadTab = row.hasAttribute('tabindex');
+            if(!hadTab) row.setAttribute('tabindex','-1');
+            try{ row.scrollIntoView({ behavior: 'smooth', block: 'center' }); }catch(e){}
+            try{ row.focus(); }catch(e){}
+            if(!hadTab) setTimeout(()=>{ row.removeAttribute('tabindex'); }, 1200);
+            // highlight briefly
+            row.classList.add('chronogram-highlight');
+            setTimeout(()=> row.classList.remove('chronogram-highlight'), 3000);
+            return true;
+        }catch(e){ return false; }
+    };
+
     function parseDateRange(text){
         text = (text||'').trim();
         if(!text) return null;
@@ -296,6 +337,9 @@
                 timelineWrap.appendChild(noDateWrap);
             }
 
+            // attach deterministic id to the row for cross-linking
+            if(it.id) ganttRow.setAttribute('data-task-id', it.id);
+            else ganttRow.setAttribute('data-task-id', slugify(it.task));
             ganttRow.appendChild(label);
             ganttRow.appendChild(timelineWrap);
             container.appendChild(ganttRow);
@@ -363,7 +407,8 @@
         }
     }
 
-    function checkUpcoming(items, daysWindow=7){
+    // find items closing within a window (default to 14 days to show the next two weeks)
+    function checkUpcoming(items, daysWindow=14){
         const now = new Date();
         const upcoming = items.filter(it => it.end && ((it.end - now)/(1000*60*60*24)) <= daysWindow && ((it.end - now)/(1000*60*60*24)) >= -1 );
         return upcoming;
@@ -388,7 +433,7 @@
                     <strong class="block text-lg mb-2">Rappels — échéances prochaines</strong>
                     <p class="text-sm text-gray-700">Les échéances listées ci-dessous arrivent bientôt — vérifiez et planifiez les actions.</p>
                 </div>
-                <ul class="mb-4 text-sm" style="margin-top:12px"></ul>
+                <ul class="mb-4 text-sm chronogram-alerts-list" style="margin-top:12px"></ul>
                 <div class="actions">
                     <button id="chronogram-ack">Marquer comme lu</button>
                     <button id="chronogram-hide">Ne plus afficher</button>
@@ -495,7 +540,7 @@
                     .then(json => {
                         if(json && Array.isArray(json.tasks)){
                             window.chronogramData = json; // update global
-                            const newItems = json.tasks.map((t, idx) => ({ task: t.name||`task-${idx}`, region: t.section||'', start: t.start? new Date(t.start): null, end: t.end? new Date(t.end): null, color: t.color||'#10b981' }));
+                            const newItems = json.tasks.map((t, idx) => ({ id: t.id || slugify(t.name) || `task-${idx}`, task: t.name||`task-${idx}`, region: t.section||'', start: t.start? new Date(t.start): null, end: t.end? new Date(t.end): null, color: t.color||'#10b981' }));
                             items = newItems;
                             renderChrono(items);
                             try{ updateLegend(items); }catch(e){}
@@ -515,7 +560,7 @@
                     s.src = scriptPath + '?_ts=' + Date.now();
                     s.onload = ()=>{
                         if(window.chronogramData && Array.isArray(window.chronogramData.tasks)){
-                            items = window.chronogramData.tasks.map((t, idx) => ({ task: t.name||`task-${idx}`, region: t.section||'', start: t.start? new Date(t.start): null, end: t.end? new Date(t.end): null, color: t.color||'#10b981' }));
+                            items = window.chronogramData.tasks.map((t, idx) => ({ id: t.id || slugify(t.name) || `task-${idx}`, task: t.name||`task-${idx}`, region: t.section||'', start: t.start? new Date(t.start): null, end: t.end? new Date(t.end): null, color: t.color||'#10b981' }));
                             renderChrono(items);
                             try{ updateLegend(items); }catch(e){}
                         }
@@ -528,11 +573,11 @@
         }
 
         // 1) Prefer structured data from js/chronogramData.js
-        if(window.chronogramData && Array.isArray(window.chronogramData.tasks) && container){
+    if(window.chronogramData && Array.isArray(window.chronogramData.tasks) && container){
             items = window.chronogramData.tasks.map((t, idx) => {
                 const s = t.start ? new Date(t.start) : null;
                 const e = t.end ? new Date(t.end) : null;
-                return { task: t.name || (`task-${idx}`), region: t.section || '', start: s, end: e, color: t.color || '#6366F1' };
+                return { id: t.id || slugify(t.name) || `task-${idx}`, task: t.name || (`task-${idx}`), region: t.section || '', start: s, end: e, color: t.color || '#6366F1' };
             });
             renderChrono(items);
 
@@ -582,7 +627,7 @@
     // Update the legend to reflect actual task colors and flags
     try{ if(typeof updateLegend === 'function') updateLegend(items); }catch(e){ /* ignore */ }
 
-    const upcoming = checkUpcoming(items,7);
+    const upcoming = checkUpcoming(items,14);
         const lastAck = localStorage.getItem('chronogram_ack');
         if(!lastAck) showAlerts(upcoming);
 
@@ -603,7 +648,7 @@
         }
 
         // periodic check every hour for alerts
-        setInterval(()=>{ const up = checkUpcoming(items,7); showAlerts(up); }, 1000*60*60);
+    setInterval(()=>{ const up = checkUpcoming(items,14); showAlerts(up); }, 1000*60*60);
 
         // --- Auto-refresh chronogram data every 5 minutes and when page becomes visible ---
         const FIVE_MIN = 1000 * 60 * 5;
