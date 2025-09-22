@@ -15,6 +15,166 @@
     return Number.isFinite(n) ? n : 0;
   }
 
+  // --- Geomaticien contacts data (provided) ---
+  // contact list — update photo paths to assets/<lowername>.jpg (ensure files exist in assets/)
+  const GEOMATICIEN_CONTACTS = {
+    'bamba':   { phone: '+221778023851', mail: 'cheikhabgn@gmail.com', photo: 'assets/bamba.jpg' },
+  'badara':  { phone: '+221771137547', mail: 'laiounegueye000@gmail.com', photo: 'assets/badara.jpg' },
+    'awa':     { phone: '+221773918399', mail: 'evatoure53@gmail.com', photo: 'assets/awa.jpg' },
+    'mariama': { phone: '+221779433856', mail: 'siremaria99@gmail.com', photo: 'assets/mariama.jpg' },
+    'dianke': { phone: '+221782494512', mail: 'diankemendy03@gmail.com', photo: 'assets/dianke.jpg' },
+    'demba':   { phone: '+221770680324', mail: 'papaseck.dass@gmail.com', photo: 'assets/demba.jpg' }
+  };
+
+  function normalizeNameForLookup(name){
+    if(!name) return '';
+    try{
+      return String(name).normalize('NFD').replace(/\p{Diacritic}/gu,'').toLowerCase().replace(/[^a-z0-9]/g,'_');
+    }catch(e){
+      return String(name).toLowerCase().replace(/[^a-z0-9]/g,'_');
+    }
+  }
+
+  // Close modal helper (global) — cleans up trap, aria-hidden and focus
+  function closeGeomaticienModal(){
+    const modal = document.getElementById('geomaticienModal');
+    const content = document.getElementById('geomaticienModalContent');
+    const closeBtn = document.getElementById('geomaticienClose');
+    if(modal) {
+      // remove backdrop animation if present
+      try{ const bd = modal.querySelector('.geomaticien-modal-backdrop'); if(bd) bd.classList.remove('geomaticien-backdrop-anim'); }catch(e){}
+      modal.setAttribute('hidden','');
+      // teardown dynamic content
+      if(content){ content.innerHTML = ''; content.setAttribute('aria-hidden','true'); }
+      if(closeBtn) closeBtn.style.display = 'none';
+      // remove key trap if present
+      try{ if(modal._trapKey){ document.removeEventListener('keydown', modal._trapKey); delete modal._trapKey; } }catch(e){}
+      // restore aria-hidden on background
+      try{ Array.from(document.body.children).forEach(c=>{ if(c.id !== 'geomaticienModal') c.removeAttribute('aria-hidden'); }); }catch(e){}
+    }
+    // restore previously focused element
+    try{ if(window._prevActiveElem && typeof window._prevActiveElem.focus === 'function') window._prevActiveElem.focus(); }catch(e){}
+    document.body.classList.remove('geomaticien-modal-open');
+  }
+
+  // Attach modal handlers after DOM
+  document.addEventListener('DOMContentLoaded', function(){
+    // delegate geomaticien link clicks; pass click position so modal can open near the clicked element
+    document.body.addEventListener('click', function(e){
+      const a = e.target.closest && e.target.closest('.geomaticien-link');
+      if(!a) return;
+      e.preventDefault();
+      const name = a.getAttribute('data-name') || a.textContent || '';
+      // compute a sensible anchor point (center of the clicked element)
+      try{
+        const rect = a.getBoundingClientRect();
+        const coord = { x: Math.round(rect.left + rect.width/2), y: Math.round(rect.top + rect.height/2) };
+        openGeomaticienModal(name.trim(), coord);
+      }catch(err){ openGeomaticienModal(name.trim()); }
+    });
+
+    const modal = document.getElementById('geomaticienModal');
+    const backdrop = document.getElementById('geomaticienBackdrop');
+    const closeBtn = document.getElementById('geomaticienClose');
+    // delegate to global close helper to ensure full cleanup
+    const closeModal = closeGeomaticienModal;
+    if(closeBtn) closeBtn.addEventListener('click', closeModal);
+    if(backdrop) backdrop.addEventListener('click', closeModal);
+    // global Escape handler
+    document.addEventListener('keydown', function(ev){ if(ev.key === 'Escape') closeGeomaticienModal(); });
+  });
+
+  function openGeomaticienModal(name, coord){
+    if(!name) return;
+    // try normalized lookup (handles accents / case / small variations)
+  const key = normalizeNameForLookup(name);
+  let data = GEOMATICIEN_CONTACTS[key] || null;
+  // fallback: try plain lowercased name
+  if(!data) data = GEOMATICIEN_CONTACTS[String(name).toLowerCase()] || null;
+    // Build dynamic modal content inside #geomaticienModalContent
+    const modal = document.getElementById('geomaticienModal');
+    const content = document.getElementById('geomaticienModalContent');
+    const closeBtn = document.getElementById('geomaticienClose');
+  if(content){
+      // populate markup
+      const phoneHtml = (data && data.phone) ? `<a id="geomaticienPhone" href="tel:${data.phone.replace(/\s+/g,'')}">${escapeHtml(data.phone)}</a>` : `<a id="geomaticienPhone" href="#">N/A</a>`;
+      const mailHtml = (data && data.mail) ? `<a id="geomaticienMail" href="mailto:${escapeHtml(data.mail)}">${escapeHtml(data.mail)}</a>` : `<a id="geomaticienMail" href="#">N/A</a>`;
+  const avatarHtml = (data && data.photo) ? `<div class="geomaticien-avatar" id="geomaticienAvatar"><img src="${escapeHtml(data.photo)}" alt="Photo de ${escapeHtml(name)}" loading="lazy" decoding="async"></div>` : `<div class="geomaticien-avatar" id="geomaticienAvatar">${escapeHtml(name.split(' ').map(s=>s[0]||'').slice(0,2).join('').toUpperCase())}</div>`;
+      content.innerHTML = `
+        <div class="geomaticien-modal-panel" role="document">
+          ${avatarHtml}
+          <div class="geomaticien-card">
+            <h3 id="geomaticienModalTitle">${escapeHtml(name)}</h3>
+            <p class="small" id="geomaticienRegion"></p>
+            <div class="geomaticien-contacts">
+              <div class="contact-item"><span class="contact-icon" aria-hidden>📞</span> ${phoneHtml}</div>
+              <div class="contact-item"><span class="contact-icon" aria-hidden>✉️</span> ${mailHtml}</div>
+            </div>
+          </div>
+        </div>
+      `;
+    content.setAttribute('aria-hidden','false');
+    // add animation classes
+    const panel = content.querySelector('.geomaticien-modal-panel'); if(panel) panel.classList.add('geomaticien-fade-in');
+    const avatarEl = content.querySelector('.geomaticien-avatar'); if(avatarEl) avatarEl.classList.add('anim');
+      // show close button (outside content) for better hit area on mobile
+      if(closeBtn) closeBtn.style.display = '';
+    // no inner close button; outer close and backdrop will close the modal
+    }
+  if(modal){
+      // save previous focus
+      try{ window._prevActiveElem = document.activeElement; }catch(e){}
+      modal.removeAttribute('hidden');
+  // animate backdrop if present
+  try{ const bd = modal.querySelector('.geomaticien-modal-backdrop'); if(bd) bd.classList.add('geomaticien-backdrop-anim'); }catch(e){}
+      document.body.classList.add('geomaticien-modal-open');
+      // hide background from assistive tech
+      try{ Array.from(document.body.children).forEach(c=>{ if(c.id !== 'geomaticienModal') c.setAttribute('aria-hidden','true'); }); }catch(e){}
+      // optionally position modal near click coordinate (if provided)
+      try{
+        const panelEl = content.querySelector('.geomaticien-modal-panel');
+        if(coord && panelEl){
+          // compute panel size and clamp to viewport
+          const vw = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
+          const vh = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0);
+          // default offsets
+          const pad = 12;
+          // measure after render
+          const rect = panelEl.getBoundingClientRect();
+          let left = coord.x - rect.width/2;
+          let top = coord.y - rect.height - 10; // prefer above the clicked point
+          // if not enough space above, open below
+          if(top < pad) top = coord.y + 10;
+          // clamp horizontally
+          left = Math.max(pad, Math.min(left, vw - rect.width - pad));
+          top = Math.max(pad, Math.min(top, vh - rect.height - pad));
+          panelEl.style.position = 'fixed';
+          panelEl.style.left = left + 'px';
+          panelEl.style.top = top + 'px';
+          panelEl.style.transform = 'none';
+          panelEl.classList.add('geomaticien-floating');
+        }
+      }catch(e){}
+
+      // focus first focusable inside modal
+      try{
+        const focusable = content.querySelectorAll('a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])');
+        if(focusable && focusable.length) { focusable[0].focus(); }
+      }catch(e){}
+      // trap Tab key inside modal
+      const trapKey = function(ev){
+        if(ev.key !== 'Tab') return;
+        const focusables = Array.from(content.querySelectorAll('a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])')).filter(n=> n.offsetParent !== null);
+        if(!focusables.length) return;
+        const first = focusables[0], last = focusables[focusables.length-1];
+        if(ev.shiftKey){ if(document.activeElement === first){ ev.preventDefault(); last.focus(); } }
+        else { if(document.activeElement === last){ ev.preventDefault(); first.focus(); } }
+      };
+      modal._trapKey = trapKey;
+      document.addEventListener('keydown', trapKey);
+    }
+  }
+
   function tryParseRow(row){
     // normalize common keys (allow multiple header names)
     return {
@@ -268,7 +428,7 @@
           </div>
         </div>
 
-        <div style="text-align:center;padding:10px;border-radius:12px;background:linear-gradient(90deg,#6d28d9,#7c3aed);color:white;font-weight:700">👨‍💻 Geomaticien: ${escapeHtml(r.Geomaticien)}</div>
+        <a href="#" class="geomaticien-link" data-name="${escapeHtml(r.Geomaticien)}" style="display:block;text-align:center;padding:10px;border-radius:12px;background:linear-gradient(90deg,#6d28d9,#7c3aed);color:white;font-weight:700;text-decoration:none">👨‍💻 Geomaticien: ${escapeHtml(r.Geomaticien)}</a>
       </article>
     `;
   }

@@ -56,7 +56,6 @@
     const closeBtn = document.getElementById('chronogram-close');
     const ackBtn = document.getElementById('chronogram-ack');
     const hideBtn = document.getElementById('chronogram-hide');
-    const viewBtn = document.getElementById('chronogram-view');
         if(closeBtn) closeBtn.addEventListener('click', ()=> closeModal(modal));
         if(ackBtn) ackBtn.addEventListener('click', ()=>{
             announce('Échéances marquées comme lues');
@@ -69,10 +68,7 @@
             announce('Rappels masqués');
             closeModal(modal);
         });
-        if(viewBtn) viewBtn.addEventListener('click', ()=>{
-            const tab = document.querySelector('[data-tab="temporal"]'); if(tab) tab.click();
-            closeModal(modal);
-        });
+        // 'Voir chronogramme' button removed; no viewBtn handler needed
         
         // If CHRONO tasks are provided on window.CHRONO_TASKS (array), detect upcoming deadlines
         try{
@@ -116,7 +112,8 @@
                         chip.appendChild(chipText);
                         dateDiv.appendChild(chip);
                         const actionsDiv = document.createElement('div'); actionsDiv.className = 'actions';
-                        const btn = document.createElement('button'); btn.className = 'control-button'; btn.setAttribute('data-task-id', id); btn.title = 'Voir'; btn.textContent = 'Voir';
+                        // make the action visually prominent and consistent with modal buttons
+                        const btn = document.createElement('button'); btn.className = 'btn btn-primary small'; btn.setAttribute('data-task-id', id); btn.title = 'Voir'; btn.textContent = 'Voir';
                         actionsDiv.appendChild(btn);
                         li.appendChild(taskDiv); li.appendChild(dateDiv); li.appendChild(actionsDiv);
                         return li;
@@ -127,18 +124,31 @@
                     list.appendChild(summaryLi);
                     items.forEach(it=> list.appendChild(it));
 
+                    // helper to activate regional panel and scroll/focus chronogram (optionally focus a specific task)
+                    function goToChronogramAndFocusTask(taskId){
+                        const headerEl = document.querySelector('.chart-header--chronogram');
+                        const ganttEl = document.getElementById('projectTimelineGantt');
+                        const target = headerEl ? headerEl.closest('.chart-card') : (ganttEl || document.querySelector('.chart-card'));
+                        const doScroll = ()=>{
+                            if(!target) return;
+                            const hadTab = target.hasAttribute('tabindex');
+                            if(!hadTab) target.setAttribute('tabindex','-1');
+                            try{ target.scrollIntoView({ behavior: 'smooth', block: 'start' }); }catch(e){}
+                            try{ target.focus(); }catch(e){}
+                            if(window.chronogram && typeof window.chronogram.focusTask === 'function' && taskId){ try{ window.chronogram.focusTask(taskId); }catch(e){} }
+                            if(!hadTab) setTimeout(()=>{ try{ target.removeAttribute('tabindex'); }catch(e){} }, 1200);
+                        };
+                        const regionalTab = document.querySelector('[data-tab="regional"]');
+                        if(regionalTab){ regionalTab.click(); setTimeout(doScroll, 250); } else { doScroll(); }
+                    }
+
                     // wire the Voir buttons inside the UL
                     list.querySelectorAll('button[data-task-id]').forEach(btn=> btn.addEventListener('click', (ev)=>{
                         const id = btn.getAttribute('data-task-id');
                         // close the modal first for a cleaner transition
                         try{ closeModal(modal); }catch(e){}
-                        // activate the Regional tab and then focus the task in the chronogram area
-                        const regionalTab = document.querySelector('[data-tab="regional"]');
-                        if(regionalTab) regionalTab.click();
-                        if(window.chronogram && typeof window.chronogram.focusTask === 'function'){
-                            try{ window.chronogram.focusTask(id); }catch(e){}
-                        }
-                        btn.focus();
+                        goToChronogramAndFocusTask(id);
+                        try{ btn.focus(); }catch(e){}
                     }));
 
                     // add scroll shadow indicators
@@ -207,7 +217,7 @@
                         chip.appendChild(chipText);
                         dateDiv.appendChild(chip);
                         const actionsDiv = document.createElement('div'); actionsDiv.className = 'actions';
-                        const btn = document.createElement('button'); btn.className = 'control-button'; btn.setAttribute('data-task-id', id); btn.title = 'Voir'; btn.textContent = 'Voir';
+                        const btn = document.createElement('button'); btn.className = 'btn btn-primary small'; btn.setAttribute('data-task-id', id); btn.title = 'Voir'; btn.textContent = 'Voir';
                         actionsDiv.appendChild(btn);
                         li.appendChild(taskDiv); li.appendChild(dateDiv); li.appendChild(actionsDiv);
                         return li;
@@ -218,15 +228,12 @@
                     list.appendChild(summaryLi);
                     items.forEach(it=> list.appendChild(it));
 
-                    // wire the Voir buttons inside the UL
+                    // wire the Voir buttons inside the UL using goToChronogramAndFocusTask helper
                     list.querySelectorAll('button[data-task-id]').forEach(btn=> btn.addEventListener('click', (ev)=>{
                         const id = btn.getAttribute('data-task-id');
-                        const regionalTab = document.querySelector('[data-tab="regional"]');
-                        if(regionalTab) regionalTab.click();
-                        if(window.chronogram && typeof window.chronogram.focusTask === 'function'){
-                            try{ window.chronogram.focusTask(id); }catch(e){}
-                        }
-                        btn.focus();
+                        try{ closeModal(modal); }catch(e){}
+                        goToChronogramAndFocusTask(id);
+                        try{ btn.focus(); }catch(e){}
                     }));
 
                     // only show if reminders are not hidden via localStorage

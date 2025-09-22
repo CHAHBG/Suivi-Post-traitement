@@ -435,9 +435,8 @@
                 </div>
                 <ul class="mb-4 text-sm chronogram-alerts-list" style="margin-top:12px"></ul>
                 <div class="actions">
-                    <button id="chronogram-ack">Marquer comme lu</button>
-                    <button id="chronogram-hide">Ne plus afficher</button>
-                    <button id="chronogram-view" class="btn-primary" title="Voir la chronologie">Voir chronogramme</button>
+                    <button id="chronogram-ack" class="btn btn-primary">Marquer comme lu</button>
+                    <button id="chronogram-hide" class="btn btn-ghost">Ne plus afficher</button>
                 </div>
             </div>
         `;
@@ -479,39 +478,7 @@
         modal.querySelector('#chronogram-ack').onclick = ()=>{ modal.remove(); localStorage.setItem('chronogram_ack', new Date().toISOString()); };
         modal.querySelector('#chronogram-hide').onclick = ()=>{ modal.remove(); localStorage.setItem('chronogram_ack', 'never'); };
 
-        // View chronogram button: close modal and scroll/focus the enclosing chart-card for the chronogram
-        const viewBtn = modal.querySelector('#chronogram-view');
-        if(viewBtn){
-            viewBtn.onclick = ()=>{
-                modal.remove();
-                // Prefer the chart card that contains the chronogram header; fallback to the gantt div or any .chart-card
-                const headerEl = document.querySelector('.chart-header--chronogram');
-                const chartCard = headerEl ? headerEl.closest('.chart-card') : null;
-                const ganttEl = document.getElementById('projectTimelineGantt');
-                const target = chartCard || ganttEl || document.querySelector('.chart-card');
-
-                // If there's a tab to activate, click it first (keeps single-page apps consistent)
-                const regionalTab = document.querySelector('.nav-tab[data-tab="regional"]');
-                const doScroll = () => {
-                    if(!target) return;
-                    // temporarily make focusable if not
-                    const hadTab = target.hasAttribute('tabindex');
-                    if(!hadTab) target.setAttribute('tabindex', '-1');
-                    try{ target.scrollIntoView({ behavior: 'smooth', block: 'start' }); }catch(e){}
-                    try{ target.focus(); }catch(e){}
-                    // remove temporary tabindex after a short delay
-                    if(!hadTab) setTimeout(()=>{ target.removeAttribute('tabindex'); }, 1200);
-                };
-
-                if(regionalTab){
-                    regionalTab.click();
-                    // allow tab switch animation/logic to run, then scroll
-                    setTimeout(doScroll, 250);
-                } else {
-                    doScroll();
-                }
-            };
-        }
+        // Note: the quick "Voir chronogramme" action was removed from the reminders modal.
 
         // Try browser Notification
         if('Notification' in window && Notification.permission === 'granted'){
