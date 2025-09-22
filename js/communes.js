@@ -18,12 +18,12 @@
   // --- Geomaticien contacts data (provided) ---
   // contact list — update photo paths to assets/<lowername>.jpg (ensure files exist in assets/)
   const GEOMATICIEN_CONTACTS = {
-    'bamba':   { phone: '+221778023851', mail: 'cheikhabgn@gmail.com', photo: 'assets/bamba.jpg' },
-  'badara':  { phone: '+221771137547', mail: 'laiounegueye000@gmail.com', photo: 'assets/badara.jpg' },
-    'awa':     { phone: '+221773918399', mail: 'evatoure53@gmail.com', photo: 'assets/awa.jpg' },
-    'mariama': { phone: '+221779433856', mail: 'siremaria99@gmail.com', photo: 'assets/mariama.jpg' },
-    'dianke': { phone: '+221782494512', mail: 'diankemendy03@gmail.com', photo: 'assets/dianke.jpg' },
-    'demba':   { phone: '+221770680324', mail: 'papaseck.dass@gmail.com', photo: 'assets/demba.jpg' }
+    'bamba':   { phone: '+221778023851', mail: 'cheikhabgn@gmail.com', photo: 'assets/Bamba.jpg' },
+    'badara':  { phone: '+221771137547', mail: 'laiounegueye000@gmail.com', photo: 'assets/Badara.jpg' },
+    'awa':     { phone: '+221773918399', mail: 'evatoure53@gmail.com', photo: 'assets/Awa.jpg' },
+    'mariama': { phone: '+221779433856', mail: 'siremaria99@gmail.com', photo: 'assets/Mariama.jpg' },
+    'dianke':  { phone: '+221782494512', mail: 'diankemendy03@gmail.com', photo: 'assets/Dianke.jpg' },
+    'demba':   { phone: '+221770680324', mail: 'papaseck.dass@gmail.com', photo: 'assets/Demba.jpg' }
   };
 
   function normalizeNameForLookup(name){
@@ -99,7 +99,11 @@
       // populate markup
       const phoneHtml = (data && data.phone) ? `<a id="geomaticienPhone" href="tel:${data.phone.replace(/\s+/g,'')}">${escapeHtml(data.phone)}</a>` : `<a id="geomaticienPhone" href="#">N/A</a>`;
       const mailHtml = (data && data.mail) ? `<a id="geomaticienMail" href="mailto:${escapeHtml(data.mail)}">${escapeHtml(data.mail)}</a>` : `<a id="geomaticienMail" href="#">N/A</a>`;
-  const avatarHtml = (data && data.photo) ? `<div class="geomaticien-avatar" id="geomaticienAvatar"><img src="${escapeHtml(data.photo)}" alt="Photo de ${escapeHtml(name)}" loading="lazy" decoding="async"></div>` : `<div class="geomaticien-avatar" id="geomaticienAvatar">${escapeHtml(name.split(' ').map(s=>s[0]||'').slice(0,2).join('').toUpperCase())}</div>`;
+      // compute initials for fallback
+      const initials = escapeHtml((name||'').split(' ').map(s=>s[0]||'').slice(0,2).join('').toUpperCase());
+      const avatarHtml = (data && data.photo) ?
+        `<div class="geomaticien-avatar" id="geomaticienAvatar"><img src="${escapeHtml(data.photo)}" data-initials="${initials}" alt="Photo de ${escapeHtml(name)}" loading="lazy" decoding="async" onerror="this.style.display='none'; const p=this.parentNode; p.classList.add('geomaticien-no-photo'); if(!p.textContent) p.textContent=this.getAttribute('data-initials');"></div>` :
+        `<div class="geomaticien-avatar geomaticien-no-photo" id="geomaticienAvatar">${initials}</div>`;
       content.innerHTML = `
         <div class="geomaticien-modal-panel" role="document">
           ${avatarHtml}
