@@ -1672,106 +1672,122 @@ class ChartService {
      * Calculate and update efficiency KPIs
      */
     calculateEfficiencyKPIs(rawData) {
-        const postProcessSheet = this.findSheet('Post Process Follow-up', rawData) || [];
-        const yieldsSheet = this.findSheet('Yields Projections', rawData) || this.findSheet('Daily Levee Source', rawData) || [];
+        console.info('[calculateEfficiencyKPIs] Starting calculation...');
+        
+        try {
+            const postProcessSheet = this.findSheet('Post Process Follow-up', rawData) || [];
+            const yieldsSheet = this.findSheet('Yields Projections', rawData) || this.findSheet('Daily Levee Source', rawData) || [];
 
-        // --- Post Process KPIs ---
-        let totalBrutes = 0, totalValidees = 0, wipOver48h = 0;
-        const now = new Date();
+            console.info(`[calculateEfficiencyKPIs] Found ${postProcessSheet.length} post-process rows, ${yieldsSheet.length} yields rows`);
 
-        postProcessSheet.forEach(row => {
-            const brutes = this._getNumericField(row, ['Parcelles Brutes  par topo', 'Parcelles Brutes par topo']) || 0;
-            const validees = this._getNumericField(row, ['Parcelles validees par Topo']) || 0;
-            totalBrutes += brutes;
-            totalValidees += validees;
+            // --- Post Process KPIs ---
+            let totalBrutes = 0, totalValidees = 0, wipOver48h = 0;
+            const now = new Date();
 
-            const dateObj = window.dataAggregationService ?
-                window.dataAggregationService.parseDate(row['Date'] || row['date']) :
-                new Date(row['Date'] || row['date']);
-            
-            if (dateObj && !isNaN(dateObj)) {
-                const hoursDiff = (now - dateObj) / (1000 * 60 * 60);
-                if (hoursDiff > 48 && brutes > validees) {
-                    wipOver48h += (brutes - validees);
+            postProcessSheet.forEach(row => {
+                const brutes = this._getNumericField(row, ['Parcelles Brutes  par topo', 'Parcelles Brutes par topo']) || 0;
+                const validees = this._getNumericField(row, ['Parcelles validees par Topo']) || 0;
+                totalBrutes += brutes;
+                totalValidees += validees;
+
+                const dateObj = window.dataAggregationService ?
+                    window.dataAggregationService.parseDate(row['Date'] || row['date']) :
+                    new Date(row['Date'] || row['date']);
+                
+                if (dateObj && !isNaN(dateObj)) {
+                    const hoursDiff = (now - dateObj) / (1000 * 60 * 60);
+                    if (hoursDiff > 48 && brutes > validees) {
+                        wipOver48h += (brutes - validees);
+                    }
                 }
-            }
-        });
+            });
 
-        // FTR: First Time Right (% validated without rework)
-        const ftr = totalBrutes > 0 ? Math.round((totalValidees / totalBrutes) * 100) : 0;
-        
-        // Avg Cycle Time (simplified: avg days of data)
-        const uniqueDates = new Set();
-        postProcessSheet.forEach(row => {
-            const dateObj = window.dataAggregationService ?
-                window.dataAggregationService.parseDate(row['Date'] || row['date']) :
-                new Date(row['Date'] || row['date']);
-            if (dateObj && !isNaN(dateObj)) uniqueDates.add(dateObj.toISOString().split('T')[0]);
-        });
-        const avgCycleTime = uniqueDates.size > 0 ? Math.round(uniqueDates.size / 2) : '--';
-
-        // Update DOM
-        const ftrEl = document.getElementById('ftrValue');
-        const cycleEl = document.getElementById('avgCycleTime');
-        const wipEl = document.getElementById('wipAge');
-        
-        if (ftrEl) ftrEl.textContent = ftr + '%';
-        if (cycleEl) cycleEl.textContent = avgCycleTime + 'j';
-        if (wipEl) wipEl.textContent = wipOver48h.toLocaleString();
-
-        // --- Yields Strategy KPIs ---
-        const dailyTarget = (window.CONFIG && window.CONFIG.TARGETS && window.CONFIG.TARGETS.DAILY_PARCELS) || 387;
-        const monthlyTarget = (window.CONFIG && window.CONFIG.TARGETS && window.CONFIG.TARGETS.MONTHLY_PARCELS) || 12000;
-
-        let totalLevees = 0;
-        const dailyTotals = new Map();
-        yieldsSheet.forEach(row => {
-            const levees = this._getNumericField(row, ['Nombre de levées', 'Nombre de levee']) || 0;
-            totalLevees += levees;
+            // FTR: First Time Right (% validated without rework)
+            const ftr = totalBrutes > 0 ? Math.round((totalValidees / totalBrutes) * 100) : 0;
             
-            const dateObj = window.dataAggregationService ?
-                window.dataAggregationService.parseDate(row['Date'] || row['date']) :
-                new Date(row['Date'] || row['date']);
-            if (dateObj && !isNaN(dateObj)) {
-                const dateKey = dateObj.toISOString().split('T')[0];
-                dailyTotals.set(dateKey, (dailyTotals.get(dateKey) || 0) + levees);
+            // Avg Cycle Time (simplified: avg days of data)
+            const uniqueDates = new Set();
+            postProcessSheet.forEach(row => {
+                const dateObj = window.dataAggregationService ?
+                    window.dataAggregationService.parseDate(row['Date'] || row['date']) :
+                    new Date(row['Date'] || row['date']);
+                if (dateObj && !isNaN(dateObj)) uniqueDates.add(dateObj.toISOString().split('T')[0]);
+            });
+            const avgCycleTime = uniqueDates.size > 0 ? Math.round(uniqueDates.size / 2) : 0;
+
+            console.info(`[calculateEfficiencyKPIs] FTR: ${ftr}%, Cycle: ${avgCycleTime}j, WIP: ${wipOver48h}`);
+
+            // Update DOM
+            const ftrEl = document.getElementById('ftrValue');
+            const cycleEl = document.getElementById('avgCycleTime');
+            const wipEl = document.getElementById('wipAge');
+            
+            if (ftrEl) ftrEl.textContent = ftr + '%';
+            if (cycleEl) cycleEl.textContent = avgCycleTime + 'j';
+            if (wipEl) wipEl.textContent = wipOver48h.toLocaleString();
+
+            console.info('[calculateEfficiencyKPIs] Post-process KPIs updated');
+
+            // --- Yields Strategy KPIs ---
+            const dailyTarget = (window.CONFIG && window.CONFIG.TARGETS && window.CONFIG.TARGETS.DAILY_PARCELS) || 387;
+            const monthlyTarget = (window.CONFIG && window.CONFIG.TARGETS && window.CONFIG.TARGETS.MONTHLY_PARCELS) || 12000;
+
+            let totalLevees = 0;
+            const dailyTotals = new Map();
+            yieldsSheet.forEach(row => {
+                const levees = this._getNumericField(row, ['Nombre de levées', 'Nombre de levee']) || 0;
+                totalLevees += levees;
+                
+                const dateObj = window.dataAggregationService ?
+                    window.dataAggregationService.parseDate(row['Date'] || row['date']) :
+                    new Date(row['Date'] || row['date']);
+                if (dateObj && !isNaN(dateObj)) {
+                    const dateKey = dateObj.toISOString().split('T')[0];
+                    dailyTotals.set(dateKey, (dailyTotals.get(dateKey) || 0) + levees);
+                }
+            });
+
+            const daysWorked = dailyTotals.size || 1;
+            const avgVelocity = totalLevees / daysWorked;
+            
+            // Days remaining in month
+            const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+            const daysRemaining = Math.max(1, Math.ceil((endOfMonth - now) / (1000 * 60 * 60 * 24)));
+            
+            // Required Run Rate to hit monthly target
+            const remaining = monthlyTarget - totalLevees;
+            const rrr = Math.max(0, Math.ceil(remaining / daysRemaining));
+
+            // Schedule Variance (cumulative actual vs expected)
+            const expectedCumulative = dailyTarget * daysWorked;
+            const scheduleVariance = totalLevees - expectedCumulative;
+
+            // Completion Confidence (projected finish date)
+            const daysToComplete = remaining > 0 ? Math.ceil(remaining / avgVelocity) : 0;
+            const projectedDate = new Date(now);
+            projectedDate.setDate(projectedDate.getDate() + daysToComplete);
+            const projectedDateStr = daysToComplete > 0 
+                ? `${String(projectedDate.getDate()).padStart(2, '0')}/${String(projectedDate.getMonth() + 1).padStart(2, '0')}`
+                : 'Atteint';
+
+            console.info(`[calculateEfficiencyKPIs] RRR: ${rrr}, Variance: ${scheduleVariance}, Projected: ${projectedDateStr}`);
+
+            // Update DOM
+            const rrrEl = document.getElementById('rrrValue');
+            const svEl = document.getElementById('scheduleVariance');
+            const ccEl = document.getElementById('completionConfidence');
+            
+            if (rrrEl) rrrEl.textContent = rrr.toLocaleString();
+            if (svEl) {
+                svEl.textContent = (scheduleVariance >= 0 ? '+' : '') + scheduleVariance.toLocaleString();
+                svEl.className = svEl.className.replace(/text-(purple|red|green)-\d+/, scheduleVariance >= 0 ? 'text-purple-600' : 'text-red-600');
             }
-        });
+            if (ccEl) ccEl.textContent = projectedDateStr;
 
-        const daysWorked = dailyTotals.size || 1;
-        const avgVelocity = totalLevees / daysWorked;
-        
-        // Days remaining in month
-        const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-        const daysRemaining = Math.max(1, Math.ceil((endOfMonth - now) / (1000 * 60 * 60 * 24)));
-        
-        // Required Run Rate to hit monthly target
-        const remaining = monthlyTarget - totalLevees;
-        const rrr = Math.max(0, Math.ceil(remaining / daysRemaining));
-
-        // Schedule Variance (cumulative actual vs expected)
-        const expectedCumulative = dailyTarget * daysWorked;
-        const scheduleVariance = totalLevees - expectedCumulative;
-
-        // Completion Confidence (projected finish date)
-        const daysToComplete = remaining > 0 ? Math.ceil(remaining / avgVelocity) : 0;
-        const projectedDate = new Date(now);
-        projectedDate.setDate(projectedDate.getDate() + daysToComplete);
-        const projectedDateStr = daysToComplete > 0 
-            ? `${String(projectedDate.getDate()).padStart(2, '0')}/${String(projectedDate.getMonth() + 1).padStart(2, '0')}`
-            : 'Atteint';
-
-        // Update DOM
-        const rrrEl = document.getElementById('rrrValue');
-        const svEl = document.getElementById('scheduleVariance');
-        const ccEl = document.getElementById('completionConfidence');
-        
-        if (rrrEl) rrrEl.textContent = rrr.toLocaleString();
-        if (svEl) {
-            svEl.textContent = (scheduleVariance >= 0 ? '+' : '') + scheduleVariance.toLocaleString();
-            svEl.className = `text-2xl font-bold ${scheduleVariance >= 0 ? 'text-success' : 'text-danger'}`;
+            console.info('[calculateEfficiencyKPIs] All KPIs updated successfully');
+        } catch (error) {
+            console.error('[calculateEfficiencyKPIs] Error calculating KPIs:', error);
         }
-        if (ccEl) ccEl.textContent = projectedDateStr;
     }
 
     // Helper for dummy access
