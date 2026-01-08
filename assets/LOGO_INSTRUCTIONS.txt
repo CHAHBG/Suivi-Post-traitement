@@ -1,0 +1,17 @@
+INSTRUCTIONS POUR LE NOUVEAU LOGO
+==================================
+
+Le logo fourni (image circulaire BET-PLUS & AUDET avec "Groupement d'Entreprises" et "Procédé Grappe du Boundou")
+doit être sauvegardé dans ce dossier avec le nom:
+
+    logo-betplus-audet.png
+
+Le fichier index.html a été mis à jour pour utiliser ce logo automatiquement.
+
+Si le logo n'est pas encore sauvegardé, veuillez:
+1. Sauvegarder l'image fournie sous le nom "logo-betplus-audet.png"
+2. La placer dans le dossier assets/
+3. Rafraîchir le navigateur pour voir le changement
+
+Le site a également été mis à jour avec le nouveau titre:
+"Suivi Opérations Foncière Boundou"
