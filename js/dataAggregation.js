@@ -431,10 +431,10 @@ class DataAggregationService {
             const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
 
             // console.log('Data timeframes:', {
-                today: dayKey,
-                weekStart: this.formatDate(weekStart),
-                monthStart: this.formatDate(monthStart)
-            });
+            //     today: dayKey,
+            //     weekStart: this.formatDate(weekStart),
+            //     monthStart: this.formatDate(monthStart)
+            // });
 
             let latestDate = null;
             for (const row of yieldsSheet) {

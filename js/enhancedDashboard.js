@@ -881,13 +881,13 @@ class EnhancedDashboard {
 
                 // Log KPI calculation results to help with debugging
                 // console.log('KPI calculation results:', {
-                    daily: kpis.daily,
-                    weekly: kpis.weekly,
-                    monthly: kpis.monthly,
-                    quality: kpis.quality ? { rate: kpis.quality.rate } : null,
-                    ctasf: kpis.ctasf ? { rate: kpis.ctasf.rate } : null,
-                    processing: kpis.processing ? { rate: kpis.processing.rate } : null
-                });
+                //     daily: kpis.daily,
+                //     weekly: kpis.weekly,
+                //     monthly: kpis.monthly,
+                //     quality: kpis.quality ? { rate: kpis.quality.rate } : null,
+                //     ctasf: kpis.ctasf ? { rate: kpis.ctasf.rate } : null,
+                //     processing: kpis.processing ? { rate: kpis.processing.rate } : null
+                // });
 
                 // Update tube indicators
                 if (window.tubeProgressService) {
