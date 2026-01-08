@@ -8,8 +8,11 @@ class EnhancedGoogleSheetsService {
         // Cache for storing fetched data
         this.cache = new Map();
 
-        // Cache expiration time in milliseconds (5 minutes)
-        this.cacheExpiration = 5 * 60 * 1000;
+        // Cache expiration time in milliseconds (10 minutes - increased for performance)
+        this.cacheExpiration = 10 * 60 * 1000;
+
+        // Prevent duplicate concurrent requests
+        this.pendingRequests = new Map();
 
         // Default options
         this.options = {
@@ -352,10 +355,16 @@ class EnhancedGoogleSheetsService {
 
             return parsedData;
 
-        } catch (error) {
-            console.error(`Error fetching sheet from URL: ${url}`, error);
-            throw error;
-        }
+            } catch (error) {
+                console.error('Error fetching sheet from URL:', url, error);
+                throw error;
+            } finally {
+                this.pendingRequests.delete(url);
+            }
+        })();
+
+        this.pendingRequests.set(url, requestPromise);
+        return requestPromise;
     }
 
     /**
