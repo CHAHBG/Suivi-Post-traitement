@@ -193,10 +193,27 @@ const MONITORING_SHEETS = {
     },
 
     postProcessFollowup: {
-        gid: '202408760',
+        gid: '0',
         name: 'Post Process Follow-up',
-        columns: ['Date', 'Geomaticien', 'Région', 'Commune', 'Parcelles reçues (Brutes)', 'Parcelles post traitées (Sans Doublons et topoplogie correcte)', 'Parcelles individuelles Jointes', 'Parcelles collectives Jointes', 'Parcelles sans jointure', 'Parcelles retournées aux topos', 'Motif'],
-        url: 'https://docs.google.com/spreadsheets/d/1CbDBJtoWWPRjEH4DOSlv4jjnJ2G-1MvW/export?format=csv&gid=202408760'
+        // New template structure: Team field operations inventory
+        columns: [
+            'Date',
+            'Topographe Prénom', 
+            'Topographe Nom',
+            'Commune',
+            'Zone',
+            'Village',
+            'Parcelles reçues Champs',
+            'Parcelles reçues Bâtis',
+            'Nombre de parcelles reçues par topographe',
+            'Nombre total de parcelles reçues équipe',
+            'Parcelles validées Champs',
+            'Parcelles validées Bâtis',
+            'Nombre de parcelles validées par topographe',
+            'Nombre de parcelles validées équipe',
+            'Geomaticien'
+        ],
+        url: 'https://docs.google.com/spreadsheets/d/1pvBmjUuiIBNAbryieSTagA1WxBogXJSs/export?format=csv&gid=0'
     },
 
     yieldsProjection: {

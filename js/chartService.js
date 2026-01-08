@@ -716,9 +716,16 @@ class ChartService {
 
             if (dateObj && !isNaN(dateObj)) {
                 const dateKey = dateObj.toISOString().split('T')[0];
-                const recues = this._getNumericField(row, ['Parcelles reçues (Brutes)', 'Recues', 'Brutes', 'Reçues', 'parcelles_recues', 'Parcelles reçues']) || 0;
-                const traitees = this._getNumericField(row, ['Parcelles post traitées (Sans Doublons et topoplogie correcte)', 'Traitees', 'Post Traitees', 'Traitées', 'Post traitées', 'parcelles_traitees']) || 0;
-                const jointes = this._getNumericField(row, ['Parcelles individuelles Jointes', 'Jointes', 'Individuelles jointes']) || 0; // Optional extra context
+                
+                // New template: sum Champs + Bâtis for received parcels
+                const recuesChamps = this._getNumericField(row, ['Parcelles reçues Champs', 'Données reçues pour post-traitements et contrôle qualité']) || 0;
+                const recuesBatis = this._getNumericField(row, ['Parcelles reçues Bâtis']) || 0;
+                const recues = recuesChamps + recuesBatis || this._getNumericField(row, ['Nombre de parcelles reçues par topographe', 'Nombre total de parcelles reçues équipe', 'Parcelles reçues (Brutes)', 'Recues', 'Brutes', 'Reçues', 'parcelles_recues', 'Parcelles reçues']) || 0;
+                
+                // New template: sum Champs + Bâtis for validated parcels
+                const traiteesChamps = this._getNumericField(row, ['Parcelles validées Champs']) || 0;
+                const traiteesBatis = this._getNumericField(row, ['Parcelles validées Bâtis']) || 0;
+                const traitees = traiteesChamps + traiteesBatis || this._getNumericField(row, ['Nombre de parcelles validées par topographe', 'Nombre de parcelles validées équipe', 'Parcelles post traitées (Sans Doublons et topoplogie correcte)', 'Traitees', 'Post Traitees', 'Traitées', 'Post traitées', 'parcelles_traitees']) || 0;
 
                 if (dailyTotals.has(dateKey)) {
                     const entry = dailyTotals.get(dateKey);
@@ -743,7 +750,7 @@ class ChartService {
             type: 'line',
             data: {
                 datasets: [{
-                    label: 'Reçues',
+                    label: 'Parcelles Reçues',
                     data: aggregatedData.map(d => ({ x: d.x, y: d.recues })),
                     borderColor: '#64748b', // Slate 500
                     backgroundColor: 'transparent',
@@ -751,7 +758,7 @@ class ChartService {
                     fill: false,
                     tension: 0.4
                 }, {
-                    label: 'Traitées',
+                    label: 'Parcelles Validées',
                     data: aggregatedData.map(d => ({ x: d.x, y: d.traitees })),
                     borderColor: '#10b981', // Emerald
                     backgroundColor: 'rgba(16, 185, 129, 0.1)',
