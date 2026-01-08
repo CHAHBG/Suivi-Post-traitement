@@ -7,6 +7,13 @@ class ChartService {
         this.charts = new Map();
         this.gauges = new Map();
         this._resizeObserverInitialized = false;
+        
+        // Current timeframe for chart aggregation (daily, weekly, monthly)
+        this.currentTimeframe = 'daily';
+
+        // French month names for date formatting
+        this.frenchMonths = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+        this.frenchMonthsShort = ['jan', 'fév', 'mar', 'avr', 'mai', 'jun', 'jul', 'aoû', 'sep', 'oct', 'nov', 'déc'];
 
         // Ensure CONFIG exists
         if (typeof window.CONFIG === 'undefined') window.CONFIG = {};
@@ -116,6 +123,57 @@ class ChartService {
             return 'rgba(' + [(c >> 16) & 255, (c >> 8) & 255, c & 255].join(',') + ',' + alpha + ')';
         }
         return hex;
+    }
+
+    /**
+     * Format date to French format: "02/01/2026" or "02 janvier 2026"
+     */
+    _formatDateFr(date, format = 'short') {
+        if (!date || isNaN(date)) return '';
+        const d = new Date(date);
+        const day = String(d.getDate()).padStart(2, '0');
+        const month = d.getMonth();
+        const year = d.getFullYear();
+        
+        if (format === 'long') {
+            return `${day} ${this.frenchMonths[month]} ${year}`;
+        } else if (format === 'medium') {
+            return `${day} ${this.frenchMonthsShort[month]}`;
+        }
+        // short format: DD/MM/YYYY
+        return `${day}/${String(month + 1).padStart(2, '0')}`;
+    }
+
+    /**
+     * Get common time scale options for Chart.js with French formatting
+     * Now respects the current timeframe filter
+     */
+    _getTimeScaleOptions(maxTicks = 15) {
+        const self = this;
+        const timeUnit = this._getTimeUnit();
+        return {
+            type: 'time',
+            time: {
+                unit: timeUnit,
+                displayFormats: {
+                    day: 'DD/MM',
+                    week: 'DD/MM',
+                    month: 'MMM YYYY'
+                },
+                tooltipFormat: 'DD/MM/YYYY'
+            },
+            ticks: {
+                maxRotation: 45,
+                minRotation: 0,
+                autoSkip: true,
+                maxTicksLimit: maxTicks,
+                callback: function(value, index, ticks) {
+                    const date = new Date(value);
+                    if (isNaN(date)) return value;
+                    return self._formatDateLabel(date);
+                }
+            }
+        };
     }
 
     _makeAreaGradient(color, canvas) {
@@ -304,6 +362,48 @@ class ChartService {
                 }
             },
             {
+                id: 'yieldsVsValidationChart', fn: () => {
+                    console.info('Initializing yieldsVsValidationChart...');
+                    this.createYieldsVsValidationChart(rawData);
+                }
+            },
+            {
+                id: 'validationRateChart', fn: () => {
+                    console.info('Initializing validationRateChart...');
+                    this.createValidationRateChart(rawData);
+                }
+            },
+            {
+                id: 'burnUpChart', fn: () => {
+                    console.info('Initializing burnUpChart...');
+                    this.createBurnUpChart(rawData);
+                }
+            },
+            {
+                id: 'velocityDeviationChart', fn: () => {
+                    console.info('Initializing velocityDeviationChart...');
+                    this.createVelocityDeviationChart(rawData);
+                }
+            },
+            {
+                id: 'statusAgingChart', fn: () => {
+                    console.info('Initializing statusAgingChart...');
+                    this.createStatusAgingChart(rawData);
+                }
+            },
+            {
+                id: 'bulletCharts', fn: () => {
+                    console.info('Initializing bulletCharts...');
+                    this.createBulletCharts(rawData);
+                }
+            },
+            {
+                id: 'efficiencyKPIs', fn: () => {
+                    console.info('Calculating efficiency KPIs...');
+                    this.calculateEfficiencyKPIs(rawData);
+                }
+            },
+            {
                 id: 'gauge-charts', fn: () => {
                     console.info('Initializing gauge charts...');
                     this.createGaugeCharts();
@@ -323,8 +423,94 @@ class ChartService {
         return true;
     }
 
-    async updateCharts(rawData, precomputedKPIs = null, fullRawData = null) {
+    async updateCharts(rawData, precomputedKPIs = null, fullRawData = null, options = {}) {
+        // Store timeframe for chart methods to use
+        this.currentTimeframe = options.timeframe || 'daily';
         return this.initializeCharts(rawData, precomputedKPIs, fullRawData);
+    }
+
+    /**
+     * Aggregate data by timeframe (daily, weekly, monthly)
+     * @param {Map} dailyMap - Map with date keys and values
+     * @param {string} timeframe - 'daily', 'weekly', or 'monthly'
+     * @returns {Array} Aggregated data sorted by date
+     */
+    _aggregateByTimeframe(dailyMap, timeframe = 'daily') {
+        const tf = timeframe || this.currentTimeframe || 'daily';
+        
+        if (tf === 'daily') {
+            // Return data as-is for daily
+            return Array.from(dailyMap.values()).sort((a, b) => a.x - b.x);
+        }
+        
+        const aggregated = new Map();
+        
+        dailyMap.forEach(entry => {
+            const date = new Date(entry.x);
+            let bucketKey;
+            let bucketDate;
+            
+            if (tf === 'weekly') {
+                // Get ISO week start (Monday)
+                const dayOfWeek = date.getDay();
+                const diff = date.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
+                bucketDate = new Date(date.setDate(diff));
+                bucketDate.setHours(0, 0, 0, 0);
+                bucketKey = bucketDate.toISOString().split('T')[0];
+            } else if (tf === 'monthly') {
+                // Get month start
+                bucketDate = new Date(date.getFullYear(), date.getMonth(), 1);
+                bucketKey = bucketDate.toISOString().split('T')[0];
+            }
+            
+            if (aggregated.has(bucketKey)) {
+                const existing = aggregated.get(bucketKey);
+                existing.y += entry.y;
+                if (entry.count) existing.count = (existing.count || 1) + entry.count;
+            } else {
+                aggregated.set(bucketKey, { 
+                    x: bucketDate, 
+                    y: entry.y,
+                    count: entry.count || 1
+                });
+            }
+        });
+        
+        return Array.from(aggregated.values()).sort((a, b) => a.x - b.x);
+    }
+
+    /**
+     * Get time unit for Chart.js based on timeframe
+     */
+    _getTimeUnit() {
+        const tf = this.currentTimeframe || 'daily';
+        switch (tf) {
+            case 'monthly': return 'month';
+            case 'weekly': return 'week';
+            default: return 'day';
+        }
+    }
+
+    /**
+     * Format date label based on timeframe
+     */
+    _formatDateLabel(date) {
+        if (!date || isNaN(date)) return '';
+        const d = new Date(date);
+        const tf = this.currentTimeframe || 'daily';
+        
+        const day = String(d.getDate()).padStart(2, '0');
+        const month = d.getMonth();
+        const year = d.getFullYear();
+        
+        if (tf === 'monthly') {
+            return `${this.frenchMonthsShort[month]} ${year}`;
+        } else if (tf === 'weekly') {
+            // Show week start date
+            return `Sem. ${day}/${String(month + 1).padStart(2, '0')}`;
+        }
+        // Daily
+        return `${day}/${String(month + 1).padStart(2, '0')}`;
     }
 
     // --- Specific Chart Methods ---
@@ -367,18 +553,32 @@ class ChartService {
             }
         });
 
-        // Sort by date chronologically
-        const aggregatedData = Array.from(dailyTotals.values()).sort((a, b) => a.x - b.x);
+        // Apply timeframe aggregation
+        const aggregatedData = this._aggregateByTimeframe(dailyTotals);
+        const timeUnit = this._getTimeUnit();
+        const self = this;
 
-        // Target line handle
-        const targetValue = (window.CONFIG && window.CONFIG.TARGETS && window.CONFIG.TARGETS.DAILY_PARCELS) ?
+        // Target line - adjust for timeframe
+        let targetValue = (window.CONFIG && window.CONFIG.TARGETS && window.CONFIG.TARGETS.DAILY_PARCELS) ?
             window.CONFIG.TARGETS.DAILY_PARCELS : 387;
+        
+        // Multiply target for weekly/monthly
+        const tf = this.currentTimeframe || 'daily';
+        if (tf === 'weekly') targetValue *= 5; // 5 working days
+        if (tf === 'monthly') targetValue *= 22; // ~22 working days
+
+        // Dynamic label based on timeframe
+        const labelMap = {
+            daily: 'Levées quotidiennes',
+            weekly: 'Levées hebdomadaires',
+            monthly: 'Levées mensuelles'
+        };
 
         this._createChart(id, {
             type: 'line',
             data: {
                 datasets: [{
-                    label: 'Levées quotidiennes',
+                    label: labelMap[tf] || 'Levées quotidiennes',
                     data: aggregatedData,
                     borderColor: '#2563eb',
                     backgroundColor: this._makeAreaGradient('#2563eb', canvas),
@@ -399,22 +599,29 @@ class ChartService {
             options: {
                 plugins: {
                     legend: { display: canvasId !== 'overviewDailyYieldsChart' },
-                    tooltip: { enabled: true }
+                    tooltip: {
+                        enabled: true,
+                        callbacks: {
+                            title: function(context) {
+                                const date = new Date(context[0].parsed.x);
+                                return self._formatDateLabel(date);
+                            }
+                        }
+                    }
                 },
                 scales: {
-                    x: { 
-                        type: 'time', 
-                        time: { 
-                            unit: 'day',
-                            displayFormats: {
-                                day: 'DD/MM'
-                            }
-                        },
+                    x: {
+                        type: 'time',
+                        time: { unit: timeUnit },
                         ticks: {
                             maxRotation: 45,
                             minRotation: 0,
                             autoSkip: true,
-                            maxTicksLimit: 15
+                            maxTicksLimit: 15,
+                            callback: function(value) {
+                                const date = new Date(value);
+                                return self._formatDateLabel(date);
+                            }
                         }
                     },
                     y: { beginAtZero: true }
@@ -501,6 +708,7 @@ class ChartService {
         if (aggregatedData.length === 0) aggregatedData = [];
 
         const color = 'rgba(16, 185, 129, 1)'; // Emerald
+        const self = this;
 
         this._createChart(id, {
             type: 'line',
@@ -527,26 +735,16 @@ class ChartService {
                     legend: { display: true },
                     tooltip: {
                         callbacks: {
+                            title: function(context) {
+                                const date = new Date(context[0].parsed.x);
+                                return self._formatDateLabel(date);
+                            },
                             label: (ctx) => `${ctx.dataset.label}: ${ctx.raw.y}%`
                         }
                     }
                 },
                 scales: {
-                    x: { 
-                        type: 'time', 
-                        time: { 
-                            unit: 'day',
-                            displayFormats: {
-                                day: 'DD/MM'
-                            }
-                        },
-                        ticks: {
-                            maxRotation: 45,
-                            minRotation: 0,
-                            autoSkip: true,
-                            maxTicksLimit: 15
-                        }
-                    },
+                    x: this._getTimeScaleOptions(15),
                     y: {
                         beginAtZero: true,
                         max: 100,
@@ -610,22 +808,34 @@ class ChartService {
                     };
                 });
                 if (datasets.length > 0) {
+                    const self = this;
                     this._createChart(trendId, {
                         type: 'line',
                         data: { datasets },
                         options: {
+                            plugins: {
+                                tooltip: {
+                                    callbacks: {
+                                        title: function(context) {
+                                            const date = new Date(context[0].parsed.x);
+                                            return self._formatDateLabel(date);
+                                        }
+                                    }
+                                }
+                            },
                             scales: {
                                 x: {
                                     type: 'time',
-                                    time: { 
-                                        unit: 'day', 
-                                        displayFormats: { day: 'DD/MM' } 
-                                    },
+                                    time: { unit: self._getTimeUnit() },
                                     ticks: {
                                         maxRotation: 45,
                                         minRotation: 0,
                                         autoSkip: true,
-                                        maxTicksLimit: 15
+                                        maxTicksLimit: 15,
+                                        callback: function(value) {
+                                            const date = new Date(value);
+                                            return self._formatDateLabel(date);
+                                        }
                                     }
                                 },
                                 y: {
@@ -717,15 +927,34 @@ class ChartService {
             if (dateObj && !isNaN(dateObj)) {
                 const dateKey = dateObj.toISOString().split('T')[0];
                 
-                // New template: sum Champs + Bâtis for received parcels
-                const recuesChamps = this._getNumericField(row, ['Parcelles reçues Champs', 'Données reçues pour post-traitements et contrôle qualité']) || 0;
-                const recuesBatis = this._getNumericField(row, ['Parcelles reçues Bâtis']) || 0;
-                const recues = recuesChamps + recuesBatis || this._getNumericField(row, ['Nombre de parcelles reçues par topographe', 'Nombre total de parcelles reçues équipe', 'Parcelles reçues (Brutes)', 'Recues', 'Brutes', 'Reçues', 'parcelles_recues', 'Parcelles reçues']) || 0;
+                // New simplified template columns
+                const recues = this._getNumericField(row, [
+                    'Parcelles Brutes par topo',
+                    'Parcelles Brutes  par topo', // Note: extra space in case of typo
+                    'Nombre de parcelles reçues par topographe',
+                    'Nombre total de parcelles reçues équipe',
+                    'Parcelles reçues (Brutes)',
+                    'Recues',
+                    'Brutes',
+                    'Reçues',
+                    'parcelles_recues',
+                    'Parcelles reçues'
+                ]) || 0;
                 
-                // New template: sum Champs + Bâtis for validated parcels
-                const traiteesChamps = this._getNumericField(row, ['Parcelles validées Champs']) || 0;
-                const traiteesBatis = this._getNumericField(row, ['Parcelles validées Bâtis']) || 0;
-                const traitees = traiteesChamps + traiteesBatis || this._getNumericField(row, ['Nombre de parcelles validées par topographe', 'Nombre de parcelles validées équipe', 'Parcelles post traitées (Sans Doublons et topoplogie correcte)', 'Traitees', 'Post Traitees', 'Traitées', 'Post traitées', 'parcelles_traitees']) || 0;
+                // New simplified template: validated parcels
+                const traitees = this._getNumericField(row, [
+                    'Parcelles validees par Topo',
+                    'Parcelles Total Validee Equipe A',
+                    'Parcelles Total Validee Equipe B',
+                    'Nombre de parcelles validées par topographe',
+                    'Nombre de parcelles validées équipe',
+                    'Parcelles post traitées (Sans Doublons et topoplogie correcte)',
+                    'Traitees',
+                    'Post Traitees',
+                    'Traitées',
+                    'Post traitées',
+                    'parcelles_traitees'
+                ]) || 0;
 
                 if (dailyTotals.has(dateKey)) {
                     const entry = dailyTotals.get(dateKey);
@@ -746,6 +975,7 @@ class ChartService {
             console.info(`[DEBUG postProcessingChart] Last point:`, aggregatedData[aggregatedData.length - 1]);
         }
 
+        const self = this;
         this._createChart(id, {
             type: 'line',
             data: {
@@ -768,22 +998,18 @@ class ChartService {
             },
             options: {
                 responsive: true,
-                scales: {
-                    x: { 
-                        type: 'time', 
-                        time: { 
-                            unit: 'day',
-                            displayFormats: {
-                                day: 'DD/MM'
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            title: function(context) {
+                                const date = new Date(context[0].parsed.x);
+                                return self._formatDateLabel(date);
                             }
-                        },
-                        ticks: {
-                            maxRotation: 45,
-                            minRotation: 0,
-                            autoSkip: true,
-                            maxTicksLimit: 15
                         }
-                    },
+                    }
+                },
+                scales: {
+                    x: this._getTimeScaleOptions(15),
                     y: { beginAtZero: true }
                 }
             }
@@ -899,6 +1125,653 @@ class ChartService {
                 }
             }
         });
+    }
+
+    /**
+     * NEW: Create Yields vs Validation Comparison Chart
+     * Compares daily yields from field with validated parcels from post-processing
+     */
+    createYieldsVsValidationChart(rawData) {
+        const id = 'yieldsVsValidationChart';
+        if (!document.getElementById(id)) return;
+
+        const yieldsSheet = this.findSheet('Yields Projections', rawData) || this.findSheet('Daily Levee Source', rawData) || [];
+        const postProcessSheet = this.findSheet('Post Process Follow-up', rawData) || [];
+
+        console.info(`createYieldsVsValidationChart: Yields=${yieldsSheet.length} rows, PostProcess=${postProcessSheet.length} rows`);
+
+        if (yieldsSheet.length === 0 && postProcessSheet.length === 0) {
+            console.warn(`No data for ${id}`);
+            return;
+        }
+
+        // Aggregate yields by date
+        const yieldsByDate = new Map();
+        yieldsSheet.forEach(row => {
+            const dateObj = window.dataAggregationService ?
+                window.dataAggregationService.parseDate(row['Date'] || row['date']) :
+                new Date(row['Date'] || row['date']);
+            
+            if (dateObj && !isNaN(dateObj)) {
+                const dateKey = dateObj.toISOString().split('T')[0];
+                const levees = this._getNumericField(row, ['Nombre de levées', 'Nombre de levee']) || 0;
+                yieldsByDate.set(dateKey, (yieldsByDate.get(dateKey) || 0) + levees);
+            }
+        });
+
+        // Aggregate validated parcels by date
+        const validatedByDate = new Map();
+        postProcessSheet.forEach(row => {
+            const dateObj = window.dataAggregationService ?
+                window.dataAggregationService.parseDate(row['Date'] || row['date']) :
+                new Date(row['Date'] || row['date']);
+            
+            if (dateObj && !isNaN(dateObj)) {
+                const dateKey = dateObj.toISOString().split('T')[0];
+                const validated = this._getNumericField(row, ['Parcelles validees par Topo', 'Parcelles Total Validee Equipe A', 'Parcelles Total Validee Equipe B']) || 0;
+                validatedByDate.set(dateKey, (validatedByDate.get(dateKey) || 0) + validated);
+            }
+        });
+
+        // Merge dates and create datasets
+        const allDates = new Set([...yieldsByDate.keys(), ...validatedByDate.keys()]);
+        const sortedDates = Array.from(allDates).sort();
+
+        const yieldsData = sortedDates.map(dateKey => ({
+            x: new Date(dateKey),
+            y: yieldsByDate.get(dateKey) || 0
+        }));
+
+        const validatedData = sortedDates.map(dateKey => ({
+            x: new Date(dateKey),
+            y: validatedByDate.get(dateKey) || 0
+        }));
+
+        const self = this;
+        this._createChart(id, {
+            type: 'line',
+            data: {
+                datasets: [{
+                    label: 'Levées Terrain',
+                    data: yieldsData,
+                    borderColor: '#3b82f6',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    fill: true,
+                    tension: 0.4
+                }, {
+                    label: 'Parcelles Validées',
+                    data: validatedData,
+                    borderColor: '#10b981',
+                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { display: true },
+                    tooltip: {
+                        enabled: true,
+                        callbacks: {
+                            title: function(context) {
+                                const date = new Date(context[0].parsed.x);
+                                return self._formatDateLabel(date);
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: this._getTimeScaleOptions(15),
+                    y: { beginAtZero: true }
+                }
+            }
+        });
+    }
+
+    /**
+     * NEW: Create Validation Rate Chart
+     * Shows percentage of validated parcels over time
+     */
+    createValidationRateChart(rawData) {
+        const id = 'validationRateChart';
+        if (!document.getElementById(id)) return;
+
+        const postProcessSheet = this.findSheet('Post Process Follow-up', rawData) || [];
+
+        console.info(`createValidationRateChart: Found ${postProcessSheet.length} rows`);
+
+        if (postProcessSheet.length === 0) {
+            console.warn(`No data for ${id}`);
+            return;
+        }
+
+        // Calculate validation rate by date
+        const rateByDate = new Map();
+        
+        postProcessSheet.forEach(row => {
+            const dateObj = window.dataAggregationService ?
+                window.dataAggregationService.parseDate(row['Date'] || row['date']) :
+                new Date(row['Date'] || row['date']);
+            
+            if (dateObj && !isNaN(dateObj)) {
+                const dateKey = dateObj.toISOString().split('T')[0];
+                const brutes = this._getNumericField(row, ['Parcelles Brutes  par topo', 'Parcelles Brutes par topo']) || 0;
+                const validees = this._getNumericField(row, ['Parcelles validees par Topo', 'Parcelles Total Validee Equipe A', 'Parcelles Total Validee Equipe B']) || 0;
+                
+                if (!rateByDate.has(dateKey)) {
+                    rateByDate.set(dateKey, { brutes: 0, validees: 0 });
+                }
+                const entry = rateByDate.get(dateKey);
+                entry.brutes += brutes;
+                entry.validees += validees;
+            }
+        });
+
+        // Calculate percentages
+        const chartData = Array.from(rateByDate.entries())
+            .map(([dateKey, values]) => ({
+                x: new Date(dateKey),
+                y: values.brutes > 0 ? (values.validees / values.brutes * 100) : 0
+            }))
+            .sort((a, b) => a.x - b.x);
+
+        const self = this;
+        this._createChart(id, {
+            type: 'line',
+            data: {
+                datasets: [{
+                    label: 'Taux de Validation (%)',
+                    data: chartData,
+                    borderColor: '#8b5cf6',
+                    backgroundColor: 'rgba(139, 92, 246, 0.2)',
+                    fill: true,
+                    tension: 0.4,
+                    borderWidth: 3
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            title: function(context) {
+                                const date = new Date(context[0].parsed.x);
+                                return self._formatDateLabel(date);
+                            },
+                            label: (context) => `${context.parsed.y.toFixed(1)}% validé`
+                        }
+                    }
+                },
+                scales: {
+                    x: this._getTimeScaleOptions(15),
+                    y: {
+                        beginAtZero: true,
+                        max: 100,
+                        ticks: {
+                            callback: (value) => value + '%'
+                        },
+                        title: {
+                            display: true,
+                            text: 'Taux de validation (%)'
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    /**
+     * Burn-Up Chart: Shows cumulative target vs actual completed
+     */
+    createBurnUpChart(rawData) {
+        const id = 'burnUpChart';
+        if (!document.getElementById(id)) return;
+
+        const yieldsSheet = this.findSheet('Yields Projections', rawData) || this.findSheet('Daily Levee Source', rawData) || [];
+        
+        if (yieldsSheet.length === 0) {
+            console.warn(`No data for ${id}`);
+            return;
+        }
+
+        // Aggregate by date
+        const dailyTotals = new Map();
+        yieldsSheet.forEach(row => {
+            const dateObj = window.dataAggregationService ?
+                window.dataAggregationService.parseDate(row['Date'] || row['date']) :
+                new Date(row['Date'] || row['date']);
+            
+            if (dateObj && !isNaN(dateObj)) {
+                const dateKey = dateObj.toISOString().split('T')[0];
+                const levees = this._getNumericField(row, ['Nombre de levées', 'Nombre de levee']) || 0;
+                dailyTotals.set(dateKey, (dailyTotals.get(dateKey) || 0) + levees);
+            }
+        });
+
+        // Sort and calculate cumulative
+        const sortedDates = Array.from(dailyTotals.keys()).sort();
+        let cumulative = 0;
+        const cumulativeData = [];
+        const dailyTarget = (window.CONFIG && window.CONFIG.TARGETS && window.CONFIG.TARGETS.DAILY_PARCELS) || 387;
+        const monthlyTarget = (window.CONFIG && window.CONFIG.TARGETS && window.CONFIG.TARGETS.MONTHLY_PARCELS) || 12000;
+
+        sortedDates.forEach((dateKey, idx) => {
+            cumulative += dailyTotals.get(dateKey);
+            cumulativeData.push({ x: new Date(dateKey), y: cumulative });
+        });
+
+        // Target line (linear progress to monthly goal)
+        const targetData = sortedDates.map((dateKey, idx) => ({
+            x: new Date(dateKey),
+            y: dailyTarget * (idx + 1)
+        }));
+
+        // Projection (forecast based on current velocity)
+        const avgVelocity = cumulative / sortedDates.length;
+        const lastDate = new Date(sortedDates[sortedDates.length - 1]);
+        const projectionData = [...cumulativeData];
+        
+        // Project 14 days ahead
+        for (let i = 1; i <= 14; i++) {
+            const futureDate = new Date(lastDate);
+            futureDate.setDate(futureDate.getDate() + i);
+            projectionData.push({
+                x: futureDate,
+                y: cumulative + (avgVelocity * i)
+            });
+        }
+
+        const self = this;
+        this._createChart(id, {
+            type: 'line',
+            data: {
+                datasets: [{
+                    label: 'Cumul Réalisé',
+                    data: cumulativeData,
+                    borderColor: '#2563eb',
+                    backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                    fill: true,
+                    tension: 0,
+                    borderWidth: 3
+                }, {
+                    label: 'Objectif Cumulé',
+                    data: targetData,
+                    borderColor: '#ef4444',
+                    borderDash: [5, 5],
+                    pointRadius: 0,
+                    fill: false,
+                    tension: 0
+                }, {
+                    label: 'Projection',
+                    data: projectionData.slice(cumulativeData.length - 1),
+                    borderColor: '#2563eb',
+                    borderDash: [3, 3],
+                    pointRadius: 0,
+                    fill: false,
+                    tension: 0,
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { display: true, position: 'bottom' },
+                    tooltip: {
+                        callbacks: {
+                            title: function(context) {
+                                const date = new Date(context[0].parsed.x);
+                                return self._formatDateLabel(date);
+                            },
+                            label: (context) => `${context.dataset.label}: ${Math.round(context.parsed.y).toLocaleString()}`
+                        }
+                    }
+                },
+                scales: {
+                    x: this._getTimeScaleOptions(12),
+                    y: { beginAtZero: true }
+                }
+            }
+        });
+    }
+
+    /**
+     * Velocity Deviation Chart: Shows daily performance vs target (green up, red down)
+     */
+    createVelocityDeviationChart(rawData) {
+        const id = 'velocityDeviationChart';
+        if (!document.getElementById(id)) return;
+
+        const yieldsSheet = this.findSheet('Yields Projections', rawData) || this.findSheet('Daily Levee Source', rawData) || [];
+        
+        if (yieldsSheet.length === 0) {
+            console.warn(`No data for ${id}`);
+            return;
+        }
+
+        let dailyTarget = (window.CONFIG && window.CONFIG.TARGETS && window.CONFIG.TARGETS.DAILY_PARCELS) || 387;
+        const tf = this.currentTimeframe || 'daily';
+        
+        // Adjust target for timeframe
+        if (tf === 'weekly') dailyTarget *= 5;
+        if (tf === 'monthly') dailyTarget *= 22;
+
+        // Aggregate by date first
+        const dailyTotals = new Map();
+        yieldsSheet.forEach(row => {
+            const dateObj = window.dataAggregationService ?
+                window.dataAggregationService.parseDate(row['Date'] || row['date']) :
+                new Date(row['Date'] || row['date']);
+            
+            if (dateObj && !isNaN(dateObj)) {
+                const dateKey = dateObj.toISOString().split('T')[0];
+                const levees = this._getNumericField(row, ['Nombre de levées', 'Nombre de levee']) || 0;
+                if (dailyTotals.has(dateKey)) {
+                    dailyTotals.get(dateKey).y += levees;
+                } else {
+                    dailyTotals.set(dateKey, { x: new Date(dateKey), y: levees });
+                }
+            }
+        });
+
+        // Apply timeframe aggregation
+        const aggregatedData = this._aggregateByTimeframe(dailyTotals);
+        const self = this;
+        const labels = aggregatedData.map(d => self._formatDateLabel(d.x));
+        const deviations = aggregatedData.map(d => d.y - dailyTarget);
+        const colors = deviations.map(d => d >= 0 ? 'rgba(16, 185, 129, 0.8)' : 'rgba(239, 68, 68, 0.8)');
+
+        this._createChart(id, {
+            type: 'bar',
+            data: {
+                labels,
+                datasets: [{
+                    label: 'Déviation vs Objectif',
+                    data: deviations,
+                    backgroundColor: colors,
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: (context) => {
+                                const val = context.parsed.y;
+                                return val >= 0 ? `+${val} au-dessus` : `${val} en-dessous`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        ticks: { maxRotation: 45, autoSkip: true, maxTicksLimit: 15 }
+                    },
+                    y: {
+                        grid: {
+                            color: (context) => context.tick.value === 0 ? '#64748b' : 'rgba(0,0,0,0.05)'
+                        },
+                        ticks: {
+                            callback: (value) => (value > 0 ? '+' : '') + value
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    /**
+     * Status Aging Histogram: Shows backlog by status with age buckets
+     */
+    createStatusAgingChart(rawData) {
+        const id = 'statusAgingChart';
+        if (!document.getElementById(id)) return;
+
+        const postProcessSheet = this.findSheet('Post Process Follow-up', rawData) || [];
+        
+        if (postProcessSheet.length === 0) {
+            console.warn(`No data for ${id}`);
+            return;
+        }
+
+        const now = new Date();
+        const ageBuckets = {
+            'Brutes': { lt1: 0, d2_5: 0, gt5: 0 },
+            'Validées': { lt1: 0, d2_5: 0, gt5: 0 },
+            'En attente': { lt1: 0, d2_5: 0, gt5: 0 }
+        };
+
+        postProcessSheet.forEach(row => {
+            const dateObj = window.dataAggregationService ?
+                window.dataAggregationService.parseDate(row['Date'] || row['date']) :
+                new Date(row['Date'] || row['date']);
+            
+            if (!dateObj || isNaN(dateObj)) return;
+
+            const daysDiff = Math.floor((now - dateObj) / (1000 * 60 * 60 * 24));
+            const brutes = this._getNumericField(row, ['Parcelles Brutes  par topo', 'Parcelles Brutes par topo']) || 0;
+            const validees = this._getNumericField(row, ['Parcelles validees par Topo']) || 0;
+            const pending = Math.max(0, brutes - validees);
+
+            const bucket = daysDiff <= 1 ? 'lt1' : daysDiff <= 5 ? 'd2_5' : 'gt5';
+            
+            ageBuckets['Brutes'][bucket] += brutes;
+            ageBuckets['Validées'][bucket] += validees;
+            ageBuckets['En attente'][bucket] += pending;
+        });
+
+        const labels = Object.keys(ageBuckets);
+
+        this._createChart(id, {
+            type: 'bar',
+            data: {
+                labels,
+                datasets: [{
+                    label: '< 1 jour',
+                    data: labels.map(l => ageBuckets[l].lt1),
+                    backgroundColor: 'rgba(16, 185, 129, 0.8)',
+                    borderRadius: 2
+                }, {
+                    label: '2-5 jours',
+                    data: labels.map(l => ageBuckets[l].d2_5),
+                    backgroundColor: 'rgba(245, 158, 11, 0.8)',
+                    borderRadius: 2
+                }, {
+                    label: '> 5 jours',
+                    data: labels.map(l => ageBuckets[l].gt5),
+                    backgroundColor: 'rgba(239, 68, 68, 0.8)',
+                    borderRadius: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { display: true, position: 'bottom' }
+                },
+                scales: {
+                    x: { stacked: true },
+                    y: { stacked: true, beginAtZero: true }
+                }
+            }
+        });
+    }
+
+    /**
+     * Create Bullet Charts for Regional Performance
+     */
+    createBulletCharts(rawData) {
+        const container = document.getElementById('bulletChartsContainer');
+        if (!container) return;
+
+        const yieldsSheet = this.findSheet('Yields Projections', rawData) || this.findSheet('Daily Levee Source', rawData) || [];
+        
+        if (yieldsSheet.length === 0) {
+            container.innerHTML = '<div class="text-center text-slate-400 text-sm">Aucune donnée disponible</div>';
+            return;
+        }
+
+        // Aggregate by region
+        const regionTotals = new Map();
+        yieldsSheet.forEach(row => {
+            const region = row['Région'] || row['Region'] || 'Inconnu';
+            if (region === 'Inconnu') return;
+            
+            const levees = this._getNumericField(row, ['Nombre de levées', 'Nombre de levee']) || 0;
+            regionTotals.set(region, (regionTotals.get(region) || 0) + levees);
+        });
+
+        if (regionTotals.size === 0) {
+            container.innerHTML = '<div class="text-center text-slate-400 text-sm">Aucune région trouvée</div>';
+            return;
+        }
+
+        // Calculate targets (e.g., equal split of monthly target)
+        const monthlyTarget = (window.CONFIG && window.CONFIG.TARGETS && window.CONFIG.TARGETS.MONTHLY_PARCELS) || 12000;
+        const regionTarget = Math.round(monthlyTarget / regionTotals.size);
+        const maxValue = Math.max(...regionTotals.values(), regionTarget) * 1.1;
+
+        let html = '';
+        regionTotals.forEach((actual, region) => {
+            const percentage = (actual / maxValue) * 100;
+            const targetPercentage = (regionTarget / maxValue) * 100;
+            const isAhead = actual >= regionTarget;
+            
+            // Determine performance zone
+            const poorThreshold = regionTarget * 0.6;
+            const avgThreshold = regionTarget * 0.9;
+            const poorWidth = (poorThreshold / maxValue) * 100;
+            const avgWidth = (avgThreshold / maxValue) * 100;
+            
+            html += `
+                <div class="bullet-chart">
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-[11px] font-bold text-secondary">${region}</span>
+                        <span class="text-[10px] ${isAhead ? 'text-success' : 'text-danger'} font-bold">${actual.toLocaleString()}</span>
+                    </div>
+                    <div class="relative h-4 bg-slate-100 rounded overflow-hidden">
+                        <!-- Performance zones -->
+                        <div class="absolute inset-y-0 left-0 bg-red-100" style="width: ${poorWidth}%"></div>
+                        <div class="absolute inset-y-0 left-0 bg-amber-100" style="width: ${avgWidth}%"></div>
+                        <div class="absolute inset-y-0 left-0 bg-green-100" style="width: 100%"></div>
+                        <!-- Actual bar -->
+                        <div class="absolute inset-y-0.5 left-0 bg-slate-700 rounded" style="width: ${percentage}%"></div>
+                        <!-- Target marker -->
+                        <div class="absolute inset-y-0 w-0.5 bg-red-600" style="left: ${targetPercentage}%"></div>
+                    </div>
+                </div>
+            `;
+        });
+
+        container.innerHTML = html;
+    }
+
+    /**
+     * Calculate and update efficiency KPIs
+     */
+    calculateEfficiencyKPIs(rawData) {
+        const postProcessSheet = this.findSheet('Post Process Follow-up', rawData) || [];
+        const yieldsSheet = this.findSheet('Yields Projections', rawData) || this.findSheet('Daily Levee Source', rawData) || [];
+
+        // --- Post Process KPIs ---
+        let totalBrutes = 0, totalValidees = 0, wipOver48h = 0;
+        const now = new Date();
+
+        postProcessSheet.forEach(row => {
+            const brutes = this._getNumericField(row, ['Parcelles Brutes  par topo', 'Parcelles Brutes par topo']) || 0;
+            const validees = this._getNumericField(row, ['Parcelles validees par Topo']) || 0;
+            totalBrutes += brutes;
+            totalValidees += validees;
+
+            const dateObj = window.dataAggregationService ?
+                window.dataAggregationService.parseDate(row['Date'] || row['date']) :
+                new Date(row['Date'] || row['date']);
+            
+            if (dateObj && !isNaN(dateObj)) {
+                const hoursDiff = (now - dateObj) / (1000 * 60 * 60);
+                if (hoursDiff > 48 && brutes > validees) {
+                    wipOver48h += (brutes - validees);
+                }
+            }
+        });
+
+        // FTR: First Time Right (% validated without rework)
+        const ftr = totalBrutes > 0 ? Math.round((totalValidees / totalBrutes) * 100) : 0;
+        
+        // Avg Cycle Time (simplified: avg days of data)
+        const uniqueDates = new Set();
+        postProcessSheet.forEach(row => {
+            const dateObj = window.dataAggregationService ?
+                window.dataAggregationService.parseDate(row['Date'] || row['date']) :
+                new Date(row['Date'] || row['date']);
+            if (dateObj && !isNaN(dateObj)) uniqueDates.add(dateObj.toISOString().split('T')[0]);
+        });
+        const avgCycleTime = uniqueDates.size > 0 ? Math.round(uniqueDates.size / 2) : '--';
+
+        // Update DOM
+        const ftrEl = document.getElementById('ftrValue');
+        const cycleEl = document.getElementById('avgCycleTime');
+        const wipEl = document.getElementById('wipAge');
+        
+        if (ftrEl) ftrEl.textContent = ftr + '%';
+        if (cycleEl) cycleEl.textContent = avgCycleTime + 'j';
+        if (wipEl) wipEl.textContent = wipOver48h.toLocaleString();
+
+        // --- Yields Strategy KPIs ---
+        const dailyTarget = (window.CONFIG && window.CONFIG.TARGETS && window.CONFIG.TARGETS.DAILY_PARCELS) || 387;
+        const monthlyTarget = (window.CONFIG && window.CONFIG.TARGETS && window.CONFIG.TARGETS.MONTHLY_PARCELS) || 12000;
+
+        let totalLevees = 0;
+        const dailyTotals = new Map();
+        yieldsSheet.forEach(row => {
+            const levees = this._getNumericField(row, ['Nombre de levées', 'Nombre de levee']) || 0;
+            totalLevees += levees;
+            
+            const dateObj = window.dataAggregationService ?
+                window.dataAggregationService.parseDate(row['Date'] || row['date']) :
+                new Date(row['Date'] || row['date']);
+            if (dateObj && !isNaN(dateObj)) {
+                const dateKey = dateObj.toISOString().split('T')[0];
+                dailyTotals.set(dateKey, (dailyTotals.get(dateKey) || 0) + levees);
+            }
+        });
+
+        const daysWorked = dailyTotals.size || 1;
+        const avgVelocity = totalLevees / daysWorked;
+        
+        // Days remaining in month
+        const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        const daysRemaining = Math.max(1, Math.ceil((endOfMonth - now) / (1000 * 60 * 60 * 24)));
+        
+        // Required Run Rate to hit monthly target
+        const remaining = monthlyTarget - totalLevees;
+        const rrr = Math.max(0, Math.ceil(remaining / daysRemaining));
+
+        // Schedule Variance (cumulative actual vs expected)
+        const expectedCumulative = dailyTarget * daysWorked;
+        const scheduleVariance = totalLevees - expectedCumulative;
+
+        // Completion Confidence (projected finish date)
+        const daysToComplete = remaining > 0 ? Math.ceil(remaining / avgVelocity) : 0;
+        const projectedDate = new Date(now);
+        projectedDate.setDate(projectedDate.getDate() + daysToComplete);
+        const projectedDateStr = daysToComplete > 0 
+            ? `${String(projectedDate.getDate()).padStart(2, '0')}/${String(projectedDate.getMonth() + 1).padStart(2, '0')}`
+            : 'Atteint';
+
+        // Update DOM
+        const rrrEl = document.getElementById('rrrValue');
+        const svEl = document.getElementById('scheduleVariance');
+        const ccEl = document.getElementById('completionConfidence');
+        
+        if (rrrEl) rrrEl.textContent = rrr.toLocaleString();
+        if (svEl) {
+            svEl.textContent = (scheduleVariance >= 0 ? '+' : '') + scheduleVariance.toLocaleString();
+            svEl.className = `text-2xl font-bold ${scheduleVariance >= 0 ? 'text-success' : 'text-danger'}`;
+        }
+        if (ccEl) ccEl.textContent = projectedDateStr;
     }
 
     // Helper for dummy access

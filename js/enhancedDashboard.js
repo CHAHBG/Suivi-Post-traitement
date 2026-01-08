@@ -937,7 +937,7 @@ class EnhancedDashboard {
 
                 // Update charts with filtered data
                 if (window.chartService) {
-                    await chartService.updateCharts(filteredData, kpis, this.rawData);
+                    await chartService.updateCharts(filteredData, kpis, this.rawData, { timeframe: this.currentFilters.timeframe });
                 }
 
                 // Update regional data with filtered data
@@ -1303,16 +1303,16 @@ class EnhancedDashboard {
                     const tr = document.createElement('tr');
                     tr.innerHTML = `
                         <td>${fmtDMY(get(r, ['Date', 'date']))}</td>
-                        <td>${get(r, ['Région', 'Region', 'region'])}</td>
+                        <td>${get(r, ['PrenonTopo', 'Prenom Topo', 'PrenomTopo'])}</td>
+                        <td>${get(r, ['NomTopp', 'Nom Topo', 'NomTopo'])}</td>
                         <td>${get(r, ['Commune', 'commune'])}</td>
-                        <td>${get(r, ['Parcelles reçues (Brutes)', 'Parcelles recues (Brutes)', 'Parcelles reçues', 'Parcelles recues'])}</td>
-                        <td>${get(r, ['Parcelles post traitées (Sans Doublons et topoplogie correcte)', 'Parcelles post traitees', 'Parcelles post traitées'])}</td>
-                        <td>${get(r, ['Parcelles individuelles Jointes', 'Parcelles individuelles jointes'])}</td>
-                        <td>${get(r, ['Parcelles collectives Jointes', 'Parcelles collectives jointes'])}</td>
-                        <td>${get(r, ['Parcelles sans jointure'])}</td>
-                        <td>${get(r, ['Parcelles retournées aux topos', 'Parcelles retournees aux topos'])}</td>
+                        <td>${get(r, ['Zone', 'zone'])}</td>
+                        <td>${get(r, ['Village', 'village'])}</td>
+                        <td>${get(r, ['Parcelles Brutes  par topo', 'Parcelles Brutes par topo'])}</td>
+                        <td>${get(r, ['Parcelles validees par Topo', 'Parcelles validées par Topo'])}</td>
+                        <td>${get(r, ['Parcelles Total Validee Equipe A', 'Total Equipe A'])}</td>
+                        <td>${get(r, ['Parcelles Total Validee Equipe B', 'Total Equipe B'])}</td>
                         <td>${get(r, ['Geomaticien', 'Géomaticien', 'geomaticien'])}</td>
-                        <td>${get(r, ['Motif', 'motif'])}</td>
                     `;
                     tbody.appendChild(tr);
                 });
@@ -1410,7 +1410,7 @@ class EnhancedDashboard {
 
             // Update charts with streaming data
             if (window.chartService) {
-                chartService.updateCharts(filteredData, kpis, updatedData);
+                chartService.updateCharts(filteredData, kpis, updatedData, { timeframe: this.currentFilters.timeframe });
             }
 
             // Update last refresh time

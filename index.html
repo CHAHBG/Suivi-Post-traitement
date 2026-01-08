@@ -89,6 +89,8 @@
             <nav class="flex space-x-1" role="tablist">
                 <button class="nav-tab active" data-tab="overview" role="tab" aria-selected="true" id="tab-overview">Vue
                     d'ensemble</button>
+                <button class="nav-tab" data-tab="performance" role="tab" aria-selected="false" id="tab-performance">Analyse
+                    Performance</button>
                 <button class="nav-tab" data-tab="regional" role="tab" aria-selected="false" id="tab-regional">Analyse
                     Régionale</button>
                 <button class="nav-tab" data-tab="temporal" role="tab" aria-selected="false" id="tab-temporal">Suivi
@@ -113,7 +115,7 @@
     </div>
 
     <!-- Main Dashboard Container -->
-    <main id="mainContent" class="max-w-8xl mx-auto px-6 pb-20 mt-32" role="main">
+    <main id="mainContent" class="max-w-8xl mx-auto px-6 pb-20" role="main">
         <div id="siteNotifications" aria-live="polite" class="sr-only"></div>
 
         <!-- Tab Panels -->
@@ -124,6 +126,72 @@
 
                 <!-- Bento Grid Layout -->
                 <div class="bento-grid">
+
+                    <!-- Indicateurs Clés de Performance - AT THE TOP -->
+                    <div class="col-span-12 bento-card">
+                        <div class="flex items-center justify-between mb-6">
+                            <div>
+                                <h3 class="text-sm font-bold">Indicateurs Clés de Performance</h3>
+                                <p class="text-[10px] text-tertiary">Métriques d'efficacité et de projection stratégique</p>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
+                            <!-- Taux de Réussite (FTR) -->
+                            <div class="kpi-card text-center p-4 bg-gradient-to-br from-blue-50 to-white rounded-xl border border-blue-100 cursor-help" data-tooltip="CALCUL: (Parcelles Validées / Parcelles Brutes) × 100&#10;&#10;Ce pourcentage montre combien de parcelles sont validées du premier coup sans retour. Plus ce taux est élevé, meilleure est la qualité du travail terrain.">
+                                <div class="w-10 h-10 mx-auto mb-3 bg-blue-100 rounded-full flex items-center justify-center">
+                                    <i class="fas fa-check-double text-blue-600"></i>
+                                </div>
+                                <div id="ftrValue" class="text-2xl font-bold text-blue-600">--</div>
+                                <div class="text-[11px] text-slate-600 font-semibold mt-1">Taux Réussite</div>
+                                <div class="text-[9px] text-slate-400">Validées du 1er coup</div>
+                            </div>
+                            <!-- Temps de Cycle -->
+                            <div class="kpi-card text-center p-4 bg-gradient-to-br from-amber-50 to-white rounded-xl border border-amber-100 cursor-help" data-tooltip="CALCUL: Nombre de jours ouvrés de données / 2&#10;&#10;Estimation du temps moyen nécessaire pour traiter une parcelle de la réception à la validation. Un temps court indique un processus fluide.">
+                                <div class="w-10 h-10 mx-auto mb-3 bg-amber-100 rounded-full flex items-center justify-center">
+                                    <i class="fas fa-clock text-amber-600"></i>
+                                </div>
+                                <div id="avgCycleTime" class="text-2xl font-bold text-amber-600">--</div>
+                                <div class="text-[11px] text-slate-600 font-semibold mt-1">Temps Moyen</div>
+                                <div class="text-[9px] text-slate-400">Durée traitement</div>
+                            </div>
+                            <!-- En attente > 48h -->
+                            <div class="kpi-card text-center p-4 bg-gradient-to-br from-red-50 to-white rounded-xl border border-red-100 cursor-help" data-tooltip="CALCUL: Somme des (Parcelles Brutes - Parcelles Validées) pour les entrées datant de plus de 48 heures&#10;&#10;Nombre de parcelles 'bloquées' dans le système depuis plus de 2 jours. À traiter en priorité pour éviter les retards.">
+                                <div class="w-10 h-10 mx-auto mb-3 bg-red-100 rounded-full flex items-center justify-center">
+                                    <i class="fas fa-exclamation-triangle text-red-600"></i>
+                                </div>
+                                <div id="wipAge" class="text-2xl font-bold text-red-600">--</div>
+                                <div class="text-[11px] text-slate-600 font-semibold mt-1">En Attente</div>
+                                <div class="text-[9px] text-slate-400">Bloqués &gt; 48h</div>
+                            </div>
+                            <!-- Cadence Requise -->
+                            <div class="kpi-card text-center p-4 bg-gradient-to-br from-indigo-50 to-white rounded-xl border border-indigo-100 cursor-help" data-tooltip="CALCUL: (Objectif Mensuel - Total Réalisé) / Jours Restants dans le mois&#10;&#10;Nombre de parcelles à traiter chaque jour à partir d'aujourd'hui pour atteindre l'objectif mensuel. Plus ce nombre est élevé, plus il faut accélérer.">
+                                <div class="w-10 h-10 mx-auto mb-3 bg-indigo-100 rounded-full flex items-center justify-center">
+                                    <i class="fas fa-tachometer-alt text-indigo-600"></i>
+                                </div>
+                                <div id="rrrValue" class="text-2xl font-bold text-indigo-600">--</div>
+                                <div class="text-[11px] text-slate-600 font-semibold mt-1">Cadence Requise</div>
+                                <div class="text-[9px] text-slate-400">Parcelles/jour</div>
+                            </div>
+                            <!-- Écart vs Objectif -->
+                            <div class="kpi-card text-center p-4 bg-gradient-to-br from-purple-50 to-white rounded-xl border border-purple-100 cursor-help" data-tooltip="CALCUL: Total Réalisé - (Objectif Journalier × Nombre de Jours Travaillés)&#10;&#10;Différence entre ce qui a été fait et ce qui aurait dû être fait. Positif (+) = en avance, Négatif (-) = en retard.">
+                                <div class="w-10 h-10 mx-auto mb-3 bg-purple-100 rounded-full flex items-center justify-center">
+                                    <i class="fas fa-balance-scale text-purple-600"></i>
+                                </div>
+                                <div id="scheduleVariance" class="text-2xl font-bold text-purple-600">--</div>
+                                <div class="text-[11px] text-slate-600 font-semibold mt-1">Écart Cumulé</div>
+                                <div class="text-[9px] text-slate-400">vs Objectif</div>
+                            </div>
+                            <!-- Date Fin Estimée -->
+                            <div class="kpi-card text-center p-4 bg-gradient-to-br from-emerald-50 to-white rounded-xl border border-emerald-100 cursor-help" data-tooltip="CALCUL: Date Actuelle + (Parcelles Restantes / Vélocité Moyenne des 14 derniers jours)&#10;&#10;Date estimée à laquelle l'objectif mensuel sera atteint si la cadence actuelle est maintenue.">
+                                <div class="w-10 h-10 mx-auto mb-3 bg-emerald-100 rounded-full flex items-center justify-center">
+                                    <i class="fas fa-calendar-check text-emerald-600"></i>
+                                </div>
+                                <div id="completionConfidence" class="text-xl font-bold text-emerald-600">--</div>
+                                <div class="text-[11px] text-slate-600 font-semibold mt-1">Fin Estimée</div>
+                                <div class="text-[9px] text-slate-400">Projection</div>
+                            </div>
+                        </div>
+                    </div>
 
                     <!-- KPI Stat Cards (formerly Tubes) -->
                     <div class="col-span-12 lg:col-span-3 grid grid-cols-1 gap-4">
@@ -321,42 +389,120 @@
         </div>
 
 
+        <!-- Performance Panel (NEW) -->
+        <div id="panel-performance" data-panel="performance" class="panel" role="tabpanel" hidden>
+            <div class="bento-grid">
+                <!-- Burn-Up Chart -->
+                <div class="col-span-12 lg:col-span-6 bento-card">
+                    <div class="flex justify-between items-center mb-4">
+                        <div>
+                            <h3 class="text-sm font-bold">Graphique Burn-Up</h3>
+                            <p class="text-[10px] text-tertiary">Progression cumulative vs Objectif</p>
+                        </div>
+                        <span class="info-tooltip" title="Comment lire: La ligne bleue montre le cumul réalisé. La ligne rouge pointillée est l'objectif linéaire. Si la ligne bleue est au-dessus de la rouge, vous êtes en avance. La projection (pointillés bleus) indique la trajectoire future basée sur la vélocité actuelle."><i class="fas fa-info-circle"></i></span>
+                    </div>
+                    <div class="chart-container" style="height: 300px;">
+                        <canvas id="burnUpChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Velocity Deviation Chart -->
+                <div class="col-span-12 lg:col-span-6 bento-card">
+                    <div class="flex justify-between items-center mb-4">
+                        <div>
+                            <h3 class="text-sm font-bold">Écart de Vélocité</h3>
+                            <p class="text-[10px] text-tertiary">Performance journalière vs objectif (0 = cible)</p>
+                        </div>
+                        <span class="info-tooltip" title="Comment lire: Chaque barre représente un jour. Vert = au-dessus de l'objectif journalier, Rouge = en dessous. La ligne 0 est l'objectif. Plus la barre verte est haute, meilleure est la performance. Des barres rouges répétées indiquent un retard à rattraper."><i class="fas fa-info-circle"></i></span>
+                    </div>
+                    <div class="chart-container" style="height: 300px;">
+                        <canvas id="velocityDeviationChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Status Aging Histogram -->
+                <div class="col-span-12 lg:col-span-6 bento-card">
+                    <div class="flex justify-between items-center mb-4">
+                        <div>
+                            <h3 class="text-sm font-bold">Ancienneté du Backlog</h3>
+                            <p class="text-[10px] text-tertiary">Répartition par statut et durée de traitement</p>
+                        </div>
+                        <span class="info-tooltip" title="Comment lire: Les barres empilées montrent combien de parcelles sont dans chaque statut. Vert = récent (&lt;1 jour), Orange = 2-5 jours, Rouge = plus de 5 jours. Beaucoup de rouge signifie des dossiers 'zombies' à traiter en priorité."><i class="fas fa-info-circle"></i></span>
+                    </div>
+                    <div class="chart-container" style="height: 300px;">
+                        <canvas id="statusAgingChart"></canvas>
+                    </div>
+                    <div class="flex justify-center space-x-4 mt-3 text-[10px] font-bold">
+                        <span class="flex items-center"><span class="w-3 h-3 bg-emerald-500 mr-1.5 rounded"></span>Récent (&lt;1j)</span>
+                        <span class="flex items-center"><span class="w-3 h-3 bg-amber-500 mr-1.5 rounded"></span>Moyen (2-5j)</span>
+                        <span class="flex items-center"><span class="w-3 h-3 bg-red-500 mr-1.5 rounded"></span>Ancien (&gt;5j)</span>
+                    </div>
+                </div>
+
+                <!-- Bullet Charts for Regional Comparison -->
+                <div class="col-span-12 lg:col-span-6 bento-card">
+                    <div class="flex justify-between items-center mb-4">
+                        <div>
+                            <h3 class="text-sm font-bold">Comparaison Régionale</h3>
+                            <p class="text-[10px] text-tertiary">Bullet Charts - Réalisé vs Objectif par région</p>
+                        </div>
+                        <span class="info-tooltip" title="Comment lire: Chaque région a une barre. La barre noire = réalisé actuel. La ligne rouge verticale = objectif. Le fond coloré indique les zones: vert clair = bon, orange clair = moyen, rouge clair = insuffisant. Si la barre dépasse la ligne rouge, l'objectif est atteint."><i class="fas fa-info-circle"></i></span>
+                    </div>
+                    <div id="bulletChartsContainer" class="space-y-4">
+                        <!-- Injected by JS -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
         <!-- Regional Panel -->
         <div id="panel-regional" data-panel="regional" class="panel" role="tabpanel" hidden>
             <div class="bento-grid">
-                <!-- Dynamic per Region -->
-                <div class="col-span-12 lg:col-span-8 bento-card">
+                <!-- Dynamic per Region - Full Width -->
+                <div class="col-span-12 bento-card">
                     <div class="flex justify-between items-center mb-6">
-                        <h3 class="text-sm font-bold">Dynamique par Région</h3>
-                        <button class="text-xs font-bold text-primary hover:underline">Détails</button>
+                        <div>
+                            <h3 class="text-sm font-bold">Dynamique par Région</h3>
+                            <p class="text-[10px] text-tertiary">Évolution des levées par région au fil du temps</p>
+                        </div>
+                        <span class="info-tooltip" title="Ce graphique montre l'évolution quotidienne des levées pour chaque région. Chaque ligne colorée représente une région différente. Survolez pour voir les valeurs exactes."><i class="fas fa-info-circle"></i></span>
                     </div>
                     <div class="chart-container" style="height: 350px;">
                         <canvas id="regionalTrendChart"></canvas>
                     </div>
                 </div>
 
-                <!-- Performance per Commune -->
-                <div class="col-span-12 lg:col-span-4 bento-card">
+                <!-- Top Communes -->
+                <div class="col-span-12 lg:col-span-6 bento-card">
                     <div class="flex justify-between items-center mb-6">
-                        <h3 class="text-sm font-bold">Top 15 Communes</h3>
-                        <span
-                            class="text-[10px] bg-slate-100 px-2 py-0.5 rounded text-secondary font-bold">Volume</span>
+                        <div>
+                            <h3 class="text-sm font-bold">Top 15 Communes</h3>
+                            <p class="text-[10px] text-tertiary">Classement par volume de levées</p>
+                        </div>
+                        <span class="info-tooltip" title="Les 15 communes les plus productives classées par nombre total de levées. Plus la barre est longue, plus la commune a produit de levées."><i class="fas fa-info-circle"></i></span>
                     </div>
-                    <div class="chart-container" style="height: 350px;">
+                    <div class="chart-container" style="height: 400px;">
                         <canvas id="communeComparisonChart"></canvas>
                     </div>
                 </div>
 
                 <!-- Team Productivity -->
-                <div class="col-span-12 lg:col-span-4 bento-card">
-                    <h3 class="text-sm font-bold mb-6">Productivité Équipe</h3>
-                    <div class="chart-container" style="height: 300px;">
+                <div class="col-span-12 lg:col-span-6 bento-card">
+                    <div class="flex justify-between items-center mb-6">
+                        <div>
+                            <h3 class="text-sm font-bold">Productivité par Équipe</h3>
+                            <p class="text-[10px] text-tertiary">Répartition du travail entre équipes</p>
+                        </div>
+                        <span class="info-tooltip" title="Comparaison de la production entre les équipes A et B. Permet d'identifier les déséquilibres de charge de travail."><i class="fas fa-info-circle"></i></span>
+                    </div>
+                    <div class="chart-container" style="height: 400px;">
                         <canvas id="teamProductivityChart"></canvas>
                     </div>
                 </div>
 
                 <!-- Chronogram / Timeline -->
-                <div class="col-span-12 lg:col-span-8 bento-card">
+                <div class="col-span-12 bento-card">
                     <div class="flex justify-between items-center mb-6">
                         <div>
                             <h3 class="text-sm font-bold">Chronologie du Projet</h3>
@@ -387,21 +533,71 @@
         <!-- Temporal Panel -->
         <div id="panel-temporal" data-panel="temporal" class="panel" role="tabpanel" hidden>
             <div class="bento-grid">
-                <div class="col-span-12 lg:col-span-6 bento-card">
-                    <h3 class="text-sm font-bold mb-4">ÉVOLUTION QUOTIDIENNE DES LEVÉES</h3>
-                    <div class="chart-container" style="height: 300px;">
+                <!-- Daily Yields Evolution - Full Width -->
+                <div class="col-span-12 bento-card">
+                    <div class="flex justify-between items-center mb-4">
+                        <div>
+                            <h3 class="text-sm font-bold">Évolution Quotidienne des Levées</h3>
+                            <p class="text-[10px] text-tertiary">Nombre de levées par jour vs objectif journalier</p>
+                        </div>
+                        <span class="info-tooltip" title="La ligne bleue montre les levées réalisées chaque jour. La ligne rouge pointillée est l'objectif quotidien. Quand la ligne bleue est au-dessus, l'objectif du jour est atteint."><i class="fas fa-info-circle"></i></span>
+                    </div>
+                    <div class="chart-container" style="height: 350px;">
                         <canvas id="dailyYieldsChart"></canvas>
                     </div>
                 </div>
+
+                <!-- Yields vs Validation Comparison -->
                 <div class="col-span-12 lg:col-span-6 bento-card">
-                    <h3 class="text-sm font-bold mb-4">Qualité de l'affichage</h3>
+                    <div class="flex justify-between items-center mb-4">
+                        <div>
+                            <h3 class="text-sm font-bold">Levées Terrain vs Parcelles Validées</h3>
+                            <p class="text-[10px] text-tertiary">Comparaison flux entrant vs flux traité</p>
+                        </div>
+                        <span class="info-tooltip" title="Ligne bleue = levées reçues du terrain. Ligne verte = parcelles validées par le post-traitement. L'écart entre les deux montre le backlog à traiter."><i class="fas fa-info-circle"></i></span>
+                    </div>
+                    <div class="chart-container" style="height: 300px;">
+                        <canvas id="yieldsVsValidationChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Validation Rate Over Time -->
+                <div class="col-span-12 lg:col-span-6 bento-card">
+                    <div class="flex justify-between items-center mb-4">
+                        <div>
+                            <h3 class="text-sm font-bold">Taux de Validation Quotidien</h3>
+                            <p class="text-[10px] text-tertiary">Pourcentage de parcelles validées par jour</p>
+                        </div>
+                        <span class="info-tooltip" title="Pourcentage de parcelles validées par rapport aux parcelles brutes reçues. Un taux proche de 100% signifie que le post-traitement suit le rythme des levées."><i class="fas fa-info-circle"></i></span>
+                    </div>
+                    <div class="chart-container" style="height: 300px;">
+                        <canvas id="validationRateChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Quality Trend -->
+                <div class="col-span-12 lg:col-span-6 bento-card">
+                    <div class="flex justify-between items-center mb-4">
+                        <div>
+                            <h3 class="text-sm font-bold">Qualité de l'Affichage</h3>
+                            <p class="text-[10px] text-tertiary">Taux de parcelles affichées sans erreur</p>
+                        </div>
+                        <span class="info-tooltip" title="Pourcentage de parcelles affichées sans erreur. L'objectif est de maintenir ce taux au-dessus de 95% (ligne rouge)."><i class="fas fa-info-circle"></i></span>
+                    </div>
                     <div class="chart-container" style="height: 300px;">
                         <canvas id="qualityTrendChart"></canvas>
                     </div>
                 </div>
-                <!-- CTASF Pipeline chart removed -->
+
+                <!-- Post-Processing Chart -->
                 <div class="col-span-12 lg:col-span-6 bento-card">
-                    <h3 class="text-sm font-bold mb-4">Post-traitement</h3>
+                    <div class="flex justify-between items-center mb-4">
+                        <div>
+                            <h3 class="text-sm font-bold">Flux Post-traitement</h3>
+                            <p class="text-[10px] text-tertiary">Parcelles reçues vs parcelles validées</p>
+                        </div>
+                        <span class="info-tooltip" title="Ligne pointillée grise = parcelles brutes reçues. Ligne verte = parcelles validées. L'aire verte représente le travail accompli."><i class="fas fa-info-circle"></i></span>
+                    </div>
                     <div class="chart-container" style="height: 300px;">
                         <canvas id="postProcessingChart"></canvas>
                     </div>
@@ -513,16 +709,16 @@
                                 <thead>
                                     <tr>
                                         <th>Date</th>
-                                        <th>Région</th>
+                                        <th>Prénom Topo</th>
+                                        <th>Nom Topo</th>
                                         <th>Commune</th>
-                                        <th>Reçues (Brutes)</th>
-                                        <th>Post-traitées</th>
-                                        <th>Individuelles jointes</th>
-                                        <th>Collectives jointes</th>
-                                        <th>Sans jointure</th>
-                                        <th>Retournées</th>
+                                        <th>Zone</th>
+                                        <th>Village</th>
+                                        <th>Parcelles Brutes</th>
+                                        <th>Parcelles Validées</th>
+                                        <th>Total Équipe A</th>
+                                        <th>Total Équipe B</th>
                                         <th>Géomaticien</th>
-                                        <th>Motif</th>
                                     </tr>
                                 </thead>
                                 <tbody id="processingTableBody">
@@ -691,7 +887,6 @@
     <!-- Core Libraries -->
     <script src="js/localization.js"></script>
     <script src="js/config.js"></script>
-    <script src="js/mockData.js"></script>
 
     <!-- Services -->
     <script src="js/dataService.js"></script>
@@ -699,7 +894,6 @@
     <script src="js/enhancedGoogleSheetsService.js"></script>
 
     <!-- Dashboard Components -->
-    <script src="js/enhancedMockData.js"></script>
     <script src="js/dataAggregation.js"></script>
     <script src="js/dateParsingLoader.js"></script>
     <script src="js/statCardService.js"></script>

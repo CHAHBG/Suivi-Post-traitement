@@ -64,6 +64,19 @@
     --text-tertiary: #64748b;
 
     --color-primary-soft: rgba(59, 130, 246, 0.1);
+    --shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+}
+
+/* Dark mode specific overrides */
+[data-theme="dark"] select,
+[data-theme="dark"] input {
+    background-color: var(--bg-surface);
+    color: var(--text-primary);
+    border-color: var(--border-subtle);
+}
+
+[data-theme="dark"] .text-tertiary {
+    color: var(--text-tertiary) !important;
 }
 
 /* Global Reset */
@@ -100,12 +113,19 @@ h4 {
     max-width: 1440px;
 }
 
+/* Reduce top space in main dashboard */
+main#mainContent {
+    margin-top: 110px !important;
+    padding-top: 0 !important;
+}
+
 /* Bento Grid System */
 .bento-grid {
     display: grid;
     grid-template-columns: repeat(12, 1fr);
     grid-auto-rows: minmax(100px, auto);
     gap: 16px;
+    overflow: visible;
 }
 
 .bento-card {
@@ -114,7 +134,7 @@ h4 {
     border-radius: var(--radius-md);
     padding: 20px;
     box-shadow: var(--shadow-subtle);
-    overflow: hidden;
+    overflow: visible;
     position: relative;
     transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
@@ -133,6 +153,24 @@ h4 {
     letter-spacing: 0.05em;
     white-space: nowrap;
     flex-shrink: 0;
+}
+
+/* Dark mode stat cards */
+[data-theme="dark"] .stat-card-badge {
+    background-color: rgba(51, 65, 85, 0.6) !important;
+}
+
+[data-theme="dark"] .stat-card-target-label {
+    color: #94a3b8 !important;
+}
+
+/* Dark mode stat cards */
+[data-theme="dark"] .stat-card-badge {
+    background-color: rgba(51, 65, 85, 0.6) !important;
+}
+
+[data-theme="dark"] .stat-card-target-label {
+    color: #94a3b8 !important;
 }
 
 .stat-card-progress-wrapper {
@@ -871,4 +909,222 @@ canvas {
     font-size: 0.6rem;
     font-weight: 700;
     color: var(--text-secondary);
+}
+
+/* Bullet Graph Styles */
+.bullet-graph {
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.bullet-graph:last-child {
+    border-bottom: none;
+}
+
+.bullet-graph .bg-red-100 {
+    background-color: #fee2e2;
+}
+
+.bullet-graph .bg-yellow-100 {
+    background-color: #fef3c7;
+}
+
+.bullet-graph .bg-green-100 {
+    background-color: #d1fae5;
+}
+
+.bullet-graph .bg-blue-600 {
+    background-color: #2563eb;
+    box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.3);
+}
+
+/* Info Tooltip Styles */
+.info-tooltip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    font-size: 10px;
+    color: #94a3b8;
+    cursor: help;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+}
+
+.info-tooltip:hover {
+    color: #3b82f6;
+    background: #eff6ff;
+}
+
+/* Native tooltip styling enhancement */
+.info-tooltip[title] {
+    position: relative;
+}
+
+/* Bullet Chart Styles */
+.bullet-chart {
+    margin-bottom: 12px;
+}
+
+.bullet-chart:last-child {
+    margin-bottom: 0;
+}
+
+/* KPI Cards Enhancement */
+.kpi-metric {
+    transition: transform 0.2s ease;
+}
+
+.kpi-metric:hover {
+    transform: translateY(-2px);
+}
+
+/* Efficiency Section */
+.efficiency-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+}
+
+/* Text color utilities for KPIs */
+.text-danger {
+    color: #dc2626;
+}
+
+/* KPI Cards Modern Design */
+.kpi-card {
+    transition: all 0.3s ease;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    position: relative;
+}
+
+.kpi-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+}
+
+/* Dark mode KPI cards */
+[data-theme="dark"] .kpi-card {
+    background: linear-gradient(135deg, rgba(30, 41, 59, 0.6) 0%, rgba(15, 23, 42, 0.8) 100%) !important;
+    border-color: rgba(51, 65, 85, 0.5) !important;
+}
+
+[data-theme="dark"] .kpi-card:hover {
+    box-shadow: 0 8px 25px rgba(0,0,0,0.4);
+}
+
+/* Dark mode icon backgrounds */
+[data-theme="dark"] .kpi-card .bg-blue-100,
+[data-theme="dark"] .kpi-card .bg-amber-100,
+[data-theme="dark"] .kpi-card .bg-red-100,
+[data-theme="dark"] .kpi-card .bg-indigo-100,
+[data-theme="dark"] .kpi-card .bg-purple-100,
+[data-theme="dark"] .kpi-card .bg-emerald-100 {
+    background-color: rgba(51, 65, 85, 0.4) !important;
+}
+
+/* Dark mode text colors for KPI cards */
+[data-theme="dark"] .kpi-card .text-slate-600 {
+    color: #cbd5e1 !important;
+}
+
+[data-theme="dark"] .kpi-card .text-slate-400 {
+    color: #94a3b8 !important;
+}
+
+/* KPI Card Tooltip Styling */
+.kpi-card.cursor-help {
+    cursor: help;
+}
+
+.kpi-card[data-tooltip] {
+    position: relative;
+    overflow: visible;
+}
+
+/* Custom tooltip for KPI cards using CSS */
+.kpi-card[data-tooltip]:hover::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: calc(100% + 12px);
+    left: 50%;
+    transform: translateX(-50%);
+    width: max-content;
+    max-width: 350px;
+    min-width: 250px;
+    padding: 14px 18px;
+    background: rgba(15, 23, 42, 0.97);
+    color: #f8fafc;
+    font-size: 11px;
+    font-weight: 400;
+    line-height: 1.6;
+    border-radius: 8px;
+    white-space: pre-wrap;
+    z-index: 10000;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+    pointer-events: none;
+    animation: tooltipFadeIn 0.2s ease;
+}
+
+.kpi-card[data-tooltip]:hover::before {
+    content: '';
+    position: absolute;
+    bottom: calc(100% + 4px);
+    left: 50%;
+    transform: translateX(-50%);
+    border: 6px solid transparent;
+    border-top-color: rgba(15, 23, 42, 0.95);
+    z-index: 10001;
+    pointer-events: none;
+    animation: tooltipFadeIn 0.2s ease;
+}
+
+@keyframes tooltipFadeIn {
+    from {
+        opacity: 0;
+        transform: translateX(-50%) translateY(5px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+    }
+}
+
+/* Info tooltip enhancement */
+.info-tooltip {
+    cursor: help;
+    opacity: 0.6;
+    transition: opacity 0.2s;
+}
+
+.info-tooltip:hover {
+    opacity: 1;
+}
+
+.info-tooltip i {
+    font-size: 12px;
+}
+
+/* Performance panel legend */
+.chart-legend {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    margin-top: 0.75rem;
+    font-size: 10px;
+    font-weight: 600;
+}
+
+.chart-legend span {
+    display: flex;
+    align-items: center;
+}
+
+/* Bullet chart improvements */
+.bullet-chart .bar-container {
+    position: relative;
+    height: 16px;
+    border-radius: 4px;
+    overflow: hidden;
 }
