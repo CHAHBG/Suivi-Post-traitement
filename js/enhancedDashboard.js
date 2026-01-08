@@ -34,7 +34,7 @@ class EnhancedDashboard {
         try {
             this.showLoading(true);
 
-            console.log('Initializing PROCASSEF Dashboard...');
+            // console.log('Initializing PROCASSEF Dashboard...');
 
             // Set up event listeners
             this.setupEventListeners();
@@ -46,7 +46,7 @@ class EnhancedDashboard {
             this.setupAutoRefresh();
 
             this.isInitialized = true;
-            console.log('Dashboard initialized successfully');
+            // console.log('Dashboard initialized successfully');
 
             // Update last refresh time
             this.updateLastRefreshTime();
@@ -95,7 +95,7 @@ class EnhancedDashboard {
             let forceLive = explicitForceLive;
             if (!explicitForceLive && !explicitForceMock && detectedApiKey) {
                 forceLive = true;
-                console.log('API key detected; preferring live Google Sheets data over mock data');
+                // console.log('API key detected; preferring live Google Sheets data over mock data');
             }
 
             // Prefer the enhanced Google Sheets service (uses gid/name and optional Sheets API)
@@ -112,20 +112,20 @@ class EnhancedDashboard {
                         const options = { apiKey: cfg.apiKey || null, useCaching: true };
 
                         if (!spreadsheetId || sheetsToFetch.length === 0) {
-                            console.warn('enhancedGoogleSheetsService config incomplete, falling back to dataService');
+                            // console.warn('enhancedGoogleSheetsService config incomplete, falling back to dataService');
                             throw new Error('Missing spreadsheetId or sheets list');
                         }
 
                         const fetched = await googleService.fetchMultipleSheets(spreadsheetId, sheetsToFetch, options);
                         data = fetched || {};
-                        console.info('Data loaded via enhancedGoogleSheetsService', Object.keys(data));
+                        // console.info('Data loaded via enhancedGoogleSheetsService', Object.keys(data));
                     } catch (svcErr) {
-                        console.warn('enhancedGoogleSheetsService failed, falling back to dataService:', svcErr);
+                        // console.warn('enhancedGoogleSheetsService failed, falling back to dataService:', svcErr);
                         if (window.dataService && typeof window.dataService.getAllData === 'function') {
                             const result = await window.dataService.getAllData();
                             data = result.data || {};
                             if (result.errors && result.errors.length) console.warn('Some sheets failed to load:', result.errors);
-                            console.info('Data loaded via dataService (CSV fallback)');
+                            // console.info('Data loaded via dataService (CSV fallback)');
                         } else {
                             data = {};
                         }
@@ -135,9 +135,9 @@ class EnhancedDashboard {
                     const result = await window.dataService.getAllData();
                     data = result.data || {};
                     if (result.errors && result.errors.length) console.warn('Some sheets failed to load:', result.errors);
-                    console.info('Data loaded via dataService');
+                    // console.info('Data loaded via dataService');
                 } else {
-                    console.warn('No data fetcher available (enhancedGoogleSheetsService or dataService)');
+                    // console.warn('No data fetcher available (enhancedGoogleSheetsService or dataService)');
                     data = {};
                 }
             } catch (err) {
@@ -149,17 +149,17 @@ class EnhancedDashboard {
 
             // DEBUG: Inspect loaded data keys and sizes
             console.group('Dashboard Data Debug');
-            console.log('Raw Data Keys:', Object.keys(this.rawData));
+            // console.log('Raw Data Keys:', Object.keys(this.rawData));
             Object.keys(this.rawData).forEach(k => {
                 const len = Array.isArray(this.rawData[k]) ? this.rawData[k].length : 0;
-                console.log(`Sheet "${k}": ${len} rows`);
+                // console.log(`Sheet "${k}": ${len} rows`);
                 if (len > 0) console.log(`  Sample row:`, this.rawData[k][0]);
             });
             console.groupEnd();
 
             // Normalize keys: ensure canonical names from config are present
             try {
-                console.info('Normalization: rawData keys:', Object.keys(this.rawData));
+                // console.info('Normalization: rawData keys:', Object.keys(this.rawData));
                 const canonical = {};
 
                 // Combine both sets
@@ -169,7 +169,7 @@ class EnhancedDashboard {
                     const name = s.name || '';
                     if (name && this.rawData[name]) {
                         canonical[name] = this.rawData[name];
-                        console.debug(`Matched canonical sheet: ${name}`);
+                        // console.debug(`Matched canonical sheet: ${name}`);
                     }
                 });
 
@@ -177,14 +177,14 @@ class EnhancedDashboard {
                 Object.keys(this.rawData).forEach(k => {
                     if (!canonical[k]) {
                         canonical[k] = this.rawData[k];
-                        console.debug(`Included extra sheet: ${k}`);
+                        // console.debug(`Included extra sheet: ${k}`);
                     }
                 });
 
                 this.rawData = canonical;
-                console.info('Normalization complete. Final keys:', Object.keys(this.rawData));
+                // console.info('Normalization complete. Final keys:', Object.keys(this.rawData));
             } catch (e) {
-                console.warn('Error normalizing sheet keys:', e);
+                // console.warn('Error normalizing sheet keys:', e);
             }
 
             // Calculate KPIs using aggregation service (use normalized this.rawData)
@@ -197,7 +197,7 @@ class EnhancedDashboard {
                 // also attach to this instance for internal consumers
                 this.kpis = kpis;
             } catch (e) { /* ignore */ }
-            console.log('KPIs calculated:', kpis);
+            // console.log('KPIs calculated:', kpis);
 
             // Initialize tube progress indicators
             this.initializeTubeIndicators(kpis);
@@ -257,7 +257,7 @@ class EnhancedDashboard {
             this.updateQualityRate(kpis.quality.rate);
             this.updateTrendBadge('qualityRate', kpis.quality.changePct);
         } else {
-            console.warn('Quality rate data is missing');
+            // console.warn('Quality rate data is missing');
             this.updateQualityRate(0);
         }
 
@@ -279,7 +279,7 @@ class EnhancedDashboard {
      * @param {Object} kpis - KPI data
      */
     updateProgressIndicators(kpis) {
-        console.log('🔄 Updating overview metrics from Commune Analysis');
+        // console.log('🔄 Updating overview metrics from Commune Analysis');
         // Aggregate Commune Analysis sheet for overview
         const commData = this.rawData['Commune Analysis'] || [];
         // Helper: parse number
@@ -363,19 +363,19 @@ class EnhancedDashboard {
 
         // Update Progress Cards
         if (kpis.ctasf && typeof kpis.ctasf.rate !== 'undefined') {
-            console.log('📊 CTASF Rate:', kpis.ctasf.rate + '%');
+            // console.log('📊 CTASF Rate:', kpis.ctasf.rate + '%');
             this.updateProgressBar('ctasfRateBar', kpis.ctasf.rate);
             this.updateProgressValue('ctasfRate', `${Math.round(kpis.ctasf.rate)}%`);
         } else {
-            console.warn('⚠️ CTASF KPI data is missing');
+            // console.warn('⚠️ CTASF KPI data is missing');
         }
 
         if (kpis.processing && typeof kpis.processing.rate !== 'undefined') {
-            console.log('📊 Processing Rate:', kpis.processing.rate + '%');
+            // console.log('📊 Processing Rate:', kpis.processing.rate + '%');
             this.updateProgressBar('processingRateBar', kpis.processing.rate);
             this.updateProgressValue('processingRate', `${Math.round(kpis.processing.rate)}%`);
         } else {
-            console.warn('⚠️ Processing KPI data is missing');
+            // console.warn('⚠️ Processing KPI data is missing');
         }
 
         // Compute additional gauges using existing communeData
@@ -423,7 +423,7 @@ class EnhancedDashboard {
         const urmPct = rawParcels > 0 ? (validatedByURM / rawParcels) * 100 : 0;
         this.updateProgressBar('urmValidationRateBar', urmPct);
         this.updateProgressValue('urmValidationValue', `${urmPct.toFixed(1)}%`);
-        console.log('✅ Progress indicators update completed');
+        // console.log('✅ Progress indicators update completed');
     }
 
     /**
@@ -576,7 +576,7 @@ class EnhancedDashboard {
         try {
             // Check if SheetJS is available
             if (typeof XLSX === 'undefined') {
-                console.warn('SheetJS not loaded, falling back to CSV export');
+                // console.warn('SheetJS not loaded, falling back to CSV export');
                 this.exportTableToCSV(table, filename.replace('.xlsx', '.csv'));
                 return;
             }
@@ -598,7 +598,7 @@ class EnhancedDashboard {
 
             // Download the file
             XLSX.writeFile(wb, filename);
-            console.log('XLSX export successful:', filename);
+            // console.log('XLSX export successful:', filename);
         } catch (e) {
             console.error('XLSX export failed, falling back to CSV:', e);
             this.exportTableToCSV(table, filename.replace('.xlsx', '.csv'));
@@ -669,7 +669,7 @@ class EnhancedDashboard {
                         monthlyTarget = val;
                         dailyTarget = val / 30; // Approximation
                         weeklyTarget = val / 4;
-                        console.log('Using dynamic monthly target from projections:', monthlyTarget);
+                        // console.log('Using dynamic monthly target from projections:', monthlyTarget);
                     }
                 }
             }
@@ -743,9 +743,9 @@ class EnhancedDashboard {
                 }
             }
 
-            console.log('Progress stats updated');
+            // console.log('Progress stats updated');
         } catch (e) {
-            console.warn('Error updating progress stats:', e);
+            // console.warn('Error updating progress stats:', e);
         }
     }
 
@@ -826,7 +826,7 @@ class EnhancedDashboard {
                 this.refreshDashboard(true);
             }, this.autoRefreshInterval);
 
-            console.log(`Auto-refresh set for every ${this.autoRefreshInterval / 60000} minutes`);
+            // console.log(`Auto-refresh set for every ${this.autoRefreshInterval / 60000} minutes`);
         }
     }
 
@@ -836,7 +836,7 @@ class EnhancedDashboard {
     async manualRefresh() {
         try {
             this.showLoading(true);
-            console.log('Manual refresh triggered');
+            // console.log('Manual refresh triggered');
 
             // Clear Google Sheets cache to get fresh data
             const googleService = window.enhancedGoogleSheetsService || window.googleSheetsService;
@@ -876,11 +876,11 @@ class EnhancedDashboard {
 
                 // Always calculate KPIs with full data (not filtered) to avoid 'No live sheet data' when filters remove all relevant rows
                 // Only pass current filters as parameter but use full rawData
-                console.log('Calculating KPIs with full dataset and filters:', this.currentFilters);
+                // console.log('Calculating KPIs with full dataset and filters:', this.currentFilters);
                 const kpis = dataAggregationService.calculateKPIs(this.rawData, this.currentFilters);
 
                 // Log KPI calculation results to help with debugging
-                console.log('KPI calculation results:', {
+                // console.log('KPI calculation results:', {
                     daily: kpis.daily,
                     weekly: kpis.weekly,
                     monthly: kpis.monthly,
@@ -1141,7 +1141,7 @@ class EnhancedDashboard {
                 }
             } catch (_) { }
         } catch (e) {
-            console.warn('Failed to update header trends:', e);
+            // console.warn('Failed to update header trends:', e);
         }
     }
 
@@ -1184,7 +1184,7 @@ class EnhancedDashboard {
             if (Array.isArray(arr)) {
                 // Skip filtering for display tables
                 if (noFilterSheets.includes(key)) {
-                    console.info(`[filterData] Skipping filter for table: ${key}`);
+                    // console.info(`[filterData] Skipping filter for table: ${key}`);
                     return;
                 }
                 
@@ -1292,10 +1292,10 @@ class EnhancedDashboard {
             const tbody = document.getElementById('processingTableBody');
             if (tbody) {
                 const sheetData = data['Post Process Follow-up'] || data['Post Process Follow up'] || data['postProcessFollowup'] || [];
-                console.info(`[DEBUG populateDataTables] Post Process table: found ${sheetData.length} rows`);
+                // console.info(`[DEBUG populateDataTables] Post Process table: found ${sheetData.length} rows`);
                 if (sheetData.length > 0) {
-                    console.info(`[DEBUG populateDataTables] Sample row:`, sheetData[0]);
-                    console.info(`[DEBUG populateDataTables] Sample row keys:`, Object.keys(sheetData[0]));
+                    // console.info(`[DEBUG populateDataTables] Sample row:`, sheetData[0]);
+                    // console.info(`[DEBUG populateDataTables] Sample row keys:`, Object.keys(sheetData[0]));
                 }
                 const rows = sheetData.slice(0, 200);
                 tbody.innerHTML = '';
@@ -1316,7 +1316,7 @@ class EnhancedDashboard {
                     `;
                     tbody.appendChild(tr);
                 });
-                console.info(`[DEBUG populateDataTables] Post Process table populated with ${rows.length} rows`);
+                // console.info(`[DEBUG populateDataTables] Post Process table populated with ${rows.length} rows`);
             }
         } catch (e) { console.warn('Processing table render error', e); }
     }
@@ -1352,11 +1352,11 @@ class EnhancedDashboard {
     handleRealTimeUpdate(newData, isPartialUpdate = true) {
         try {
             if (!newData) {
-                console.warn('No data provided for real-time update');
+                // console.warn('No data provided for real-time update');
                 return false;
             }
 
-            console.log('Processing real-time data update...');
+            // console.log('Processing real-time data update...');
 
             // For partial updates, merge with existing data
             let updatedData = newData;
@@ -1416,7 +1416,7 @@ class EnhancedDashboard {
             // Update last refresh time
             this.updateLastRefreshTime();
 
-            console.log('Real-time update completed successfully');
+            // console.log('Real-time update completed successfully');
             return true;
         } catch (error) {
             console.error('Error processing real-time update:', error);

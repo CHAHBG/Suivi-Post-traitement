@@ -104,7 +104,7 @@ class ChartService {
                 Chart.defaults.scales.category.grid.display = false;
             }
         } catch (e) {
-            console.warn('Chart Defaults initialization partially failed:', e);
+            // console.warn('Chart Defaults initialization partially failed:', e);
         }
     }
 
@@ -238,7 +238,7 @@ class ChartService {
         
         // Direct match
         if (data[name]) {
-            console.info(`[findSheet] Direct match for "${name}" with ${data[name].length} rows`);
+            // console.info(`[findSheet] Direct match for "${name}" with ${data[name].length} rows`);
             return data[name];
         }
         
@@ -247,7 +247,7 @@ class ChartService {
         const target = norm(name);
         for (const k of Object.keys(data)) {
             if (norm(k) === target) {
-                console.info(`[findSheet] Normalized match: "${name}" -> "${k}" with ${data[k].length} rows`);
+                // console.info(`[findSheet] Normalized match: "${name}" -> "${k}" with ${data[k].length} rows`);
                 return data[k];
             }
         }
@@ -255,12 +255,12 @@ class ChartService {
         // Partial match (for cases like "CTASF Follow-up" matching "ctasfFollowup")
         for (const k of Object.keys(data)) {
             if (norm(k).includes(target) || target.includes(norm(k))) {
-                console.info(`[findSheet] Partial match: "${name}" -> "${k}" with ${data[k].length} rows`);
+                // console.info(`[findSheet] Partial match: "${name}" -> "${k}" with ${data[k].length} rows`);
                 return data[k];
             }
         }
         
-        console.warn(`[findSheet] No match found for "${name}". Available keys:`, Object.keys(data));
+        // console.warn(`[findSheet] No match found for "${name}". Available keys:`, Object.keys(data));
         return null;
     }
 
@@ -268,7 +268,7 @@ class ChartService {
         this.destroyChart(id);
         const canvas = document.getElementById(id);
         if (!canvas) {
-            console.debug(`Chart canvas ${id} not found in DOM.`);
+            // console.debug(`Chart canvas ${id} not found in DOM.`);
             return null;
         }
 
@@ -309,7 +309,7 @@ class ChartService {
 
     // --- Main Initializer ---
     async initializeCharts(rawData, precomputedKPIs = null, fullRawData = null) {
-        console.log('[ChartService] Starting initialization...');
+        // console.log('[ChartService] Starting initialization...');
 
         if (fullRawData) window.__fullRawData = fullRawData;
         else if (!window.__fullRawData) window.__fullRawData = rawData;
@@ -320,92 +320,92 @@ class ChartService {
         const chartPrompts = [
             {
                 id: 'overviewDailyYieldsChart', fn: () => {
-                    console.info('Initializing overviewDailyYieldsChart...');
+                    // console.info('Initializing overviewDailyYieldsChart...');
                     this.createDailyYieldsChartForCanvas('overviewDailyYieldsChart', rawData);
                 }
             },
             {
                 id: 'dailyYieldsChart', fn: () => {
-                    console.info('Initializing dailyYieldsChart...');
+                    // console.info('Initializing dailyYieldsChart...');
                     this.createDailyYieldsChartForCanvas('dailyYieldsChart', rawData);
                 }
             },
             {
                 id: 'qualityTrendChart', fn: () => {
-                    console.info('Initializing qualityTrendChart...');
+                    // console.info('Initializing qualityTrendChart...');
                     this.createQualityTrendChart(rawData);
                 }
             },
             {
                 id: 'regionalTrendChart', fn: () => {
-                    console.info('Initializing regionalTrendChart...');
+                    // console.info('Initializing regionalTrendChart...');
                     this.createRegionalAnalysisCharts(rawData);
                 }
             },
             // CTASF Pipeline chart removed
             {
                 id: 'postProcessingChart', fn: () => {
-                    console.info('Initializing postProcessingChart...');
+                    // console.info('Initializing postProcessingChart...');
                     this.createPostProcessingChart(rawData);
                 }
             },
             {
                 id: 'parcelTypeDistributionChart', fn: () => {
-                    console.info('Initializing parcelTypeDistributionChart...');
+                    // console.info('Initializing parcelTypeDistributionChart...');
                     this.createParcelTypeDistributionChart(rawData);
                 }
             },
             {
                 id: 'teamProductivityChart', fn: () => {
-                    console.info('Initializing teamProductivityChart...');
+                    // console.info('Initializing teamProductivityChart...');
                     this.createTeamProductivityChart(rawData);
                 }
             },
             {
                 id: 'yieldsVsValidationChart', fn: () => {
-                    console.info('Initializing yieldsVsValidationChart...');
+                    // console.info('Initializing yieldsVsValidationChart...');
                     this.createYieldsVsValidationChart(rawData);
                 }
             },
             {
                 id: 'validationRateChart', fn: () => {
-                    console.info('Initializing validationRateChart...');
+                    // console.info('Initializing validationRateChart...');
                     this.createValidationRateChart(rawData);
                 }
             },
             {
                 id: 'burnUpChart', fn: () => {
-                    console.info('Initializing burnUpChart...');
+                    // console.info('Initializing burnUpChart...');
                     this.createBurnUpChart(rawData);
                 }
             },
             {
                 id: 'velocityDeviationChart', fn: () => {
-                    console.info('Initializing velocityDeviationChart...');
+                    // console.info('Initializing velocityDeviationChart...');
                     this.createVelocityDeviationChart(rawData);
                 }
             },
             {
                 id: 'statusAgingChart', fn: () => {
-                    console.info('Initializing statusAgingChart...');
+                    // console.info('Initializing statusAgingChart...');
                     this.createStatusAgingChart(rawData);
                 }
             },
             {
                 id: 'bulletCharts', fn: () => {
-                    console.info('Initializing bulletCharts...');
+                    // console.info('Initializing bulletCharts...');
                     this.createBulletCharts(rawData);
                 }
             },
             {
                 id: 'efficiencyKPIs', fn: () => {
-                    console.info('Calculating efficiency KPIs...');
+                    // console.info('Calculating efficiency KPIs...');
                     this.calculateEfficiencyKPIs(rawData);
                 }
             },
             {
                 id: 'gauge-charts', fn: () => {
-                    console.info('Initializing gauge charts...');
+                    // console.info('Initializing gauge charts...');
                     this.createGaugeCharts();
                 }
             }
@@ -419,7 +419,7 @@ class ChartService {
             }
         }
 
-        console.log(`[ChartService] Initialized ${this.charts.size} charts.`);
+        // console.log(`[ChartService] Initialized ${this.charts.size} charts.`);
         return true;
     }
 
@@ -520,10 +520,10 @@ class ChartService {
         if (!document.getElementById(id)) return;
 
         const sheet = this.findSheet('dailyLeveeSource', rawData) || this.findSheet('Daily Levee Source', rawData) || this.findSheet('Yields Projections', rawData) || [];
-        console.info(`createDailyYieldsChartForCanvas(${canvasId}): Found sheet with ${sheet.length} rows`);
+        // console.info(`createDailyYieldsChartForCanvas(${canvasId}): Found sheet with ${sheet.length} rows`);
 
         if (sheet.length === 0) {
-            console.warn(`No data for ${canvasId}, chart will be empty.`);
+            // console.warn(`No data for ${canvasId}, chart will be empty.`);
             return;
         }
 
@@ -638,16 +638,16 @@ class ChartService {
         // Fetch projection sheet
         const projSheet = this.findSheet('Display Projections', rawData) || this.findSheet('projectionDisplay', rawData) || [];
 
-        console.info(`createQualityTrendChart: Found sheet with ${sheet ? sheet.length : 0} rows`);
+        // console.info(`createQualityTrendChart: Found sheet with ${sheet ? sheet.length : 0} rows`);
         
         // DEBUG: Log available keys and sample row
         if (sheet && sheet.length > 0) {
-            console.info(`[DEBUG qualityTrendChart] Available columns:`, Object.keys(sheet[0]));
-            console.info(`[DEBUG qualityTrendChart] Sample row:`, sheet[0]);
+            // console.info(`[DEBUG qualityTrendChart] Available columns:`, Object.keys(sheet[0]));
+            // console.info(`[DEBUG qualityTrendChart] Sample row:`, sheet[0]);
         }
 
         if (!sheet || sheet.length === 0) {
-            console.warn(`No data for ${id}, chart will be empty.`);
+            // console.warn(`No data for ${id}, chart will be empty.`);
             return;
         }
 
@@ -687,10 +687,10 @@ class ChartService {
             .sort((a, b) => a.x - b.x);
 
         // DEBUG: Log aggregated data
-        console.info(`[DEBUG qualityTrendChart] Aggregated ${aggregatedData.length} data points`);
+        // console.info(`[DEBUG qualityTrendChart] Aggregated ${aggregatedData.length} data points`);
         if (aggregatedData.length > 0) {
-            console.info(`[DEBUG qualityTrendChart] First point:`, aggregatedData[0]);
-            console.info(`[DEBUG qualityTrendChart] Last point:`, aggregatedData[aggregatedData.length - 1]);
+            // console.info(`[DEBUG qualityTrendChart] First point:`, aggregatedData[0]);
+            // console.info(`[DEBUG qualityTrendChart] Last point:`, aggregatedData[aggregatedData.length - 1]);
         }
 
         // --- Target Logic (Projection) ---
@@ -760,7 +760,7 @@ class ChartService {
         const comparisonId = 'communeComparisonChart';
 
         const sheet = this.findSheet('dailyLeveeSource', rawData) || this.findSheet('Daily Levee Source', rawData) || this.findSheet('Yields Projections', rawData) || [];
-        console.info(`createRegionalAnalysisCharts: Found sheet with ${sheet.length} rows`);
+        // console.info(`createRegionalAnalysisCharts: Found sheet with ${sheet.length} rows`);
 
         // 1. Regional Trend
         if (document.getElementById(trendId)) {
@@ -863,11 +863,11 @@ class ChartService {
                 labels = sorted.map(e => e[0]);
                 data = sorted.map(e => e[1]);
             } else {
-                console.warn(`No data for ${comparisonId}, chart will be empty.`);
+                // console.warn(`No data for ${comparisonId}, chart will be empty.`);
             }
 
             if (labels.length === 0) {
-                console.warn(`No data for ${comparisonId}, chart will be empty.`);
+                // console.warn(`No data for ${comparisonId}, chart will be empty.`);
                 return;
             }
 
@@ -904,16 +904,16 @@ class ChartService {
         // Manual aggregation to avoid dataService dependency issues if any
         const sheet = this.findSheet('Post Process Follow-up', rawData) || this.findSheet('Post-traitement', rawData) || this.findSheet('postProcessFollowup', rawData);
 
-        console.info(`createPostProcessingChart: Found sheet with ${sheet ? sheet.length : 0} rows`);
+        // console.info(`createPostProcessingChart: Found sheet with ${sheet ? sheet.length : 0} rows`);
         
         // DEBUG: Log available keys and sample row
         if (sheet && sheet.length > 0) {
-            console.info(`[DEBUG postProcessingChart] Available columns:`, Object.keys(sheet[0]));
-            console.info(`[DEBUG postProcessingChart] Sample row:`, sheet[0]);
+            // console.info(`[DEBUG postProcessingChart] Available columns:`, Object.keys(sheet[0]));
+            // console.info(`[DEBUG postProcessingChart] Sample row:`, sheet[0]);
         }
 
         if (!sheet || sheet.length === 0) {
-            console.warn(`No data for ${id}, chart will be empty.`);
+            // console.warn(`No data for ${id}, chart will be empty.`);
             return;
         }
 
@@ -969,10 +969,10 @@ class ChartService {
         const aggregatedData = Array.from(dailyTotals.values()).sort((a, b) => a.x - b.x);
 
         // DEBUG: Log aggregated data
-        console.info(`[DEBUG postProcessingChart] Aggregated ${aggregatedData.length} data points`);
+        // console.info(`[DEBUG postProcessingChart] Aggregated ${aggregatedData.length} data points`);
         if (aggregatedData.length > 0) {
-            console.info(`[DEBUG postProcessingChart] First point:`, aggregatedData[0]);
-            console.info(`[DEBUG postProcessingChart] Last point:`, aggregatedData[aggregatedData.length - 1]);
+            // console.info(`[DEBUG postProcessingChart] First point:`, aggregatedData[0]);
+            // console.info(`[DEBUG postProcessingChart] Last point:`, aggregatedData[aggregatedData.length - 1]);
         }
 
         const self = this;
@@ -1031,7 +1031,7 @@ class ChartService {
         }
 
         if (dataValues.length === 0) {
-            console.warn(`No data for ${id}, chart will be empty.`);
+            // console.warn(`No data for ${id}, chart will be empty.`);
             return;
         }
 
@@ -1062,8 +1062,8 @@ class ChartService {
         let labels = [], data = [];
 
         if (yieldsSheet && yieldsSheet.length > 0) {
-            console.info('createTeamProductivityChart: using Yields Projections sheet');
-            console.info(`[DEBUG] Sample row:`, yieldsSheet[0]);
+            // console.info('createTeamProductivityChart: using Yields Projections sheet');
+            // console.info(`[DEBUG] Sample row:`, yieldsSheet[0]);
             
             const teamMap = {};
             
@@ -1072,7 +1072,7 @@ class ChartService {
                 if (!team || team === 'Inconnu' || team === '') return;
                 
                 const levees = this._getNumericField(r, ['Nombre de levées', 'Nombre de levee', 'levees', 'levée']) || 0;
-                console.info(`[DEBUG] Team ${team}: levees = ${levees}`);
+                // console.info(`[DEBUG] Team ${team}: levees = ${levees}`);
                 teamMap[team] = (teamMap[team] || 0) + levees;
             });
 
@@ -1080,14 +1080,14 @@ class ChartService {
             labels = sorted.map(e => e[0]);
             data = sorted.map(e => e[1]);
             
-            console.info(`[DEBUG] Final team data:`, { labels, data });
-            console.info(`createTeamProductivityChart: Found ${labels.length} teams with data`);
+            // console.info(`[DEBUG] Final team data:`, { labels, data });
+            // console.info(`createTeamProductivityChart: Found ${labels.length} teams with data`);
         } else {
-            console.warn('createTeamProductivityChart: No Yields Projections sheet found');
+            // console.warn('createTeamProductivityChart: No Yields Projections sheet found');
         }
 
         if (labels.length === 0) {
-            console.warn(`No data for ${id}, chart will be empty.`);
+            // console.warn(`No data for ${id}, chart will be empty.`);
             return;
         }
 
@@ -1138,10 +1138,10 @@ class ChartService {
         const yieldsSheet = this.findSheet('Yields Projections', rawData) || this.findSheet('Daily Levee Source', rawData) || [];
         const postProcessSheet = this.findSheet('Post Process Follow-up', rawData) || [];
 
-        console.info(`createYieldsVsValidationChart: Yields=${yieldsSheet.length} rows, PostProcess=${postProcessSheet.length} rows`);
+        // console.info(`createYieldsVsValidationChart: Yields=${yieldsSheet.length} rows, PostProcess=${postProcessSheet.length} rows`);
 
         if (yieldsSheet.length === 0 && postProcessSheet.length === 0) {
-            console.warn(`No data for ${id}`);
+            // console.warn(`No data for ${id}`);
             return;
         }
 
@@ -1239,10 +1239,10 @@ class ChartService {
 
         const postProcessSheet = this.findSheet('Post Process Follow-up', rawData) || [];
 
-        console.info(`createValidationRateChart: Found ${postProcessSheet.length} rows`);
+        // console.info(`createValidationRateChart: Found ${postProcessSheet.length} rows`);
 
         if (postProcessSheet.length === 0) {
-            console.warn(`No data for ${id}`);
+            // console.warn(`No data for ${id}`);
             return;
         }
 
@@ -1332,7 +1332,7 @@ class ChartService {
         const yieldsSheet = this.findSheet('Yields Projections', rawData) || this.findSheet('Daily Levee Source', rawData) || [];
         
         if (yieldsSheet.length === 0) {
-            console.warn(`No data for ${id}`);
+            // console.warn(`No data for ${id}`);
             return;
         }
 
@@ -1446,7 +1446,7 @@ class ChartService {
         const yieldsSheet = this.findSheet('Yields Projections', rawData) || this.findSheet('Daily Levee Source', rawData) || [];
         
         if (yieldsSheet.length === 0) {
-            console.warn(`No data for ${id}`);
+            // console.warn(`No data for ${id}`);
             return;
         }
 
@@ -1533,7 +1533,7 @@ class ChartService {
         const postProcessSheet = this.findSheet('Post Process Follow-up', rawData) || [];
         
         if (postProcessSheet.length === 0) {
-            console.warn(`No data for ${id}`);
+            // console.warn(`No data for ${id}`);
             return;
         }
 
@@ -1672,13 +1672,13 @@ class ChartService {
      * Calculate and update efficiency KPIs
      */
     calculateEfficiencyKPIs(rawData) {
-        console.info('[calculateEfficiencyKPIs] Starting calculation...');
+        // console.info('[calculateEfficiencyKPIs] Starting calculation...');
         
         try {
             const postProcessSheet = this.findSheet('Post Process Follow-up', rawData) || [];
             const yieldsSheet = this.findSheet('Yields Projections', rawData) || this.findSheet('Daily Levee Source', rawData) || [];
 
-            console.info(`[calculateEfficiencyKPIs] Found ${postProcessSheet.length} post-process rows, ${yieldsSheet.length} yields rows`);
+            // console.info(`[calculateEfficiencyKPIs] Found ${postProcessSheet.length} post-process rows, ${yieldsSheet.length} yields rows`);
 
             // --- Post Process KPIs ---
             let totalBrutes = 0, totalValidees = 0, wipOver48h = 0;
@@ -1715,7 +1715,7 @@ class ChartService {
             });
             const avgCycleTime = uniqueDates.size > 0 ? Math.round(uniqueDates.size / 2) : 0;
 
-            console.info(`[calculateEfficiencyKPIs] FTR: ${ftr}%, Cycle: ${avgCycleTime}j, WIP: ${wipOver48h}`);
+            // console.info(`[calculateEfficiencyKPIs] FTR: ${ftr}%, Cycle: ${avgCycleTime}j, WIP: ${wipOver48h}`);
 
             // Update DOM
             const ftrEl = document.getElementById('ftrValue');
@@ -1726,7 +1726,7 @@ class ChartService {
             if (cycleEl) cycleEl.textContent = avgCycleTime + 'j';
             if (wipEl) wipEl.textContent = wipOver48h.toLocaleString();
 
-            console.info('[calculateEfficiencyKPIs] Post-process KPIs updated');
+            // console.info('[calculateEfficiencyKPIs] Post-process KPIs updated');
 
             // --- Yields Strategy KPIs ---
             const dailyTarget = (window.CONFIG && window.CONFIG.TARGETS && window.CONFIG.TARGETS.DAILY_PARCELS) || 387;
@@ -1770,7 +1770,7 @@ class ChartService {
                 ? `${String(projectedDate.getDate()).padStart(2, '0')}/${String(projectedDate.getMonth() + 1).padStart(2, '0')}`
                 : 'Atteint';
 
-            console.info(`[calculateEfficiencyKPIs] RRR: ${rrr}, Variance: ${scheduleVariance}, Projected: ${projectedDateStr}`);
+            // console.info(`[calculateEfficiencyKPIs] RRR: ${rrr}, Variance: ${scheduleVariance}, Projected: ${projectedDateStr}`);
 
             // Update DOM
             const rrrEl = document.getElementById('rrrValue');
@@ -1784,7 +1784,7 @@ class ChartService {
             }
             if (ccEl) ccEl.textContent = projectedDateStr;
 
-            console.info('[calculateEfficiencyKPIs] All KPIs updated successfully');
+            // console.info('[calculateEfficiencyKPIs] All KPIs updated successfully');
         } catch (error) {
             console.error('[calculateEfficiencyKPIs] Error calculating KPIs:', error);
         }

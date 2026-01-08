@@ -32,13 +32,13 @@
             if (rawData[key] && Array.isArray(rawData[key])) {
                 yieldsData = rawData[key];
                 yieldsKey = key;
-                console.log(`Found yields data with key: "${key}", rows: ${yieldsData.length}`);
+                // console.log(`Found yields data with key: "${key}", rows: ${yieldsData.length}`);
                 break;
             }
         }
         
         if (!yieldsData) {
-            console.warn('Could not find yields data with any of the expected keys');
+            // console.warn('Could not find yields data with any of the expected keys');
             return;
         }
         
@@ -89,19 +89,19 @@
                             fixedDateCount++;
                         }
                     } catch (e) {
-                        console.warn(`Failed to fix date format for: ${dateStr}`, e);
+                        // console.warn(`Failed to fix date format for: ${dateStr}`, e);
                     }
                 }
             }
         }
         
         if (fixedDateCount > 0) {
-            console.log(`Fixed ${fixedDateCount} dates in yields data`);
+            // console.log(`Fixed ${fixedDateCount} dates in yields data`);
             
             // Force recalculation of KPIs
             if (window.dataAggregationService) {
                 const kpis = window.dataAggregationService.calculateKPIs(rawData);
-                console.log('Recalculated KPIs after date fix:', kpis.daily);
+                // console.log('Recalculated KPIs after date fix:', kpis.daily);
             }
         }
     }

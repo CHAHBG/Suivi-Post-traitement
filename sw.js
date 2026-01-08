@@ -88,7 +88,3 @@ self.addEventListener('fetch', (event) => {
       .catch(() => caches.match(request))
   );
 });
-      return resp;
-    }).catch(()=> caches.match(req)).catch(()=> new Response(null, { status: 504 }))
-  );
-});

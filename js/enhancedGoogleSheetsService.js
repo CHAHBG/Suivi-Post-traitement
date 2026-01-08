@@ -313,50 +313,55 @@ class EnhancedGoogleSheetsService {
             }
         }
 
-        try {
-            let response;
-            let retries = 0;
+        // Check for pending request
+        if (this.pendingRequests.has(url)) {
+            return this.pendingRequests.get(url);
+        }
 
-            // Implement retry logic
-            while (retries <= options.maxRetries) {
-                try {
-                    response = await fetch(url);
+        // Create new request promise
+        const requestPromise = (async () => {
+            try {
+                let response;
+                let retries = 0;
 
-                    if (response.ok) {
-                        break;
-                    } else {
-                        throw new Error(`HTTP ${response.status}`);
+                // Implement retry logic
+                while (retries <= options.maxRetries) {
+                    try {
+                        response = await fetch(url);
+
+                        if (response.ok) {
+                            break;
+                        } else {
+                            throw new Error(`HTTP ${response.status}`);
+                        }
+                    } catch (error) {
+                        if (retries >= options.maxRetries) {
+                            throw error;
+                        }
+
+                        // Wait before retry
+                        await new Promise(r => setTimeout(r, options.retryDelay));
+                        retries++;
                     }
-                } catch (error) {
-                    if (retries >= options.maxRetries) {
-                        throw error;
-                    }
-
-                    // Wait before retry
-                    await new Promise(r => setTimeout(r, options.retryDelay));
-                    retries++;
                 }
-            }
 
-            if (!response.ok) {
-                throw new Error(`Failed to fetch sheet after ${options.maxRetries} retries`);
-            }
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch sheet after ${options.maxRetries} retries`);
+                }
 
-            // Get CSV text
-            const csvText = await response.text();
+                // Get CSV text
+                const csvText = await response.text();
 
-            // Parse CSV to array of objects
-            const parsedData = this.parseCSV(csvText);
+                // Parse CSV to array of objects
+                const parsedData = this.parseCSV(csvText);
 
-            // Cache the result if caching is enabled
-            if (options.useCaching) {
-                this.addToCache(cacheKey, parsedData);
-            }
+                // Cache the result if caching is enabled
+                if (options.useCaching) {
+                    this.addToCache(cacheKey, parsedData);
+                }
 
-            return parsedData;
-
+                return parsedData;
             } catch (error) {
-                console.error('Error fetching sheet from URL:', url, error);
                 throw error;
             } finally {
                 this.pendingRequests.delete(url);

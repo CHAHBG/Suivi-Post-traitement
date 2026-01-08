@@ -13,7 +13,7 @@
          * Initialize the streaming update service
          */
         initialize: function() {
-            console.log('Initializing Streaming Update Service...');
+            // console.log('Initializing Streaming Update Service...');
             this._setupEventListeners();
             return this;
         },
@@ -24,7 +24,7 @@
          * @param {boolean} isPartialUpdate - Whether this is a partial update (true) or full data refresh (false)
          */
         updateDashboard: function(newData, isPartialUpdate = true) {
-            console.log('Processing streaming update...');
+            // console.log('Processing streaming update...');
             
             if (!window.enhancedDashboard) {
                 console.error('Dashboard not initialized yet. Cannot apply streaming update.');
@@ -92,7 +92,7 @@
                 this.socket = new WebSocket(endpoint);
                 
                 this.socket.onopen = () => {
-                    console.log('WebSocket connection established');
+                    // console.log('WebSocket connection established');
                     this._triggerEvent('streamConnected');
                 };
                 
@@ -107,13 +107,13 @@
                 };
                 
                 this.socket.onclose = (event) => {
-                    console.log('WebSocket connection closed:', event.code, event.reason);
+                    // console.log('WebSocket connection closed:', event.code, event.reason);
                     this._triggerEvent('streamDisconnected');
                     
                     // Auto-reconnect if enabled
                     if (this.streamOptions.autoReconnect) {
                         setTimeout(() => {
-                            console.log('Attempting to reconnect WebSocket...');
+                            // console.log('Attempting to reconnect WebSocket...');
                             this._connectWebSocket(endpoint);
                         }, this.streamOptions.reconnectInterval);
                     }
@@ -137,7 +137,7 @@
          * @param {string} endpoint - API endpoint to poll
          */
         _setupPolling: function(endpoint) {
-            console.log(`Setting up polling at ${this.streamOptions.pollingInterval}ms intervals`);
+            // console.log(`Setting up polling at ${this.streamOptions.pollingInterval}ms intervals`);
             
             const pollData = () => {
                 fetch(endpoint)
@@ -318,7 +318,7 @@
          * Useful for testing or demonstration purposes
          */
         triggerDemoUpdate: function() {
-            console.log('Triggering demo update...');
+            // console.log('Triggering demo update...');
             
             // Generate some demo data with slight variations from current values
             const demoData = this._generateDemoData();

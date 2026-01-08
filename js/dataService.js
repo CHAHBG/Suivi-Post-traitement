@@ -29,7 +29,7 @@ class DataService {
             const csvText = await response.text();
             const data = UTILS.parseCSV(csvText);
             // Log parsed row count for debugging
-            console.debug(`fetchCSV: parsed ${Array.isArray(data) ? data.length : 0} rows from ${url}`);
+            // console.debug(`fetchCSV: parsed ${Array.isArray(data) ? data.length : 0} rows from ${url}`);
 
             // Update cache
             this.cache.set(url, {
@@ -79,7 +79,7 @@ class DataService {
             }
             // Debug: show how many rows were returned for each sheet
             try {
-                console.info(`Sheet loaded: ${sheetName} -> ${Array.isArray(data[sheetName]) ? data[sheetName].length : 0} rows`);
+                // console.info(`Sheet loaded: ${sheetName} -> ${Array.isArray(data[sheetName]) ? data[sheetName].length : 0} rows`);
             } catch (e) {
                 // ignore
             }
@@ -172,8 +172,8 @@ class DataService {
                 });
                 if (sheetName.toLowerCase().includes('yield')) {
                     try {
-                        console.debug('[TimeSeriesDebug] Distinct raw dates in', sheetName, Array.from(rawDateSet));
-                        console.debug('[TimeSeriesDebug] Parsed date keys', Array.from(byDate.keys()));
+                        // console.debug('[TimeSeriesDebug] Distinct raw dates in', sheetName, Array.from(rawDateSet));
+                        // console.debug('[TimeSeriesDebug] Parsed date keys', Array.from(byDate.keys()));
                     } catch (e) { }
                 }
                 const result = Array.from(byDate.entries()).map(([k, v]) => ({
@@ -329,7 +329,7 @@ class DataService {
     // Clear cache
     clearCache() {
         this.cache.clear();
-        console.log('Data cache cleared');
+        // console.log('Data cache cleared');
         return true;
     }
 }

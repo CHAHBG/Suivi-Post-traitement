@@ -124,7 +124,7 @@ class DataAggregationService {
         const percentage = roundedTarget > 0 ? Math.min(Math.max(Math.round((current / roundedTarget) * 100), 0), 100) : 0;
         const gap = current - roundedTarget;
 
-        console.log(`${timeframe} KPI calculated:`, { current, target: roundedTarget, percentage, gap });
+        // console.log(`${timeframe} KPI calculated:`, { current, target: roundedTarget, percentage, gap });
 
         return { current, target: roundedTarget, percentage, gap, status: this.getStatusFromPercentage(percentage) };
     }
@@ -286,7 +286,7 @@ class DataAggregationService {
         });
 
         const sortedData = Array.from(dateMap.values()).sort((a, b) => new Date(a.date) - new Date(b.date));
-        console.log('Sorted trend data:', sortedData);
+        // console.log('Sorted trend data:', sortedData);
         return sortedData;
     }
 
@@ -306,7 +306,7 @@ class DataAggregationService {
                 value: cum
             };
         });
-        console.log('Cumulative data:', cumulativeData);
+        // console.log('Cumulative data:', cumulativeData);
         return cumulativeData;
     }
 
@@ -421,16 +421,16 @@ class DataAggregationService {
             const processingSheet = this._findSheet(rawData, ['Post Process Follow-up', 'Post Process', 'Traitement']);
             const tmSheet = this._findSheet(rawData, ['Total-Moyenne', 'Total Moyenne', 'Moyenne']);
 
-            console.info(`calculateKPIs: Found yields: ${yieldsSheet.length}, quality: ${qualitySheet.length}, ctasf: ${ctasfSheet.length}, processing: ${processingSheet.length}`);
+            // console.info(`calculateKPIs: Found yields: ${yieldsSheet.length}, quality: ${qualitySheet.length}, ctasf: ${ctasfSheet.length}, processing: ${processingSheet.length}`);
 
             const today = this.getLatestAvailableDate(yieldsSheet);
-            console.log('Reference Date (derived from data):', this.formatDate(today));
+            // console.log('Reference Date (derived from data):', this.formatDate(today));
 
             const dayKey = this.formatDate(today);
             const weekStart = new Date(today); weekStart.setDate(today.getDate() - 6);
             const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
 
-            console.log('Data timeframes:', {
+            // console.log('Data timeframes:', {
                 today: dayKey,
                 weekStart: this.formatDate(weekStart),
                 monthStart: this.formatDate(monthStart)
@@ -445,7 +445,7 @@ class DataAggregationService {
                     }
                 }
             }
-            console.log('Latest date with data (excluding future):', latestDate ? this.formatDate(latestDate) : 'None');
+            // console.log('Latest date with data (excluding future):', latestDate ? this.formatDate(latestDate) : 'None');
 
             let dailyData = yieldsSheet.filter(r => {
                 const pd = this.parseDate(r['Date'] || r['date']);
@@ -453,23 +453,23 @@ class DataAggregationService {
             });
 
             if (!dailyData.length && latestDate) {
-                console.log('No data found for today, using most recent date:', this.formatDate(latestDate));
+                // console.log('No data found for today, using most recent date:', this.formatDate(latestDate));
                 const latestDateStr = this.formatDate(latestDate);
                 dailyData = yieldsSheet.filter(r => {
                     const pd = this.parseDate(r['Date'] || r['date']);
                     return pd && this.formatDate(pd) === latestDateStr;
                 });
-                console.log(`Found ${dailyData.length} rows for the latest date`);
+                // console.log(`Found ${dailyData.length} rows for the latest date`);
             }
 
             let weeklyData = yieldsSheet.filter(r => {
                 const pd = this.parseDate(r['Date'] || r['date']);
                 return pd && pd >= weekStart && pd <= today;
             });
-            console.log(`Found ${weeklyData.length} rows for weekly data`);
+            // console.log(`Found ${weeklyData.length} rows for weekly data`);
 
             if (weeklyData.length < 3 && latestDate) {
-                console.log('Limited data found for current week, expanding time range');
+                // console.log('Limited data found for current week, expanding time range');
                 const lastWeekEnd = latestDate;
                 const lastWeekStart = new Date(lastWeekEnd);
                 lastWeekStart.setDate(lastWeekEnd.getDate() - 30);
@@ -478,17 +478,17 @@ class DataAggregationService {
                     const pd = this.parseDate(r['Date'] || r['date']);
                     return pd && pd >= lastWeekStart && pd <= lastWeekEnd && pd <= today;
                 });
-                console.log(`Now using ${weeklyData.length} rows for weekly data (expanded time range)`);
+                // console.log(`Now using ${weeklyData.length} rows for weekly data (expanded time range)`);
             }
 
             let monthlyData = yieldsSheet.filter(r => {
                 const pd = this.parseDate(r['Date'] || r['date']);
                 return pd && pd >= monthStart && pd <= today;
             });
-            console.log(`Found ${monthlyData.length} rows for monthly data`);
+            // console.log(`Found ${monthlyData.length} rows for monthly data`);
 
             if (monthlyData.length < 5 && latestDate) {
-                console.log('Limited data found for current month, expanding time range');
+                // console.log('Limited data found for current month, expanding time range');
                 const lastMonthEnd = latestDate;
                 const lastMonthStart = new Date(lastMonthEnd);
                 lastMonthStart.setMonth(lastMonthStart.getMonth() - 2);
@@ -497,7 +497,7 @@ class DataAggregationService {
                     const pd = this.parseDate(r['Date'] || r['date']);
                     return pd && pd >= lastMonthStart && pd <= lastMonthEnd && pd <= today;
                 });
-                console.log(`Now using ${monthlyData.length} rows for monthly data (expanded time range)`);
+                // console.log(`Now using ${monthlyData.length} rows for monthly data (expanded time range)`);
             }
 
             const daily = this.calculateYieldsKPI(dailyData, 'daily');
@@ -662,10 +662,10 @@ class DataAggregationService {
                     alert: currentDailyAvg >= requiredDailyRate ? 'Objectif Atteignable' : 'Attention: Rythme Insuffisant'
                 };
 
-                console.log('January 2026 Logic Applied:', monthly.forecast);
+                // console.log('January 2026 Logic Applied:', monthly.forecast);
 
             } catch (janErr) {
-                console.warn('January logic failed:', janErr);
+                // console.warn('January logic failed:', janErr);
             }
 
             return { daily, weekly, monthly, quality, ctasf, processing };

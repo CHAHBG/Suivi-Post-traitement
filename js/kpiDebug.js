@@ -17,7 +17,7 @@ function debugKpiCalculation() {
     for (const key of possibleKeys) {
         if (rawData[key] && Array.isArray(rawData[key])) {
             yieldsData = rawData[key];
-            console.log(`Found yields data with key: "${key}", rows: ${yieldsData.length}`);
+            // console.log(`Found yields data with key: "${key}", rows: ${yieldsData.length}`);
             break;
         }
     }
@@ -26,14 +26,14 @@ function debugKpiCalculation() {
         console.error('Could not find yields data with any of the expected keys');
         
         // Let's check what keys we actually have
-        console.log('Available sheet keys:', Object.keys(rawData));
+        // console.log('Available sheet keys:', Object.keys(rawData));
         return;
     }
     
     // Log the first row to see the structure
     if (yieldsData.length > 0) {
-        console.log('First yields row structure:', yieldsData[0]);
-        console.log('Field names in first row:', Object.keys(yieldsData[0]));
+        // console.log('First yields row structure:', yieldsData[0]);
+        // console.log('Field names in first row:', Object.keys(yieldsData[0]));
     }
     
     // Test the numeric field extraction
@@ -41,15 +41,15 @@ function debugKpiCalculation() {
         const row = yieldsData[0];
         const fieldCandidates = ['Nombre de levées', 'nombre de levees', 'nombre de levees', 'nombre de levées'];
         
-        console.log('Testing field extraction:');
+        // console.log('Testing field extraction:');
         for (const candidate of fieldCandidates) {
             const value = window.dataAggregationService._getNumericField(row, [candidate]);
-            console.log(`  Field "${candidate}": ${value}`);
+            // console.log(`  Field "${candidate}": ${value}`);
         }
         
         // Comprehensive test of all variants
         const combinedValue = window.dataAggregationService._getNumericField(row, fieldCandidates);
-        console.log(`Combined field extraction result: ${combinedValue}`);
+        // console.log(`Combined field extraction result: ${combinedValue}`);
         
         // Check if dates match the current timeframe
         const today = new Date();
@@ -83,14 +83,14 @@ function debugKpiCalculation() {
                         if (rowDateAlt.toDateString() === today.toDateString()) {
                             inTimeframeCount++;
                             const value = window.dataAggregationService._getNumericField(row, fieldCandidates);
-                            console.log(`Found matching date: ${dateStr}, value: ${value}`);
+                            // console.log(`Found matching date: ${dateStr}, value: ${value}`);
                         }
                     }
                 } else {
                     if (rowDate.toDateString() === today.toDateString()) {
                         inTimeframeCount++;
                         const value = window.dataAggregationService._getNumericField(row, fieldCandidates);
-                        console.log(`Found matching date: ${dateStr}, value: ${value}`);
+                        // console.log(`Found matching date: ${dateStr}, value: ${value}`);
                     }
                 }
             } catch (e) {
@@ -98,7 +98,7 @@ function debugKpiCalculation() {
             }
         }
         
-        console.log(`Rows matching today's date: ${inTimeframeCount}`);
+        // console.log(`Rows matching today's date: ${inTimeframeCount}`);
     }
 }
 
