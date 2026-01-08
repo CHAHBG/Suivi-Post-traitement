@@ -7,10 +7,10 @@ class EnhancedGoogleSheetsService {
     constructor() {
         // Cache for storing fetched data
         this.cache = new Map();
-        
+
         // Cache expiration time in milliseconds (5 minutes)
         this.cacheExpiration = 5 * 60 * 1000;
-        
+
         // Default options
         this.options = {
             useCaching: true,
@@ -19,7 +19,7 @@ class EnhancedGoogleSheetsService {
             retryDelay: 1000
         };
     }
-    
+
     /**
      * Get PROCASSEF specific sheet configuration
      * @returns {Object} Configuration for PROCASSEF sheets
@@ -33,7 +33,11 @@ class EnhancedGoogleSheetsService {
                 for (const key of Object.keys(window.GOOGLE_SHEETS)) {
                     const s = window.GOOGLE_SHEETS[key];
                     if (s && s.gid) {
-                        sheets.push({ gid: String(s.gid), name: s.name || key });
+                        sheets.push({ 
+                            gid: String(s.gid), 
+                            name: s.name || key,
+                            url: s.url // Include URL if available
+                        });
                     }
                 }
             }
@@ -42,7 +46,11 @@ class EnhancedGoogleSheetsService {
                 for (const key of Object.keys(window.MONITORING_SHEETS)) {
                     const s = window.MONITORING_SHEETS[key];
                     if (s && s.gid) {
-                        sheets.push({ gid: String(s.gid), name: s.name || key });
+                        sheets.push({ 
+                            gid: String(s.gid), 
+                            name: s.name || key,
+                            url: s.url // Include URL if available
+                        });
                     }
                 }
             }
@@ -72,24 +80,24 @@ class EnhancedGoogleSheetsService {
             };
         }
     }
-    
+
     /**
      * Clear cache for a specific spreadsheet
      * @param {string} spreadsheetId - ID of the spreadsheet
      */
     clearCache(spreadsheetId) {
         const keysToDelete = [];
-        
+
         for (const key of this.cache.keys()) {
             if (key.startsWith(spreadsheetId)) {
                 keysToDelete.push(key);
             }
         }
-        
+
         keysToDelete.forEach(key => this.cache.delete(key));
-    // console log suppressed
+        // console log suppressed
     }
-    
+
     /**
      * Fetch data from multiple sheets in a Google Spreadsheet
      * @param {string} spreadsheetId - ID of the Google Sheet
@@ -102,9 +110,9 @@ class EnhancedGoogleSheetsService {
             // Merge default options with provided options
             const finalOptions = { ...this.options, ...options };
             // console log suppressed
-            
+
             const result = {};
-            
+
             if (finalOptions.batchRequests) {
                 // Batch fetch all sheets
                 // console log suppressed
@@ -115,13 +123,13 @@ class EnhancedGoogleSheetsService {
                 for (const sheet of sheets) {
                     try {
                         // Remove any API key related options since we're only using GID
-                        const csvOptions = { 
-                            ...finalOptions, 
-                            sheetName: sheet.name 
+                        const csvOptions = {
+                            ...finalOptions,
+                            sheetName: sheet.name
                         };
                         // Delete any API key if present to ensure we only use CSV
                         delete csvOptions.apiKey;
-                        
+
                         const sheetData = await this.fetchSheet(
                             spreadsheetId,
                             sheet.gid,
@@ -134,7 +142,7 @@ class EnhancedGoogleSheetsService {
                         result[sheet.name] = [];
                     }
                 }
-                
+
                 return result;
             }
         } catch (error) {
@@ -142,7 +150,7 @@ class EnhancedGoogleSheetsService {
             throw error;
         }
     }
-    
+
     /**
      * Batch fetch multiple sheets in parallel
      * @param {string} spreadsheetId - ID of the Google Sheet
@@ -157,17 +165,23 @@ class EnhancedGoogleSheetsService {
                 return new Promise(async (resolve) => {
                     try {
                         // Ensure we only use CSV by removing any API key options
-                        const csvOptions = { 
-                            ...options, 
-                            sheetName: sheet.name 
+                        const csvOptions = {
+                            ...options,
+                            sheetName: sheet.name
                         };
                         delete csvOptions.apiKey;
-                        
-                        const sheetData = await this.fetchSheet(
-                            spreadsheetId,
-                            sheet.gid,
-                            csvOptions
-                        );
+
+                        // If sheet has a custom URL, use it directly
+                        let sheetData;
+                        if (sheet.url) {
+                            sheetData = await this.fetchSheetByURL(sheet.url, csvOptions);
+                        } else {
+                            sheetData = await this.fetchSheet(
+                                spreadsheetId,
+                                sheet.gid,
+                                csvOptions
+                            );
+                        }
                         resolve({ name: sheet.name, data: sheetData });
                     } catch (error) {
                         // Suppressed
@@ -175,10 +189,10 @@ class EnhancedGoogleSheetsService {
                     }
                 });
             });
-            
+
             // Execute all fetch promises in parallel
             const results = await Promise.all(fetchPromises);
-            
+
             // Combine results into a single object
             const combinedResults = {};
             results.forEach(result => {
@@ -187,15 +201,15 @@ class EnhancedGoogleSheetsService {
 
             // Debug: log row counts
             // Suppressed debug row counts
-            
+
             return combinedResults;
-            
+
         } catch (error) {
             // Suppressed
             throw error;
         }
     }
-    
+
     /**
      * Fetch data from a single sheet
      * @param {string} spreadsheetId - ID of the Google Sheet
@@ -206,7 +220,7 @@ class EnhancedGoogleSheetsService {
     async fetchSheet(spreadsheetId, gid, options) {
         // Generate cache key for this sheet
         const cacheKey = `${spreadsheetId}_${gid}`;
-        
+
         // Check cache if enabled
         if (options.useCaching) {
             const cachedData = this.getFromCache(cacheKey);
@@ -215,26 +229,26 @@ class EnhancedGoogleSheetsService {
                 return cachedData;
             }
         }
-        
+
         // Store sheetName for logging purposes
         const sheetName = options.sheetName;
-        
+
         // Skip API-based fetching and always use CSV export by gid
-    // console log suppressed
+        // console log suppressed
 
         // Build the URL for the CSV export (fallback)
         const url = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=csv&gid=${gid}`;
-    // console log suppressed
-        
+        // console log suppressed
+
         try {
             let response;
             let retries = 0;
-            
+
             // Implement retry logic
             while (retries <= options.maxRetries) {
                 try {
                     response = await fetch(url);
-                    
+
                     if (response.ok) {
                         break;
                     } else {
@@ -244,40 +258,106 @@ class EnhancedGoogleSheetsService {
                     if (retries === 0) { // Only log first attempt error
                         // Suppressed
                     }
-                    
+
                     if (retries >= options.maxRetries) {
                         throw error;
                     }
-                    
+
                     // Wait before retry
                     await new Promise(r => setTimeout(r, options.retryDelay));
                     retries++;
                 }
             }
-            
+
             if (!response.ok) {
                 throw new Error(`Failed to fetch sheet after ${options.maxRetries} retries`);
             }
-            
+
             // Get CSV text
             const csvText = await response.text();
 
             // Parse CSV to array of objects
             const parsedData = this.parseCSV(csvText);
-            
+
             // Cache the result if caching is enabled
             if (options.useCaching) {
                 this.addToCache(cacheKey, parsedData);
             }
-            
+
             return parsedData;
-            
+
         } catch (error) {
             // Suppressed
             throw error;
         }
     }
-    
+
+    /**
+     * Fetch sheet data using a complete URL (for sheets from different spreadsheets)
+     * @param {string} url - Complete URL to fetch
+     * @param {Object} options - Options for the request
+     * @returns {Promise<Array>} - Array of objects representing the sheet data
+     */
+    async fetchSheetByURL(url, options) {
+        // Generate cache key from URL
+        const cacheKey = url;
+
+        // Check cache if enabled
+        if (options.useCaching) {
+            const cachedData = this.getFromCache(cacheKey);
+            if (cachedData) {
+                return cachedData;
+            }
+        }
+
+        try {
+            let response;
+            let retries = 0;
+
+            // Implement retry logic
+            while (retries <= options.maxRetries) {
+                try {
+                    response = await fetch(url);
+
+                    if (response.ok) {
+                        break;
+                    } else {
+                        throw new Error(`HTTP ${response.status}`);
+                    }
+                } catch (error) {
+                    if (retries >= options.maxRetries) {
+                        throw error;
+                    }
+
+                    // Wait before retry
+                    await new Promise(r => setTimeout(r, options.retryDelay));
+                    retries++;
+                }
+            }
+
+            if (!response.ok) {
+                throw new Error(`Failed to fetch sheet after ${options.maxRetries} retries`);
+            }
+
+            // Get CSV text
+            const csvText = await response.text();
+
+            // Parse CSV to array of objects
+            const parsedData = this.parseCSV(csvText);
+
+            // Cache the result if caching is enabled
+            if (options.useCaching) {
+                this.addToCache(cacheKey, parsedData);
+            }
+
+            return parsedData;
+
+        } catch (error) {
+            console.error(`Error fetching sheet from URL: ${url}`, error);
+            throw error;
+        }
+    }
+
     /**
      * Parse CSV string to array of objects
      * @param {string} csvText - CSV text to parse
@@ -286,52 +366,64 @@ class EnhancedGoogleSheetsService {
     parseCSV(csvText) {
         try {
             if (!csvText || typeof csvText !== 'string') {
-                // Suppressed invalid CSV text warning
                 return [];
             }
-            
-            // Split into rows and filter out empty rows
-            const rows = csvText.split('\n').filter(row => row.trim().length > 0);
-            
+
+            // Check if we accidentally got HTML (e.g. login page) instead of CSV
+            if (csvText.trim().toLowerCase().startsWith('<!doctype html') || csvText.trim().toLowerCase().startsWith('<html')) {
+                console.error('ERROR: Google Sheets returned an HTML page instead of CSV. Is the sheet "Published to the web"?');
+                return [];
+            }
+
+            // Remove BOM if present
+            const cleanText = csvText.replace(/^\uFEFF/, '');
+
+            // Normalize line endings and split into rows
+            const rows = cleanText.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
+                .split('\n')
+                .filter(row => row.trim().length > 0);
+
             if (rows.length === 0) {
                 return [];
             }
-            
+
             // Parse header row - the first row of the CSV
             const headers = this.parseCSVRow(rows[0]);
-            
+
             // Parse data rows
             const data = rows.slice(1).map(row => {
                 const values = this.parseCSVRow(row);
                 const rowObject = {};
-                
+
                 // Combine headers with values
                 headers.forEach((header, index) => {
                     // Skip empty headers
                     if (header && header.trim().length > 0) {
-                        // Convert numeric strings to numbers
                         const value = values[index];
                         if (value !== undefined) {
-                            if (!isNaN(value) && value.trim() !== '') {
-                                rowObject[header] = parseFloat(value);
+                            // Try to convert numeric strings to numbers, but only if they look like numbers
+                            const trimmedVal = String(value).trim();
+                            if (trimmedVal !== '' && !isNaN(trimmedVal) && !trimmedVal.includes('/') && !trimmedVal.includes('-')) {
+                                rowObject[header] = parseFloat(trimmedVal.replace(/,/g, '.'));
                             } else {
                                 rowObject[header] = value;
                             }
                         }
                     }
                 });
-                
+
                 return rowObject;
             });
-            
+
+            console.debug(`parseCSV parsed ${data.length} rows with headers:`, headers.filter(h => h && h.trim()));
             return data;
-            
+
         } catch (error) {
-            // Suppressed parse CSV error log
+            console.error('Error parsing CSV:', error);
             return [];
         }
     }
-    
+
     /**
      * Parse a single CSV row, handling quoted values properly
      * @param {string} row - CSV row to parse
@@ -341,11 +433,11 @@ class EnhancedGoogleSheetsService {
         const result = [];
         let currentValue = '';
         let insideQuotes = false;
-        
+
         for (let i = 0; i < row.length; i++) {
             const char = row[i];
             const nextChar = row[i + 1];
-            
+
             if (char === '"') {
                 if (insideQuotes && nextChar === '"') {
                     // Two double quotes inside quotes - add one quote
@@ -364,13 +456,13 @@ class EnhancedGoogleSheetsService {
                 currentValue += char;
             }
         }
-        
+
         // Add the last value
         result.push(currentValue.trim());
-        
+
         return result;
     }
-    
+
     /**
      * Get item from cache
      * @param {string} key - Cache key
@@ -380,18 +472,18 @@ class EnhancedGoogleSheetsService {
         if (!this.cache.has(key)) {
             return null;
         }
-        
+
         const cacheItem = this.cache.get(key);
-        
+
         // Check if cache has expired
         if (Date.now() > cacheItem.expiresAt) {
             this.cache.delete(key);
             return null;
         }
-        
+
         return cacheItem.data;
     }
-    
+
     /**
      * Add item to cache
      * @param {string} key - Cache key

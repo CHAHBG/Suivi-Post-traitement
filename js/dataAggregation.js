@@ -58,12 +58,47 @@ class DataAggregationService {
         return 0;
     }
 
+    /**
+     * Finds a sheet in the raw data object using fuzzy matching and multiple candidates
+     */
+    _findSheet(rawData, candidates) {
+        if (!rawData || typeof rawData !== 'object') return [];
+
+        // 1. Precise match
+        for (const cand of candidates) {
+            if (rawData[cand] && Array.isArray(rawData[cand])) return rawData[cand];
+        }
+
+        // 2. Normalized match
+        const normCandidates = candidates.map(c => this._normalizeKey(c));
+        const rawKeys = Object.keys(rawData);
+
+        for (const key of rawKeys) {
+            const normKey = this._normalizeKey(key);
+            if (normCandidates.includes(normKey)) {
+                return rawData[key];
+            }
+        }
+
+        // 3. Partial match (if still not found)
+        for (const key of rawKeys) {
+            const normKey = this._normalizeKey(key);
+            for (const nCand of normCandidates) {
+                if (normKey.includes(nCand) || nCand.includes(normKey)) {
+                    if (Array.isArray(rawData[key])) return rawData[key];
+                }
+            }
+        }
+
+        return [];
+    }
+
     // ===== KPI CALCULATIONS =====
     calculateYieldsKPI(data, timeframe) {
         const target = timeframe === 'daily' ? this.config.dailyGoal : timeframe === 'weekly' ? this.config.weeklyGoal : timeframe === 'monthly' ? this.config.monthlyGoal : this.config.dailyGoal;
         let current = 0;
         if (Array.isArray(data) && data.length) {
-            const fieldCandidates = ['Nombre de levées','Nombre de Levées','nombre de levées','nombre de levees','Nombre de levees','Nombre Levées','Nombre Levees','levées','levees','nombre levées','nombre levees','Nombre_de_levées','nombre_de_levées','nombredelevees','NombreDeLevees','parcels collected','parcelcount','parcels','count'];
+            const fieldCandidates = ['Nombre de levées', 'Nombre de Levées', 'nombre de levées', 'nombre de levees', 'Nombre de levees', 'Nombre Levées', 'Nombre Levees', 'levées', 'levees', 'nombre levées', 'nombre levees', 'Nombre_de_levées', 'nombre_de_levées', 'nombredelevees', 'NombreDeLevees', 'parcels collected', 'parcelcount', 'parcels', 'count'];
             current = data.reduce((sum, row) => {
                 let val = this._getNumericField(row, fieldCandidates);
                 if (val === 0) {
@@ -75,30 +110,30 @@ class DataAggregationService {
                                 if (!isNaN(num) && num > 0) { val = num; break; }
                             }
                         }
-                    } catch (_) {}
+                    } catch (_) { }
                 }
                 return sum + val;
             }, 0);
         }
-        
+
         // Round values for better display
         current = Math.round(current);
         const roundedTarget = Math.round(target);
-        
+
         // Calculate percentage with rounded values
         const percentage = roundedTarget > 0 ? Math.min(Math.max(Math.round((current / roundedTarget) * 100), 0), 100) : 0;
         const gap = current - roundedTarget;
-        
+
         console.log(`${timeframe} KPI calculated:`, { current, target: roundedTarget, percentage, gap });
-        
+
         return { current, target: roundedTarget, percentage, gap, status: this.getStatusFromPercentage(percentage) };
     }
 
     calculateQualityKPI(data) {
         let sansErreur = 0, avecErreur = 0;
         if (Array.isArray(data) && data.length) {
-            sansErreur = data.reduce((s, i) => s + this._getNumericField(i, ['Nombre de parcelles affichées sans erreurs','parcelles affichées sans erreurs']), 0);
-            avecErreur = data.reduce((s, i) => s + this._getNumericField(i, ['Nombre Parcelles avec erreur','parcelles avec erreur']), 0);
+            sansErreur = data.reduce((s, i) => s + this._getNumericField(i, ['Nombre de parcelles affichées sans erreurs', 'parcelles affichées sans erreurs']), 0);
+            avecErreur = data.reduce((s, i) => s + this._getNumericField(i, ['Nombre Parcelles avec erreur', 'parcelles avec erreur']), 0);
         }
         const total = sansErreur + avecErreur;
         const rate = total > 0 ? Math.round((sansErreur / total) * 100) : 0;
@@ -109,10 +144,10 @@ class DataAggregationService {
     calculateCTASFKPI(data) {
         let total = 0, retained = 0, toDeliberate = 0, deliberated = 0;
         if (Array.isArray(data) && data.length) {
-            total = data.reduce((s, i) => s + this._getNumericField(i, ['Nombre parcelles emmenées au CTASF','nombre parcelles emmenées au CTASF','nombre parcelles emmenées']), 0);
-            retained = data.reduce((s, i) => s + this._getNumericField(i, ['Nombre parcelles retenues CTASF','nombre parcelles retenues','parcelles retenues']), 0);
-            toDeliberate = data.reduce((s, i) => s + this._getNumericField(i, ['Nombre parcelles à délibérer','nombre parcelles a deliberer','parcelles à délibérer']), 0);
-            deliberated = data.reduce((s, i) => s + this._getNumericField(i, ['Nombre parcelles délibérées','nombre parcelles deliberees','parcelles délibérées']), 0);
+            total = data.reduce((s, i) => s + this._getNumericField(i, ['Nombre parcelles emmenées au CTASF', 'nombre parcelles emmenées au CTASF', 'nombre parcelles emmenées']), 0);
+            retained = data.reduce((s, i) => s + this._getNumericField(i, ['Nombre parcelles retenues CTASF', 'nombre parcelles retenues', 'parcelles retenues']), 0);
+            toDeliberate = data.reduce((s, i) => s + this._getNumericField(i, ['Nombre parcelles à délibérer', 'nombre parcelles a deliberer', 'parcelles à délibérer']), 0);
+            deliberated = data.reduce((s, i) => s + this._getNumericField(i, ['Nombre parcelles délibérées', 'nombre parcelles deliberees', 'parcelles délibérées']), 0);
         }
         const rate = total > 0 ? Math.round((retained / total) * 100) : 0;
         const deliberationRate = toDeliberate > 0 ? Math.round((deliberated / toDeliberate) * 100) : 0;
@@ -123,12 +158,12 @@ class DataAggregationService {
     calculateProcessingKPI(data) {
         let received = 0, processed = 0, individualJoined = 0, collectiveJoined = 0, noJoin = 0, returned = 0;
         if (Array.isArray(data) && data.length) {
-            received = data.reduce((s, i) => s + this._getNumericField(i, ['Parcelles reçues (Brutes)','parcelles recues brutes','parcelles reçues']), 0);
-            processed = data.reduce((s, i) => s + this._getNumericField(i, ['Parcelles post traitées (Sans Doublons et topoplogie correcte)','parcelles post traitee','parcelles post traitees']), 0);
-            individualJoined = data.reduce((s, i) => s + this._getNumericField(i, ['Parcelles individuelles Jointes','parcelles individuelles jointes']), 0);
-            collectiveJoined = data.reduce((s, i) => s + this._getNumericField(i, ['Parcelles collectives Jointes','parcelles collectives jointes']), 0);
-            noJoin = data.reduce((s, i) => s + this._getNumericField(i, ['Parcelles sans jointure','parcelles sans jointure']), 0);
-            returned = data.reduce((s, i) => s + this._getNumericField(i, ['Parcelles retournées aux topos','parcelles retournees aux topos']), 0);
+            received = data.reduce((s, i) => s + this._getNumericField(i, ['Parcelles reçues (Brutes)', 'parcelles recues brutes', 'parcelles reçues']), 0);
+            processed = data.reduce((s, i) => s + this._getNumericField(i, ['Parcelles post traitées (Sans Doublons et topoplogie correcte)', 'parcelles post traitee', 'parcelles post traitees']), 0);
+            individualJoined = data.reduce((s, i) => s + this._getNumericField(i, ['Parcelles individuelles Jointes', 'parcelles individuelles jointes']), 0);
+            collectiveJoined = data.reduce((s, i) => s + this._getNumericField(i, ['Parcelles collectives Jointes', 'parcelles collectives jointes']), 0);
+            noJoin = data.reduce((s, i) => s + this._getNumericField(i, ['Parcelles sans jointure', 'parcelles sans jointure']), 0);
+            returned = data.reduce((s, i) => s + this._getNumericField(i, ['Parcelles retournées aux topos', 'parcelles retournees aux topos']), 0);
         }
         const rate = received > 0 ? Math.min(Math.round((processed / received) * 100), 100) : 0;
         const joinRate = processed > 0 ? Math.round(((individualJoined + collectiveJoined) / processed) * 100) : 0;
@@ -140,12 +175,12 @@ class DataAggregationService {
 
     getDefaultKPIs() {
         return {
-            daily:    { current: 0, target: 833,  percentage: 0, gap: 0, status: 'danger' },
-            weekly:   { current: 0, target: 5829, percentage: 0, gap: 0, status: 'danger' },
-            monthly:  { current: 0, target: 60830,percentage: 0, gap: 0, status: 'danger' },
-            quality:  { sansErreur: 0, avecErreur: 0, total: 0, rate: 0, status: 'danger' },
-            ctasf:    { total: 0, retained: 0, toDeliberate: 0, deliberated: 0, rate: 0, deliberationRate: 0, status: 'danger' },
-            processing:{ received: 0, processed: 0, individualJoined: 0, collectiveJoined: 0, noJoin: 0, returned: 0, rate: 0, joinRate: 0, status: 'danger' }
+            daily: { current: 0, target: 833, percentage: 0, gap: 0, status: 'danger' },
+            weekly: { current: 0, target: 5829, percentage: 0, gap: 0, status: 'danger' },
+            monthly: { current: 0, target: 60830, percentage: 0, gap: 0, status: 'danger' },
+            quality: { sansErreur: 0, avecErreur: 0, total: 0, rate: 0, status: 'danger' },
+            ctasf: { total: 0, retained: 0, toDeliberate: 0, deliberated: 0, rate: 0, deliberationRate: 0, status: 'danger' },
+            processing: { received: 0, processed: 0, individualJoined: 0, collectiveJoined: 0, noJoin: 0, returned: 0, rate: 0, joinRate: 0, status: 'danger' }
         };
     }
 
@@ -157,7 +192,7 @@ class DataAggregationService {
 
         // Region filter (only if region column exists)
         if (region) {
-            const regionKey = rows[0] && (('Région' in rows[0]) ? 'Région' : ('Region' in rows[0] ? 'Region' : ( 'region' in rows[0] ? 'region' : null)));
+            const regionKey = rows[0] && (('Région' in rows[0]) ? 'Région' : ('Region' in rows[0] ? 'Region' : ('region' in rows[0] ? 'region' : null)));
             if (regionKey) {
                 result = result.filter(r => {
                     const val = r[regionKey];
@@ -178,8 +213,8 @@ class DataAggregationService {
         }
 
         // Timeframe filter only if dataset has a usable date field and is one of the time-series sheets
-        if (timeframe && ['daily','weekly','monthly'].includes(timeframe)) {
-            const candidateDateKeys = ['Date','date','DATE'];
+        if (timeframe && ['daily', 'weekly', 'monthly'].includes(timeframe)) {
+            const candidateDateKeys = ['Date', 'date', 'DATE'];
             const dateKey = candidateDateKeys.find(k => rows[0] && k in rows[0]);
             // Restrict timeframe filtering to known temporal datasets to avoid wiping dimension tables
             const temporalLike = /yield|projection|follow-up|followup|phase|timeline|processing/i.test(datasetName);
@@ -190,7 +225,7 @@ class DataAggregationService {
                 else if (timeframe === 'monthly') start.setDate(today.getDate() - 29);
 
                 const parseFlexible = (raw) => {
-                    try { if (window.UTILS && typeof UTILS.parseDateDMY === 'function') return UTILS.parseDateDMY(raw); } catch(_) {}
+                    try { if (window.UTILS && typeof UTILS.parseDateDMY === 'function') return UTILS.parseDateDMY(raw); } catch (_) { }
                     return this.parseDate(raw);
                 };
 
@@ -228,14 +263,14 @@ class DataAggregationService {
     // Trend helpers
     generateTrendData(data, dateField, valueFields, days = 30) {
         if (!Array.isArray(data) || !data.length) return [];
-        
+
         const dateMap = new Map();
 
         data.forEach(item => {
             const d = this.parseDate(item[dateField]);
             if (!d) return;
             const itemDate = this.formatDate(d);
-            
+
             if (dateMap.has(itemDate)) {
                 const entry = dateMap.get(itemDate);
                 valueFields.forEach(f => {
@@ -278,15 +313,15 @@ class DataAggregationService {
     // FIXED: Improved date parsing with proper DD/MM/YYYY format handling
     parseDate(d) {
         if (!d && d !== 0) return null;
-        
-    // Parsing trace suppressed
-        
+
+        // Parsing trace suppressed
+
         // If d is already a Date object, don't try to parse it
         if (d instanceof Date && !isNaN(d)) {
             // Suppressed
             return d;
         }
-        
+
         try {
             if (window.UTILS && typeof UTILS.parseDateDMY === 'function' && window.UTILS !== this) {
                 const dt = UTILS.parseDateDMY(d);
@@ -312,10 +347,10 @@ class DataAggregationService {
             const day = parseInt(europeanMatch[1], 10);
             const month = parseInt(europeanMatch[2], 10);
             let year = parseInt(europeanMatch[3], 10);
-            
+
             // Handle 2-digit years - crucially important for year 2025
             if (year < 100) { year = 2000 + year; }
-            
+
             // Validate ranges
             if (day >= 1 && day <= 31 && month >= 1 && month <= 12 && year >= 1900 && year <= 2100) {
                 const parsed = new Date(year, month - 1, day);
@@ -329,9 +364,9 @@ class DataAggregationService {
             const month = parseInt(americanMatch[1], 10);
             const day = parseInt(americanMatch[2], 10);
             let year = parseInt(americanMatch[3], 10);
-            
+
             if (year < 100) { year = 2000 + year; }
-            
+
             if (day >= 1 && day <= 31 && month >= 1 && month <= 12 && year >= 1900 && year <= 2100) {
                 const parsed = new Date(year, month - 1, day);
                 return parsed;
@@ -350,16 +385,28 @@ class DataAggregationService {
             return parsed;
         }
 
-    // Suppressed
+        // Suppressed
         return null;
     }
 
+    getLatestAvailableDate(sheet) {
+        if (!Array.isArray(sheet) || sheet.length === 0) return new Date();
+        let latest = null;
+        sheet.forEach(row => {
+            const pd = this.parseDate(row['Date'] || row['date']);
+            if (pd && !isNaN(pd)) {
+                if (!latest || pd > latest) latest = pd;
+            }
+        });
+        return latest || new Date();
+    }
+
     formatDate(date) {
-    if (!(date instanceof Date) || isNaN(date)) { return null; }
+        if (!(date instanceof Date) || isNaN(date)) { return null; }
         const formattedDate = date.toISOString().split('T')[0];
-        
-    // Suppress 2001 warning to avoid console noise
-        
+
+        // Suppress 2001 warning to avoid console noise
+
         return formattedDate;
     }
 
@@ -367,12 +414,18 @@ class DataAggregationService {
     calculateKPIs(rawData) {
         try {
             if (!rawData || typeof rawData !== 'object') return this.getDefaultKPIs();
-            const yieldsSheet = rawData['Yields Projections'] || rawData['yieldsProjections'] || rawData['Yields'] || [];
-            const qualitySheet = rawData['Public Display Follow-up'] || [];
-            const ctasfSheet = rawData['CTASF Follow-up'] || [];
-            const processingSheet = rawData['Post Process Follow-up'] || [];
 
-            const today = new Date();
+            const yieldsSheet = this._findSheet(rawData, ['dailyLeveeSource', 'Daily Levee Source', 'Yields Projections', 'Yields', 'Suivi_Parcelles_journaliers']);
+            const qualitySheet = this._findSheet(rawData, ['Public Display Follow-up', 'Public Display', 'Affichage']);
+            const ctasfSheet = this._findSheet(rawData, ['CTASF Follow-up', 'CTASF']);
+            const processingSheet = this._findSheet(rawData, ['Post Process Follow-up', 'Post Process', 'Traitement']);
+            const tmSheet = this._findSheet(rawData, ['Total-Moyenne', 'Total Moyenne', 'Moyenne']);
+
+            console.info(`calculateKPIs: Found yields: ${yieldsSheet.length}, quality: ${qualitySheet.length}, ctasf: ${ctasfSheet.length}, processing: ${processingSheet.length}`);
+
+            const today = this.getLatestAvailableDate(yieldsSheet);
+            console.log('Reference Date (derived from data):', this.formatDate(today));
+
             const dayKey = this.formatDate(today);
             const weekStart = new Date(today); weekStart.setDate(today.getDate() - 6);
             const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
@@ -450,34 +503,49 @@ class DataAggregationService {
             const daily = this.calculateYieldsKPI(dailyData, 'daily');
             const weekly = this.calculateYieldsKPI(weeklyData, 'weekly');
             const monthly = this.calculateYieldsKPI(monthlyData, 'monthly');
+
+            // Expose reference dates for UI labels
+            daily.refDate = this.formatDate(today);
+            weekly.refDate = `${this.formatDate(weekStart)} - ${this.formatDate(today)}`;
+            monthly.refDate = today.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+
             const quality = this.calculateQualityKPI(qualitySheet);
             const ctasf = this.calculateCTASFKPI(ctasfSheet);
             const processing = this.calculateProcessingKPI(processingSheet);
 
-            // ==== Trend calculations (lightweight) ====
+            // ==== Trend calculations (improved) ====
             try {
-                // Previous day (yesterday)
-                const yesterday = new Date(today); yesterday.setDate(today.getDate()-1);
-                const yesterdayKey = this.formatDate(yesterday);
-                const prevDayData = yieldsSheet.filter(r => { const pd = this.parseDate(r['Date'] || r['date']); return pd && this.formatDate(pd) === yesterdayKey && pd <= today; });
-                const prevDay = this.calculateYieldsKPI(prevDayData, 'daily');
-                if (prevDay.current > 0) {
-                    daily.changePct = ((daily.current - prevDay.current) / prevDay.current) * 100;
+                // Find previous day with data
+                let previousDayWithData = null;
+                const dailyKey = this.formatDate(today);
+
+                // Get unique dates sorted descending
+                const allDates = [...new Set(yieldsSheet.map(r => this.formatDate(this.parseDate(r['Date'] || r['date']))))]
+                    .filter(d => d && d < dailyKey)
+                    .sort((a, b) => b.localeCompare(a));
+
+                if (allDates.length > 0) {
+                    const prevDateStr = allDates[0];
+                    const prevDayData = yieldsSheet.filter(r => this.formatDate(this.parseDate(r['Date'] || r['date'])) === prevDateStr);
+                    const prevDay = this.calculateYieldsKPI(prevDayData, 'daily');
+                    if (prevDay.current > 0) {
+                        daily.changePct = ((daily.current - prevDay.current) / prevDay.current) * 100;
+                    }
                 }
 
-                // Previous week (7 days before current week start)
-                const prevWeekStart = new Date(weekStart); prevWeekStart.setDate(weekStart.getDate()-7);
-                const prevWeekEnd = new Date(weekStart); prevWeekEnd.setDate(weekStart.getDate()-1);
-                const prevWeekData = yieldsSheet.filter(r => { const pd = this.parseDate(r['Date'] || r['date']); return pd && pd >= prevWeekStart && pd <= prevWeekEnd && pd <= today; });
+                // Previous week (shifted based on data availability)
+                const prevWeekEnd = new Date(weekStart); prevWeekEnd.setDate(weekStart.getDate() - 1);
+                const prevWeekStart = new Date(prevWeekEnd); prevWeekStart.setDate(prevWeekEnd.getDate() - 6);
+                const prevWeekData = yieldsSheet.filter(r => { const pd = this.parseDate(r['Date'] || r['date']); return pd && pd >= prevWeekStart && pd <= prevWeekEnd; });
                 const prevWeek = this.calculateYieldsKPI(prevWeekData, 'weekly');
                 if (prevWeek.current > 0) {
                     weekly.changePct = ((weekly.current - prevWeek.current) / prevWeek.current) * 100;
                 }
 
                 // Previous month
-                const prevMonthEnd = new Date(monthStart); prevMonthEnd.setDate(prevMonthEnd.getDate()-1);
+                const prevMonthEnd = new Date(monthStart); prevMonthEnd.setDate(prevMonthEnd.getDate() - 1);
                 const prevMonthStart = new Date(prevMonthEnd.getFullYear(), prevMonthEnd.getMonth(), 1);
-                const prevMonthData = yieldsSheet.filter(r => { const pd = this.parseDate(r['Date'] || r['date']); return pd && pd >= prevMonthStart && pd <= prevMonthEnd && pd <= today; });
+                const prevMonthData = yieldsSheet.filter(r => { const pd = this.parseDate(r['Date'] || r['date']); return pd && pd >= prevMonthStart && pd <= prevMonthEnd; });
                 const prevMonth = this.calculateYieldsKPI(prevMonthData, 'monthly');
                 if (prevMonth.current > 0) {
                     monthly.changePct = ((monthly.current - prevMonth.current) / prevMonth.current) * 100;
@@ -505,69 +573,100 @@ class DataAggregationService {
                 }
             } catch (trendErr) { /* silent trend failure */ }
 
-            // ---- Monthly target override: use daily goal * 30 (user expects daily goal baseline)
+            // ==== January 2026 Specific Logic (Goals: 12k Jan, 75k Total) ====
             try {
-                const cfgDaily = (window.CONFIG && window.CONFIG.TARGETS && window.CONFIG.TARGETS.DAILY_PARCELS) ? window.CONFIG.TARGETS.DAILY_PARCELS : this.config.dailyGoal;
-                // Use floor to match explicit daily goal intent (e.g., 832 from 832.77)
-                const dailyGoalBase = Math.floor(Number(cfgDaily) || this.config.dailyGoal);
-                const monthlyTargetFromDaily = dailyGoalBase * 30;
-                monthly.target = Math.round(monthlyTargetFromDaily);
+                // 1. Establish Timeframe
+                const today = new Date(); // Should be Jan 2026 per system time
+                const janStart = new Date(today.getFullYear(), 0, 1); // Jan 1st
+                const janEnd = new Date(today.getFullYear(), 0, 31); // Jan 31st
 
-                // Compute recent average daily rate using yieldsSheet (last N days with data)
-                const dateMap = new Map();
-                for (const r of yieldsSheet) {
-                    const pd = this.parseDate(r['Date'] || r['date']);
-                    if (!pd || pd > latestDate) continue;
-                    const key = this.formatDate(pd);
-                    const val = this._getNumericField(r, ['Nombre de levées','Nombre de Levées','nombre de levées','nombre de levees','Nombre de levees','levées','levees','NombreDeLevees']) || 0;
-                    dateMap.set(key, (dateMap.get(key) || 0) + val);
-                }
-                const sortedDates = Array.from(dateMap.keys()).sort((a,b)=> new Date(a) - new Date(b));
-                // Use up to last 7 days with data to compute avg daily rate, falling back to monthly.current/days so far
-                const lastNDays = 7;
-                const lastDates = sortedDates.slice(-lastNDays);
-                let avgDaily = 0;
-                if (lastDates.length) {
-                    const sum = lastDates.reduce((s,k)=> s + (dateMap.get(k)||0), 0);
-                    avgDaily = sum / lastDates.length;
-                }
-                if (!avgDaily) {
-                    // fallback: use monthly.current / days so far in month
-                    const daysSoFar = latestDate ? (latestDate.getDate()) : 1;
-                    avgDaily = daysSoFar > 0 ? (monthly.current / daysSoFar) : (daily.current || 0);
+                // 2. Determine January Current Total (SSOT: 'Total-Moyenne' sheet, fallback to calculation)
+                let janCurrent = 0;
+                let dataStart = null;
+
+                // Try using the robustly found tmSheet
+                if (tmSheet && tmSheet.length > 0) {
+                    // Assume the last row with valid data is the current status
+                    // Sort by date if possible, else take last
+                    const lastRow = tmSheet[tmSheet.length - 1];
+                    const val = this._getNumericField(lastRow, ['Total', 'total', 'Valeur', 'Value']);
+                    if (val > 0) {
+                        janCurrent = val;
+                        // Try to get date from sheet to check freshness, but default to 'now'
+                        // console.log('Using Total-Moyenne sheet for Jan Total:', janCurrent);
+                    }
                 }
 
-                // Total so far (all yields up to latestDate)
-                const totalSoFar = Array.from(dateMap.values()).reduce((s,v)=> s+v, 0);
+                // Fallback: calculate from yields if Total-Moyenne failed
+                if (janCurrent === 0) {
+                    const janData = yieldsSheet.filter(r => {
+                        const pd = this.parseDate(r['Date'] || r['date']);
+                        return pd && pd >= janStart && pd <= today; // Data up to today
+                    });
 
-                const projections = {};
-                // Helper: days between (exclusive of today) latestDate and endOfMonth inclusive
-                const daysUntil = (fromDate, toDate) => {
-                    const a = new Date(fromDate.getFullYear(), fromDate.getMonth(), fromDate.getDate());
-                    const b = new Date(toDate.getFullYear(), toDate.getMonth(), toDate.getDate());
-                    // compute days difference (b - a) in days
-                    const msPerDay = 24 * 60 * 60 * 1000;
-                    const diff = Math.ceil((b - a) / msPerDay);
-                    return diff >= 0 ? diff : 0;
+                    janCurrent = janData.reduce((sum, row) => {
+                        const val = this._getNumericField(row, ['Nombre de levées', 'Nombre de Levées', 'nombre de levées', 'nombre de levees', 'levées', 'levees']);
+                        return sum + val;
+                    }, 0);
+                    // console.log('Calculated Jan Total from Yields:', janCurrent);
+                }
+
+                // ---- Monthly target override ----
+                try {
+                    // Use configured targets if available, else default
+                    const cfgDaily = (window.CONFIG && window.CONFIG.TARGETS && window.CONFIG.TARGETS.DAILY_PARCELS) ? window.CONFIG.TARGETS.DAILY_PARCELS : 387.1;
+                    const cfgWeekly = (window.CONFIG && window.CONFIG.TARGETS && window.CONFIG.TARGETS.WEEKLY_PARCELS) ? window.CONFIG.TARGETS.WEEKLY_PARCELS : 2710;
+
+                    // Override calculated targets with fixed goals unless dynamic logic is needed
+                    // But for tube visualization, we want the specific January goals
+                    daily.target = Math.round(cfgDaily);
+                    weekly.target = Math.round(cfgWeekly);
+
+                    const dailyGoalBase = Math.floor(Number(cfgDaily) || this.config.dailyGoal);
+                    // Monthly target is handled by specific January logic below, but we set a default here
+                    monthly.target = 12000;
+
+                } catch (ex) { console.warn('Goal target override failed:', ex); }
+
+                // 4. Goals from Config
+                const janGoal = (window.CONFIG && window.CONFIG.TARGETS && window.CONFIG.TARGETS.JANUARY_2026_GOAL) ? window.CONFIG.TARGETS.JANUARY_2026_GOAL : 12000;
+
+                // 5. Calculate Required Rate
+                const daysInJan = 31;
+                const dayOfMonth = today.getDate();
+                const daysRemaining = Math.max(0, daysInJan - dayOfMonth);
+
+                const remainingToGoal = Math.max(0, janGoal - janCurrent);
+                const requiredDailyRate = daysRemaining > 0 ? (remainingToGoal / daysRemaining) : (remainingToGoal > 0 ? remainingToGoal : 0);
+
+                // 6. Calculate Current Daily Average (Jan only)
+                // Usable days: dayOfMonth (since Jan 1st). 
+                const currentDailyAvg = dayOfMonth > 0 ? (janCurrent / dayOfMonth) : 0;
+
+                // 7. Store in 'monthly' KPI
+                monthly.current = janCurrent;
+                monthly.target = janGoal;
+                monthly.percentage = janGoal > 0 ? Math.min(Math.round((janCurrent / janGoal) * 100), 100) : 0;
+                monthly.gap = janCurrent - janGoal;
+                monthly.status = this.getStatusFromPercentage(monthly.percentage);
+
+                // Attach forecast data for UI
+                monthly.forecast = {
+                    janCurrent: Math.round(janCurrent),
+                    janGoal: janGoal,
+                    daysRemaining: daysRemaining,
+                    remainingToGoal: Math.round(remainingToGoal),
+                    requiredDailyRate: Math.round(requiredDailyRate),
+                    currentDailyAvg: Math.round(currentDailyAvg),
+                    achievable: currentDailyAvg >= requiredDailyRate,
+                    alert: currentDailyAvg >= requiredDailyRate ? 'Objectif Atteignable' : 'Attention: Rythme Insuffisant'
                 };
 
-                const monthsToCheck = [ {y: latestDate.getFullYear(), m: 8}, {y: latestDate.getFullYear(), m: 9}, {y: latestDate.getFullYear(), m:10}, {y: latestDate.getFullYear(), m:11} ];
-                // Note: months are 0-based in JS Date; user requested Sept(8) Oct(9) Nov(10) Dec(11)
-                monthsToCheck.forEach(item => {
-                    const endOfMonth = new Date(item.y, item.m+1, 0); // last day of month
-                    const days = daysUntil(latestDate, endOfMonth);
-                    const projected = Math.round(totalSoFar + (avgDaily * days));
-                    const label = ['septembre','octobre','novembre','decembre'][item.m - 8] || `${item.m+1}/${item.y}`;
-                    projections[label] = { projectedTotal: projected, daysRemaining: days };
-                });
+                console.log('January 2026 Logic Applied:', monthly.forecast);
 
-                // Determine achievability for September target: check projected at end of septembre vs monthly.target
-                const septProj = projections['septembre'] ? projections['septembre'].projectedTotal : null;
-                const achievable = septProj !== null ? (septProj >= monthly.target) : false;
-                monthly.forecast = { avgDaily: Math.round(avgDaily), totalSoFar: Math.round(totalSoFar), projections, achievable };
-                monthly.achievable = achievable;
-                monthly.alert = achievable ? 'Atteignable au rythme actuel' : 'Non atteignable au rythme actuel';
-            } catch (ex) { console.warn('Monthly forecast calculation failed:', ex); }
+            } catch (janErr) {
+                console.warn('January logic failed:', janErr);
+            }
 
             return { daily, weekly, monthly, quality, ctasf, processing };
         } catch (e) {

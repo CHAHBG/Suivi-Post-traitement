@@ -9,53 +9,53 @@ class EnhancedDashboard {
             timeframe: 'daily',
             commune: ''
         };
-    this.tubesInitialized = false;
+        this.tubesInitialized = false;
         this.refreshInterval = null;
         this.rawData = null;
         this.autoRefreshEnabled = true;
         this.autoRefreshInterval = 5 * 60 * 1000; // 5 minutes
-        
+
         // Ensure loading overlay is visible at start
         const loadingOverlay = document.getElementById('loadingOverlay');
         if (loadingOverlay) {
             loadingOverlay.style.display = 'flex';
         }
-        
+
         // Set a timeout to hide loading overlay after 8 seconds (failsafe)
         setTimeout(() => {
             this.showLoading(false);
         }, 8000);
     }
-    
+
     /**
      * Initialize the dashboard
      */
     async initialize() {
         try {
             this.showLoading(true);
-            
+
             console.log('Initializing PROCASSEF Dashboard...');
-            
+
             // Set up event listeners
             this.setupEventListeners();
-            
+
             // Load initial data from Google Sheets
             await this.loadData();
-            
+
             // Set up auto-refresh
             this.setupAutoRefresh();
-            
+
             this.isInitialized = true;
             console.log('Dashboard initialized successfully');
-            
+
             // Update last refresh time
             this.updateLastRefreshTime();
-            
+
             // Update debug panel if available
             if (window.debugPanel && typeof window.debugPanel.update === 'function') {
                 window.debugPanel.update();
             }
-            
+
         } catch (error) {
             console.error('Error initializing dashboard:', error);
             this.showError('Erreur lors du chargement du dashboard');
@@ -63,7 +63,7 @@ class EnhancedDashboard {
             this.showLoading(false);
         }
     }
-    
+
     /**
      * Load data and update dashboard components
      */
@@ -72,7 +72,7 @@ class EnhancedDashboard {
             // For development/testing, use mock data
             // In production, fetch from Google Sheets
             let data;
-            
+
             // Allow forcing live Sheets fetch by setting window.FORCE_LIVE_DATA = true or CONFIG.FORCE_LIVE_DATA = true
             // Also prefer live Sheets automatically when an API key is available, unless explicitly forcing mock via FORCE_USE_MOCK
             const explicitForceLive = (window.FORCE_LIVE_DATA === true) || (window.CONFIG && window.CONFIG.FORCE_LIVE_DATA === true);
@@ -146,9 +146,22 @@ class EnhancedDashboard {
             }
 
             this.rawData = data;
+
+            // DEBUG: Inspect loaded data keys and sizes
+            console.group('Dashboard Data Debug');
+            console.log('Raw Data Keys:', Object.keys(this.rawData));
+            Object.keys(this.rawData).forEach(k => {
+                const len = Array.isArray(this.rawData[k]) ? this.rawData[k].length : 0;
+                console.log(`Sheet "${k}": ${len} rows`);
+                if (len > 0) console.log(`  Sample row:`, this.rawData[k][0]);
+            });
+            console.groupEnd();
+
             // Normalize keys: ensure canonical names from config are present
             try {
+                console.info('Normalization: rawData keys:', Object.keys(this.rawData));
                 const canonical = {};
+
                 // Combine both sets
                 const combined = Object.assign({}, window.GOOGLE_SHEETS || {}, window.MONITORING_SHEETS || {});
                 Object.values(combined).forEach(s => {
@@ -156,17 +169,24 @@ class EnhancedDashboard {
                     const name = s.name || '';
                     if (name && this.rawData[name]) {
                         canonical[name] = this.rawData[name];
+                        console.debug(`Matched canonical sheet: ${name}`);
                     }
                 });
 
-                // Also include any existing keys from raw data
-                Object.keys(this.rawData).forEach(k => { if (!canonical[k]) canonical[k] = this.rawData[k]; });
+                // Also include any existing keys from raw data to be safe
+                Object.keys(this.rawData).forEach(k => {
+                    if (!canonical[k]) {
+                        canonical[k] = this.rawData[k];
+                        console.debug(`Included extra sheet: ${k}`);
+                    }
+                });
 
                 this.rawData = canonical;
+                console.info('Normalization complete. Final keys:', Object.keys(this.rawData));
             } catch (e) {
                 console.warn('Error normalizing sheet keys:', e);
             }
-            
+
             // Calculate KPIs using aggregation service (use normalized this.rawData)
             const kpis = dataAggregationService.calculateKPIs(this.rawData, this.currentFilters);
             // Expose KPIs and dashboard reference globally so other UI helpers (forecastCard) can access immediately
@@ -178,182 +198,55 @@ class EnhancedDashboard {
                 this.kpis = kpis;
             } catch (e) { /* ignore */ }
             console.log('KPIs calculated:', kpis);
-            
+
             // Initialize tube progress indicators
             this.initializeTubeIndicators(kpis);
-            
+
             // Update quality and other rate displays
             this.updateRateDisplays(kpis);
 
             // Update header trends dynamically
             this.updateHeaderTrends(this.rawData, kpis);
-            
+
             // Update progress indicators
             this.updateProgressIndicators(kpis);
-            
+
             // Initialize charts
             await this.initializeCharts(this.rawData, kpis);
-            
+
             // Update regional data
             this.updateRegionalData(this.rawData);
 
+            // Update monitoring indicators
+            this.updateMonitoringIndicators(kpis);
+
             // Populate detailed tables using current filters
             this.populateDataTables(this.filterData(this.rawData));
-            
+
+            // Initialize Project Timeline (Async)
+            if (window.projectTimelineService) {
+                window.projectTimelineService.initialize();
+            }
+
         } catch (error) {
             console.error('Error loading dashboard data:', error);
             throw error;
         }
     }
-    
+
     /**
      * Initialize tube progress indicators
      * @param {Object} kpis - KPI data
      * @returns {boolean} success status
      */
     initializeTubeIndicators(kpis) {
-        console.log('Initializing tube indicators with:', kpis);
-
-        // Accept both legacy class and new hero-section naming (robust to future changes)
-        const possibleSections = [
-            document.querySelector('.overview-section'),
-            document.querySelector('.hero-section'),
-            document.getElementById('dailyTube')?.parentElement // fallback heuristic
-        ].filter(Boolean);
-
-        if (!possibleSections.length) {
-            console.warn('[TubeInit] No overview/hero section found – retry will occur on next refresh if containers appear later.');
-        }
-        
-        // Initialize or update tube progress indicators
-        if (window.tubeProgressService) {
-            // First check if tube container elements exist, if not try to use legacy liquid containers
-            const dailyContainer = document.getElementById('dailyTube') || document.getElementById('dailyProgress');
-            const weeklyContainer = document.getElementById('weeklyTube') || document.getElementById('weeklyProgress');
-            const monthlyContainer = document.getElementById('monthlyTube') || document.getElementById('monthlyProgress');
-            
-            // Ensure the containers have the correct IDs and transform legacy containers
-            if (dailyContainer) {
-                if (dailyContainer.id !== 'dailyTube') {
-                    dailyContainer.id = 'dailyTube';
-                    // Clear any legacy content to avoid interference
-                    dailyContainer.innerHTML = '';
-                    dailyContainer.className = 'tube-container';
-                }
-            }
-            
-            if (weeklyContainer) {
-                if (weeklyContainer.id !== 'weeklyTube') {
-                    weeklyContainer.id = 'weeklyTube';
-                    weeklyContainer.innerHTML = '';
-                    weeklyContainer.className = 'tube-container';
-                }
-            }
-            
-            if (monthlyContainer) {
-                if (monthlyContainer.id !== 'monthlyTube') {
-                    monthlyContainer.id = 'monthlyTube';
-                    monthlyContainer.innerHTML = '';
-                    monthlyContainer.className = 'tube-container';
-                }
-            }
-            
-            // Only initialize tubes if the containers exist
-            const tubesToInitialize = {};
-            
-            if (dailyContainer) {
-                tubesToInitialize.dailyTube = {
-                    title: 'Jour',
-                    currentValue: kpis.daily.current,
-                    targetValue: kpis.daily.target,
-                    percentage: kpis.daily.percentage,
-                    gap: kpis.daily.gap,
-                    status: kpis.daily.status,
-                    color: 'primary'
-                };
-            }
-            
-            if (weeklyContainer) {
-                tubesToInitialize.weeklyTube = {
-                    title: 'Semaine',
-                    currentValue: kpis.weekly.current,
-                    targetValue: kpis.weekly.target,
-                    percentage: kpis.weekly.percentage,
-                    gap: kpis.weekly.gap,
-                    status: kpis.weekly.status,
-                    color: 'warning'
-                };
-            }
-            
-            if (monthlyContainer) {
-                // Compute monthly target as dailyGoal * 30 (preference to CONFIG.TARGETS.DAILY_PARCELS)
-                const cfgDaily = (window.CONFIG && window.CONFIG.TARGETS && window.CONFIG.TARGETS.DAILY_PARCELS) ? window.CONFIG.TARGETS.DAILY_PARCELS : (dataAggregationService && dataAggregationService.config && dataAggregationService.config.dailyGoal) ? dataAggregationService.config.dailyGoal : 833;
-                const monthlyTargetFromDaily = Math.round(Number(cfgDaily) * 30);
-                const effectiveMonthlyTarget = (kpis.monthly && kpis.monthly.target) ? kpis.monthly.target : monthlyTargetFromDaily;
-
-                tubesToInitialize.monthlyTube = {
-                    title: 'Mois',
-                    currentValue: kpis.monthly.current,
-                    targetValue: effectiveMonthlyTarget,
-                    percentage: kpis.monthly.percentage,
-                    gap: kpis.monthly.gap,
-                    status: kpis.monthly.status,
-                    color: 'danger'
-                };
-            }
-            
-            if (Object.keys(tubesToInitialize).length > 0) {
-                try {
-                    tubeProgressService.initializeTubes(tubesToInitialize);
-                    this.tubesInitialized = true;
-                    // Add small forecast icon to monthly tube (if available)
-                    try {
-                        // Do NOT add an icon into the monthly tube per design change.
-                        // Only recompute and display the gap based on effective monthly target
-                        const monthlyEl = document.getElementById('monthlyTube');
-                        if (monthlyEl) {
-                            try {
-                                const monthlyKPI = kpis && kpis.monthly ? kpis.monthly : null;
-                                if (monthlyKPI) {
-                                    const effectiveTarget = monthlyKPI.target;
-                                    const gap = (Number(monthlyKPI.current) || 0) - (Number(effectiveTarget) || 0);
-                                    const gapEl = monthlyEl.querySelector('.tube-gap');
-                                    if (gapEl) {
-                                        const absFmt = new Intl.NumberFormat('fr-FR').format(Math.abs(Math.round(gap)));
-                                        gapEl.textContent = (gap >= 0 ? `+${absFmt}` : `-${absFmt}`);
-                                        gapEl.classList.toggle('positive', gap > 0);
-                                        gapEl.classList.toggle('negative', gap < 0);
-                                    }
-                                    if (window.tubeProgressService && typeof window.tubeProgressService.updateTube === 'function') {
-                                        window.tubeProgressService.updateTube('monthlyTube', { targetValue: effectiveTarget, gap: (Number(monthlyKPI.current)||0) - (Number(effectiveTarget)||0) });
-                                    }
-                                }
-                            } catch(e) { /* ignore */ }
-                        }
-                    } catch (err) { console.warn('Could not update monthly gap:', err); }
-                    return true;
-                } catch (error) {
-                    console.error('Error initializing tube indicators:', error);
-                    return false;
-                }
-            } else {
-                console.warn('[TubeInit] Containers (dailyTube / weeklyTube / monthlyTube) not found yet.');
-                return false;
-            }
-        } else if (window.liquidProgressService) {
-            // Fallback to legacy liquid progress
-            try {
-                liquidProgressService.initializeLiquidProgress(kpis);
-                this.tubesInitialized = true;
-                return true;
-            } catch (error) {
-                console.error('Error initializing liquid indicators:', error);
-                return false;
-            }
+        if (window.statCardService) {
+            statCardService.updateCards(kpis, this.rawData);
+            return true;
         }
         return false;
     }
-    
+
     /**
      * Update rate displays for quality, CTASF, etc.
      * @param {Object} kpis - KPI data
@@ -367,70 +260,70 @@ class EnhancedDashboard {
             console.warn('Quality rate data is missing');
             this.updateQualityRate(0);
         }
-        
+
         // Update CTASF rate
         if (kpis.ctasf && typeof kpis.ctasf.rate !== 'undefined') {
             this.updateCTASFRate(kpis.ctasf.rate);
             this.updateTrendBadge('ctasfRate', kpis.ctasf.changePct, true);
         }
-        
+
         // Update processing rate
         if (kpis.processing && typeof kpis.processing.rate !== 'undefined') {
             this.updateProcessingRate(kpis.processing.rate);
             this.updateTrendBadge('processingRate', kpis.processing.changePct, true);
         }
     }
-    
+
     /**
      * Update progress indicators in the overview section
      * @param {Object} kpis - KPI data
      */
     updateProgressIndicators(kpis) {
-    console.log('🔄 Updating overview metrics from Commune Analysis');
-    // Aggregate Commune Analysis sheet for overview
-    const commData = this.rawData['Commune Analysis'] || [];
-    // Helper: parse number
-    const parseNumOverview = v => Number(String(v).replace(/\s+/g, '').replace(/,/g, '.')) || 0;
-    // Robust per-row lookup: try exact column names (French first), then case-insensitive key match
-    const getValueForRow = (row, candidates = []) => {
-        for (const cand of candidates) {
-            if (!cand) continue;
-            // direct property (exact)
-            if (row[cand] != null && row[cand] !== '') return parseNumOverview(row[cand]);
-            // case-insensitive match of existing keys
-            const foundKey = Object.keys(row).find(k => k && k.toLowerCase() === cand.toLowerCase());
-            if (foundKey && row[foundKey] != null && row[foundKey] !== '') return parseNumOverview(row[foundKey]);
-        }
-        return 0;
-    };
+        console.log('🔄 Updating overview metrics from Commune Analysis');
+        // Aggregate Commune Analysis sheet for overview
+        const commData = this.rawData['Commune Analysis'] || [];
+        // Helper: parse number
+        const parseNumOverview = v => Number(String(v).replace(/\s+/g, '').replace(/,/g, '.')) || 0;
+        // Robust per-row lookup: try exact column names (French first), then case-insensitive key match
+        const getValueForRow = (row, candidates = []) => {
+            for (const cand of candidates) {
+                if (!cand) continue;
+                // direct property (exact)
+                if (row[cand] != null && row[cand] !== '') return parseNumOverview(row[cand]);
+                // case-insensitive match of existing keys
+                const foundKey = Object.keys(row).find(k => k && k.toLowerCase() === cand.toLowerCase());
+                if (foundKey && row[foundKey] != null && row[foundKey] !== '') return parseNumOverview(row[foundKey]);
+            }
+            return 0;
+        };
 
-    // Sum candidates across all communes. Accepts multiple fallbacks: French first, English second.
-    const sumCol = (...candidates) => commData.reduce((sum, r) => sum + getValueForRow(r, candidates), 0);
+        // Sum candidates across all communes. Accepts multiple fallbacks: French first, English second.
+        const sumCol = (...candidates) => commData.reduce((sum, r) => sum + getValueForRow(r, candidates), 0);
 
-    // NOTE: Historically some dashboard numbers were derived from other sheets (yields/processing) or placeholders.
-    // Now we explicitly sum columns from the 'Commune Analysis' sheet using the exact French column names you provided
-    // (with English fallbacks only if French keys are missing).
-    const totalParcelsOverview = sumCol('Total Parcelles', 'Total Parcels');
-    const nicadOverview = sumCol('NICAD');
-    const ctasfOverview = sumCol('CTASF');
-    const deliberatedOverview = sumCol('Délibérées', 'Deliberated');
-    // Update Total Parcels
-    // Total Parcels (display absolute sum)
-    this.updateProgressBar('totalParcelsOverviewProgress', 100);
-    this.updateProgressValue('totalParcelsOverviewValue', `${totalParcelsOverview.toLocaleString()}`);
-    // Update NICAD
-    const nicadPct = totalParcelsOverview > 0 ? (nicadOverview / totalParcelsOverview) * 100 : 0;
-    this.updateProgressBar('nicadOverviewProgress', nicadPct);
-    this.updateProgressValue('nicadOverviewValue', `${nicadOverview.toLocaleString()}`);
-    // Update CTASF
-    const ctasfPct = totalParcelsOverview > 0 ? (ctasfOverview / totalParcelsOverview) * 100 : 0;
-    this.updateProgressBar('ctasfOverviewProgress', ctasfPct);
-    this.updateProgressValue('ctasfOverviewValue', `${ctasfOverview.toLocaleString()}`);
-    // Update Délibérées
-    const delibPct = totalParcelsOverview > 0 ? (deliberatedOverview / totalParcelsOverview) * 100 : 0;
-    this.updateProgressBar('deliberatedOverviewProgress', delibPct);
-    this.updateProgressValue('deliberatedOverviewValue', `${deliberatedOverview.toLocaleString()}`);
-        
+        // NOTE: Historically some dashboard numbers were derived from other sheets (yields/processing) or placeholders.
+        // Now we explicitly sum columns from the 'Commune Analysis' sheet using the exact French column names you provided
+        // (with English fallbacks only if French keys are missing).
+        const totalParcelsOverview = sumCol('Total Parcelles', 'Total Parcels');
+        const nicadOverview = sumCol('NICAD');
+        const ctasfOverview = sumCol('CTASF');
+        const deliberatedOverview = sumCol('Délibérées', 'Deliberated');
+        // Update Total Parcels
+        // Total Parcels (display absolute sum)
+        this.updateProgressBar('totalParcelsOverviewProgress', 100);
+        this.updateProgressValue('totalParcelsOverviewValue', `${totalParcelsOverview.toLocaleString()}`);
+        // Update NICAD
+        const nicadPct = totalParcelsOverview > 0 ? (nicadOverview / totalParcelsOverview) * 100 : 0;
+        this.updateProgressBar('nicadOverviewProgress', nicadPct);
+        this.updateProgressValue('nicadOverviewValue', `${nicadOverview.toLocaleString()}`);
+        // Update CTASF
+        const ctasfPct = totalParcelsOverview > 0 ? (ctasfOverview / totalParcelsOverview) * 100 : 0;
+        this.updateProgressBar('ctasfOverviewProgress', ctasfPct);
+        this.updateProgressValue('ctasfOverviewValue', `${ctasfOverview.toLocaleString()}`);
+        // Update Délibérées
+        const delibPct = totalParcelsOverview > 0 ? (deliberatedOverview / totalParcelsOverview) * 100 : 0;
+        this.updateProgressBar('deliberatedOverviewProgress', delibPct);
+        this.updateProgressValue('deliberatedOverviewValue', `${deliberatedOverview.toLocaleString()}`);
+
         // Update Processing Phases Progress using sheet data
         const proc1 = this.rawData['Processing Phase 1'] || [];
         const proc2 = this.rawData['Processing Phase 2'] || [];
@@ -442,32 +335,32 @@ class EnhancedDashboard {
         const sumArr = arr => arr.reduce((sum, r) => sum + parseNum(r['Total'] || r['total']), 0);
         const total1 = sumArr(proc1);
         const total2 = sumArr(proc2);
-    // Phase Pilote
-    const pp = getNum(proc1, 'Phase Pilote');
-    if(document.getElementById('phasePiloteProgress') || document.getElementById('phasePiloteValue')){
-        this.updateProgressBar('phasePiloteProgress', total1 > 0 ? (pp / total1) * 100 : 0);
-        this.updateProgressValue('phasePiloteValue', `${Math.round(pp).toLocaleString()} / ${Math.round(total1).toLocaleString()}`);
-    }
-    // QField
-    const qf = getNum(proc1, 'QField');
-    if(document.getElementById('qfieldProgress') || document.getElementById('qfieldValue')){
-        this.updateProgressBar('qfieldProgress', total1 > 0 ? (qf / total1) * 100 : 0);
-        this.updateProgressValue('qfieldValue', `${Math.round(qf).toLocaleString()} / ${Math.round(total1).toLocaleString()}`);
-    }
+        // Phase Pilote
+        const pp = getNum(proc1, 'Phase Pilote');
+        if (document.getElementById('phasePiloteProgress') || document.getElementById('phasePiloteValue')) {
+            this.updateProgressBar('phasePiloteProgress', total1 > 0 ? (pp / total1) * 100 : 0);
+            this.updateProgressValue('phasePiloteValue', `${Math.round(pp).toLocaleString()} / ${Math.round(total1).toLocaleString()}`);
+        }
+        // QField
+        const qf = getNum(proc1, 'QField');
+        if (document.getElementById('qfieldProgress') || document.getElementById('qfieldValue')) {
+            this.updateProgressBar('qfieldProgress', total1 > 0 ? (qf / total1) * 100 : 0);
+            this.updateProgressValue('qfieldValue', `${Math.round(qf).toLocaleString()} / ${Math.round(total1).toLocaleString()}`);
+        }
         // Total Parcels (combined phases)
         const combinedTotal = total1 + total2;
         const combinedCurrent = total1;
-    if(document.getElementById('totalParcelsProgress') || document.getElementById('totalParcelsValue')){
-        this.updateProgressBar('totalParcelsProgress', combinedTotal > 0 ? (combinedCurrent / combinedTotal) * 100 : 0);
-        this.updateProgressValue('totalParcelsValue', `${Math.round(combinedCurrent).toLocaleString()} / ${Math.round(combinedTotal).toLocaleString()}`);
-    }
+        if (document.getElementById('totalParcelsProgress') || document.getElementById('totalParcelsValue')) {
+            this.updateProgressBar('totalParcelsProgress', combinedTotal > 0 ? (combinedCurrent / combinedTotal) * 100 : 0);
+            this.updateProgressValue('totalParcelsValue', `${Math.round(combinedCurrent).toLocaleString()} / ${Math.round(combinedTotal).toLocaleString()}`);
+        }
         // Phase KoboCollect
-    const kc = getNum(proc2, 'Phase KoboCollect');
-    if(document.getElementById('koboCollectProgress') || document.getElementById('koboCollectValue')){
-        this.updateProgressBar('koboCollectProgress', total2 > 0 ? (kc / total2) * 100 : 0);
-        this.updateProgressValue('koboCollectValue', `${Math.round(kc).toLocaleString()} / ${Math.round(total2).toLocaleString()}`);
-    }
-        
+        const kc = getNum(proc2, 'Phase KoboCollect');
+        if (document.getElementById('koboCollectProgress') || document.getElementById('koboCollectValue')) {
+            this.updateProgressBar('koboCollectProgress', total2 > 0 ? (kc / total2) * 100 : 0);
+            this.updateProgressValue('koboCollectValue', `${Math.round(kc).toLocaleString()} / ${Math.round(total2).toLocaleString()}`);
+        }
+
         // Update Progress Cards
         if (kpis.ctasf && typeof kpis.ctasf.rate !== 'undefined') {
             console.log('📊 CTASF Rate:', kpis.ctasf.rate + '%');
@@ -476,7 +369,7 @@ class EnhancedDashboard {
         } else {
             console.warn('⚠️ CTASF KPI data is missing');
         }
-        
+
         if (kpis.processing && typeof kpis.processing.rate !== 'undefined') {
             console.log('📊 Processing Rate:', kpis.processing.rate + '%');
             this.updateProgressBar('processingRateBar', kpis.processing.rate);
@@ -484,7 +377,7 @@ class EnhancedDashboard {
         } else {
             console.warn('⚠️ Processing KPI data is missing');
         }
-        
+
         // Compute additional gauges using existing communeData
         // Sum across all communes, supporting exact French column names (with sensible fallbacks)
         const sumField = (...fields) => fields.reduce((sum, field) => {
@@ -530,9 +423,9 @@ class EnhancedDashboard {
         const urmPct = rawParcels > 0 ? (validatedByURM / rawParcels) * 100 : 0;
         this.updateProgressBar('urmValidationRateBar', urmPct);
         this.updateProgressValue('urmValidationValue', `${urmPct.toFixed(1)}%`);
-    console.log('✅ Progress indicators update completed');
+        console.log('✅ Progress indicators update completed');
     }
-    
+
     /**
      * Update a progress bar element
      * @param {string} elementId - ID of the progress bar element
@@ -544,7 +437,7 @@ class EnhancedDashboard {
             element.style.width = `${Math.max(0, Math.min(100, percentage))}%`;
         }
     }
-    
+
     /**
      * Update a progress value text element
      * @param {string} elementId - ID of the value element
@@ -556,7 +449,7 @@ class EnhancedDashboard {
             element.textContent = value;
         }
     }
-    
+
     /**
      * Initialize all charts
      * @param {Object} data - Raw data
@@ -566,7 +459,7 @@ class EnhancedDashboard {
             await chartService.initializeCharts(data);
         }
     }
-    
+
     /**
      * Update regional data display
      * @param {Object} data - Raw data
@@ -575,24 +468,321 @@ class EnhancedDashboard {
         const communeData = data.communeData || [];
         this.generateCommuneHeatmap(communeData);
 
-        // Update header stat pills for Actif / En cours based on CONFIG
+        // Update header stat pills for Actif / En cours based on dynamic calculation
         try {
-            const activeCount = Array.isArray(CONFIG?.COMMUNE_STATUS?.active) ? CONFIG.COMMUNE_STATUS.active.length : 0;
-            const inProgressCount = Array.isArray(CONFIG?.COMMUNE_STATUS?.inProgress) ? CONFIG.COMMUNE_STATUS.inProgress.length : 0;
+            // Logic:
+            // Actif: Commune has reported data within the last 7 days
+            // En cours: Commune has NOT reported data for more than 7 days (but not terminated)
+            // Terminé: Commune is marked as terminated
+
+            const yieldsData = (this.rawData && this.rawData['Yields Projections']) ? this.rawData['Yields Projections'] : [];
+            let activeCount = 0;
+            let inProgressCount = 0;
+            let terminatedCount = 0;
+
+            if (yieldsData.length > 0) {
+                const communeLastDate = {};
+                const parseDate = (d) => {
+                    if (!d) return null;
+                    if (d instanceof Date) return d;
+                    const parts = d.split('/');
+                    if (parts.length === 3) return new Date(parts[2], parts[1] - 1, parts[0]);
+                    return new Date(d);
+                };
+
+                // Group by commune and find max date
+                yieldsData.forEach(row => {
+                    const commune = row['Commune'] || row['commune'];
+                    const dateStr = row['Date'] || row['date'];
+                    if (!commune || !dateStr) return;
+
+                    const date = parseDate(dateStr);
+                    if (date && !isNaN(date.getTime())) {
+                        if (!communeLastDate[commune] || date > communeLastDate[commune]) {
+                            communeLastDate[commune] = date;
+                        }
+                    }
+                });
+
+                const today = new Date();
+                today.setHours(0, 0, 0, 0); // Normalize to start of day
+                const sevenDaysAgo = new Date(today);
+                sevenDaysAgo.setDate(today.getDate() - 7);
+
+                // Count communes based on last reporting date
+                Object.values(communeLastDate).forEach(lastDate => {
+                    // Normalize date for comparison
+                    const normalizedLastDate = new Date(lastDate);
+                    normalizedLastDate.setHours(0, 0, 0, 0);
+
+                    if (normalizedLastDate >= sevenDaysAgo) {
+                        // Data reported within last 7 days = Actif
+                        activeCount++;
+                    } else {
+                        // No data for more than 7 days = En cours (unless terminated)
+                        inProgressCount++;
+                    }
+                });
+            } else {
+                // Fallback to config if no data
+                activeCount = Array.isArray(CONFIG?.COMMUNE_STATUS?.active) ? CONFIG.COMMUNE_STATUS.active.length : 0;
+                inProgressCount = Array.isArray(CONFIG?.COMMUNE_STATUS?.inProgress) ? CONFIG.COMMUNE_STATUS.inProgress.length : 0;
+            }
+
             document.querySelectorAll('.stat-pill').forEach(pill => {
                 const label = pill.querySelector('.stat-label')?.textContent?.trim();
                 const valueEl = pill.querySelector('.stat-value');
                 if (!valueEl) return;
-                if (label === 'Actif') valueEl.textContent = String(activeCount);
+
+                // Matches standard pill labels
+                if (label === 'Actif' || label === 'Active') valueEl.textContent = String(activeCount);
                 if (label === 'En cours') valueEl.textContent = String(inProgressCount);
+                if (label === 'Terminé' || label === 'Completed') valueEl.textContent = String(terminatedCount);
             });
-        } catch(_) { /* no-op */ }
+
+            // Also notify forecast card to update if API exists
+            if (window.forecastCard && typeof window.forecastCard.update === 'function') {
+                // Wait briefly for KPIs to be fully ready if needed
+                setTimeout(() => window.forecastCard.update(this.kpis), 500);
+            }
+
+        } catch (e) { console.warn('Error updating commune stats:', e); }
+
+        // Attach listeners to new "Download XLSX" buttons automatically when similar UI updates occur
+        document.querySelectorAll('.download-btn').forEach(btn => {
+            if (btn.dataset.bound) return;
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                const parentSection = btn.closest('.tables-section');
+                if (!parentSection) return;
+
+                // Find the currently active table panel
+                const activePanel = parentSection.querySelector('.table-panel.active');
+                if (activePanel) {
+                    const table = activePanel.querySelector('table');
+                    if (table) this.exportTableToXLSX(table, `procassef_export_${new Date().toISOString().slice(0, 10)}.xlsx`);
+                }
+            });
+            btn.dataset.bound = 'true';
+        });
     }
-    
+
+    /**
+     * Export HTML Table to XLSX using SheetJS
+     * @param {HTMLElement} table - The table element
+     * @param {string} filename - The target filename
+     */
+    exportTableToXLSX(table, filename) {
+        try {
+            // Check if SheetJS is available
+            if (typeof XLSX === 'undefined') {
+                console.warn('SheetJS not loaded, falling back to CSV export');
+                this.exportTableToCSV(table, filename.replace('.xlsx', '.csv'));
+                return;
+            }
+
+            // Convert HTML table to workbook
+            const wb = XLSX.utils.table_to_book(table, { sheet: 'Export' });
+
+            // Style the workbook (basic formatting)
+            const ws = wb.Sheets['Export'];
+            if (ws['!ref']) {
+                // Apply column widths
+                const cols = [];
+                const range = XLSX.utils.decode_range(ws['!ref']);
+                for (let c = range.s.c; c <= range.e.c; c++) {
+                    cols.push({ wch: 18 }); // Default column width
+                }
+                ws['!cols'] = cols;
+            }
+
+            // Download the file
+            XLSX.writeFile(wb, filename);
+            console.log('XLSX export successful:', filename);
+        } catch (e) {
+            console.error('XLSX export failed, falling back to CSV:', e);
+            this.exportTableToCSV(table, filename.replace('.xlsx', '.csv'));
+        }
+    }
+
+    /**
+     * Fallback: Export HTML Table to CSV
+     * @param {HTMLElement} table - The table element
+     * @param {string} filename - The target filename
+     */
+    exportTableToCSV(table, filename) {
+        const rows = Array.from(table.querySelectorAll('tr'));
+        const csvContent = rows.map(row => {
+            const cols = Array.from(row.querySelectorAll('th, td'));
+            return cols.map(col => {
+                let txt = col.innerText || col.textContent;
+                txt = txt.replace(/"/g, '""');
+                return `"${txt}"`;
+            }).join(';');
+        }).join('\n');
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        if (link.download !== undefined) {
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', filename);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    }
+
+    /**
+     * Update monitoring indicators with visual progress bars
+     * @param {Object} kpis - KPI data
+     */
+    updateMonitoringIndicators(kpis) {
+        try {
+            let dailyTarget = CONFIG?.TARGETS?.JANUARY_2026?.DAILY_PARCELS || 387;
+            let weeklyTarget = CONFIG?.TARGETS?.JANUARY_2026?.WEEKLY_PARCELS || 2710;
+            let monthlyTarget = CONFIG?.TARGETS?.JANUARY_2026?.MONTHLY_PARCELS || 12000;
+
+            // Try to fetch dynamic targets from Projections sheet
+            // We assume the sheet has columns like "Metric", "Value" or month columns
+            if (this.rawData && (this.rawData['Collection Projections'] || this.rawData['projectionCollection'])) {
+                const projSheet = this.rawData['Collection Projections'] || this.rawData['projectionCollection'];
+                // Logic: Find current month column? Or just find a specific row?
+                // The config says columns=['Metric', 'Value', 'Sept 2025'...]
+                // Let's look for "Monthly Target" or similar in "Metric" column
+
+                const currentMonthName = new Date().toLocaleString('fr-FR', { month: 'short', year: 'numeric' }); // e.g. "janv. 2026"
+                // Normalize month name to match sheet headers if possible (e.g. "Sept 2025")
+                // For now, let's try to find a "Goal" or "Target" row
+
+                const targetRow = projSheet.find(r => {
+                    const m = (r['Metric'] || r['metric'] || '').toLowerCase();
+                    return m.includes('target') || m.includes('objectif') || m.includes('goal');
+                });
+
+                if (targetRow) {
+                    // Try to get value for current month, otherwise generic Value
+                    // This is speculative without seeing data, but safe to try
+                    const val = parseFloat(targetRow['Value'] || targetRow['value']);
+                    if (!isNaN(val) && val > 0) {
+                        monthlyTarget = val;
+                        dailyTarget = val / 30; // Approximation
+                        weeklyTarget = val / 4;
+                        console.log('Using dynamic monthly target from projections:', monthlyTarget);
+                    }
+                }
+            }
+
+            const dailyActual = kpis?.daily?.current || kpis?.daily?.currentParcels || 0;
+            const weeklyActual = kpis?.weekly?.current || kpis?.weekly?.currentParcels || 0;
+            const monthlyActual = kpis?.monthly?.current || kpis?.monthly?.currentParcels || 0;
+
+            // Daily Progress
+            const dailyPct = Math.min(100, Math.round((dailyActual / dailyTarget) * 100));
+            this._updateProgressCard('dailyProgressValue', `${dailyActual.toLocaleString('fr-FR')} / ${dailyTarget.toLocaleString('fr-FR')}`);
+            this._updateProgressCard('dailyProgressPercent', `${dailyPct}%`);
+            this._updateProgressBar('dailyProgressBar', dailyPct);
+
+            // Weekly Progress
+            const weeklyPct = Math.min(100, Math.round((weeklyActual / weeklyTarget) * 100));
+            this._updateProgressCard('weeklyProgressValue', `${weeklyActual.toLocaleString('fr-FR')} / ${weeklyTarget.toLocaleString('fr-FR')}`);
+            this._updateProgressCard('weeklyProgressPercent', `${weeklyPct}%`);
+            this._updateProgressBar('weeklyProgressBar', weeklyPct);
+
+            // Monthly Progress
+            const monthlyPct = Math.min(100, Math.round((monthlyActual / monthlyTarget) * 100));
+            this._updateProgressCard('monthlyProgressValue', `${monthlyActual.toLocaleString('fr-FR')} / ${monthlyTarget.toLocaleString('fr-FR')}`);
+            this._updateProgressCard('monthlyProgressPercent', `${monthlyPct}%`);
+            this._updateProgressBar('monthlyProgressBar', monthlyPct);
+
+            // Performance Summary
+            const daysElapsed = new Date().getDate();
+            const daysInMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate();
+            const daysRemaining = daysInMonth - daysElapsed;
+            const avgDaily = daysElapsed > 0 ? Math.round(monthlyActual / daysElapsed) : 0;
+            const remainingNeeded = monthlyTarget - monthlyActual;
+            const requiredPerDay = daysRemaining > 0 ? Math.round(remainingNeeded / daysRemaining) : 0;
+            const projection = Math.round(monthlyActual + (avgDaily * daysRemaining));
+            const projectedGap = projection - monthlyTarget;
+
+            this._updateProgressCard('avgDailyValue', `${avgDaily} parcelles`);
+            this._updateProgressCard('daysRemainingValue', `${daysRemaining}`);
+            this._updateProgressCard('requiredPerDayValue', `${requiredPerDay}`);
+
+            const gapEl = document.getElementById('projectedGapValue');
+            if (gapEl) {
+                if (projectedGap >= 0) {
+                    gapEl.textContent = `+${projectedGap.toLocaleString('fr-FR')}`;
+                    gapEl.classList.add('positive');
+                    gapEl.classList.remove('negative');
+                } else {
+                    gapEl.textContent = projectedGap.toLocaleString('fr-FR');
+                    gapEl.classList.add('negative');
+                    gapEl.classList.remove('positive');
+                }
+            }
+
+            // Update performance trend icon
+            const trendEl = document.getElementById('performanceTrend');
+            if (trendEl) {
+                const icon = trendEl.querySelector('i');
+                if (icon) {
+                    if (avgDaily >= dailyTarget) {
+                        icon.className = 'fas fa-arrow-up';
+                        trendEl.classList.add('positive');
+                        trendEl.classList.remove('negative');
+                    } else if (avgDaily < dailyTarget * 0.8) {
+                        icon.className = 'fas fa-arrow-down';
+                        trendEl.classList.add('negative');
+                        trendEl.classList.remove('positive');
+                    } else {
+                        icon.className = 'fas fa-minus';
+                        trendEl.classList.remove('positive', 'negative');
+                    }
+                }
+            }
+
+            console.log('Progress stats updated');
+        } catch (e) {
+            console.warn('Error updating progress stats:', e);
+        }
+    }
+
+    _updateProgressCard(elementId, value) {
+        const el = document.getElementById(elementId);
+        if (el) el.textContent = value;
+    }
+
+    _updateProgressBar(elementId, percentage) {
+        const el = document.getElementById(elementId);
+        if (el) el.style.width = `${Math.max(0, Math.min(100, percentage))}%`;
+    }
+
+
     /**
      * Set up event listeners for UI controls
      */
     setupEventListeners() {
+        // Table tabs switching logic
+        const tableTabs = document.querySelectorAll('.table-tab');
+        tableTabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                // Deactivate all
+                document.querySelectorAll('.table-tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.table-panel').forEach(p => p.classList.remove('active'));
+
+                // Activate clicked
+                tab.classList.add('active');
+
+                const targetId = tab.dataset.tab + 'Table';
+                const targetPanel = document.getElementById(targetId);
+                if (targetPanel) {
+                    targetPanel.classList.add('active');
+                }
+            });
+        });
+
         // Region filter change
         const regionFilter = document.getElementById('regionFilter');
         if (regionFilter) {
@@ -601,7 +791,8 @@ class EnhancedDashboard {
                 this.refreshDashboard();
             });
         }
-        
+
+
         // Time filter change
         const timeFilter = document.getElementById('timeFilter');
         if (timeFilter) {
@@ -612,7 +803,7 @@ class EnhancedDashboard {
                 this.populateDataTables(this.filterData(this.rawData));
             });
         }
-        
+
         // Refresh button click
         const refreshBtn = document.getElementById('refreshBtn');
         if (refreshBtn) {
@@ -621,7 +812,7 @@ class EnhancedDashboard {
             });
         }
     }
-    
+
     /**
      * Set up auto-refresh timer
      */
@@ -629,16 +820,16 @@ class EnhancedDashboard {
         if (this.refreshInterval) {
             clearInterval(this.refreshInterval);
         }
-        
+
         if (this.autoRefreshEnabled) {
             this.refreshInterval = setInterval(() => {
                 this.refreshDashboard(true);
             }, this.autoRefreshInterval);
-            
+
             console.log(`Auto-refresh set for every ${this.autoRefreshInterval / 60000} minutes`);
         }
     }
-    
+
     /**
      * Manually refresh the dashboard
      */
@@ -646,17 +837,17 @@ class EnhancedDashboard {
         try {
             this.showLoading(true);
             console.log('Manual refresh triggered');
-            
+
             // Clear Google Sheets cache to get fresh data
             const googleService = window.enhancedGoogleSheetsService || window.googleSheetsService;
             if (googleService) {
                 const config = googleService.getPROCASSEFConfig();
                 googleService.clearCache(config.spreadsheetId);
             }
-            
+
             await this.refreshDashboard(false);
             this.showSuccess('Données actualisées');
-            
+
         } catch (error) {
             console.error('Error during manual refresh:', error);
             this.showError('Erreur lors de l\'actualisation');
@@ -664,17 +855,17 @@ class EnhancedDashboard {
             this.showLoading(false);
         }
     }
-    
+
     /**
      * Refresh dashboard with current filters
      * @param {boolean} isAuto - Whether this is an automatic refresh
      */
     async refreshDashboard(isAuto = false) {
         if (!this.isInitialized) return;
-        
+
         try {
             if (!isAuto) this.showLoading(true);
-            
+
             // Load fresh data or filter existing data
             if (isAuto) {
                 // For auto-refresh, reload data from source
@@ -682,12 +873,12 @@ class EnhancedDashboard {
             } else {
                 // For filter changes, filter existing data
                 const filteredData = this.filterData(this.rawData);
-                
+
                 // Always calculate KPIs with full data (not filtered) to avoid 'No live sheet data' when filters remove all relevant rows
                 // Only pass current filters as parameter but use full rawData
                 console.log('Calculating KPIs with full dataset and filters:', this.currentFilters);
                 const kpis = dataAggregationService.calculateKPIs(this.rawData, this.currentFilters);
-                
+
                 // Log KPI calculation results to help with debugging
                 console.log('KPI calculation results:', {
                     daily: kpis.daily,
@@ -697,7 +888,7 @@ class EnhancedDashboard {
                     ctasf: kpis.ctasf ? { rate: kpis.ctasf.rate } : null,
                     processing: kpis.processing ? { rate: kpis.processing.rate } : null
                 });
-                
+
                 // Update tube indicators
                 if (window.tubeProgressService) {
                     // If tubes never initialized (e.g., DOM structure changed), attempt init now
@@ -734,36 +925,36 @@ class EnhancedDashboard {
                     // Fallback to legacy liquid progress
                     liquidProgressService.updateAllProgress(kpis);
                 }
-                
+
                 // Update rate displays
                 this.updateRateDisplays(kpis);
 
                 // Update header trends dynamically
                 this.updateHeaderTrends(this.rawData, kpis);
-                
+
                 // Update progress indicators
                 this.updateProgressIndicators(kpis);
-                
+
                 // Update charts with filtered data
                 if (window.chartService) {
                     await chartService.updateCharts(filteredData, kpis, this.rawData);
                 }
-                
+
                 // Update regional data with filtered data
                 this.updateRegionalData(filteredData);
 
                 // Update data tables
                 this.populateDataTables(filteredData);
             }
-            
+
             // Update last refresh time
             this.updateLastRefreshTime();
-            
+
             // Update debug panel if available
             if (window.debugPanel && typeof window.debugPanel.update === 'function') {
                 window.debugPanel.update();
             }
-            
+
         } catch (error) {
             console.error('Error refreshing dashboard:', error);
             if (!isAuto) this.showError('Erreur lors du rafraîchissement');
@@ -785,12 +976,12 @@ class EnhancedDashboard {
                 const day = d.getDate();
                 if (timeframe === 'monthly') {
                     const start = new Date(y, m, 1);
-                    return { key: `M:${y}-${String(m+1).padStart(2,'0')}`, sort: start.getTime() };
+                    return { key: `M:${y}-${String(m + 1).padStart(2, '0')}`, sort: start.getTime() };
                 }
                 if (timeframe === 'weekly') {
                     // ISO week: Thursday-based week number
                     const tmp = new Date(d);
-                    tmp.setHours(0,0,0,0);
+                    tmp.setHours(0, 0, 0, 0);
                     // Thursday in current week decides the year
                     tmp.setDate(tmp.getDate() + 4 - (tmp.getDay() || 7));
                     const isoYear = tmp.getFullYear();
@@ -800,19 +991,19 @@ class EnhancedDashboard {
                     const mon = new Date(d);
                     const dayIdx = (mon.getDay() + 6) % 7; // 0=Mon
                     mon.setDate(mon.getDate() - dayIdx);
-                    mon.setHours(0,0,0,0);
-                    return { key: `W:${isoYear}-W${String(week).padStart(2,'0')}`, sort: mon.getTime() };
+                    mon.setHours(0, 0, 0, 0);
+                    return { key: `W:${isoYear}-W${String(week).padStart(2, '0')}`, sort: mon.getTime() };
                 }
                 // daily default
                 const start = new Date(y, m, day);
-                start.setHours(0,0,0,0);
-                return { key: `D:${start.toISOString().slice(0,10)}`, sort: start.getTime() };
+                start.setHours(0, 0, 0, 0);
+                return { key: `D:${start.toISOString().slice(0, 10)}`, sort: start.getTime() };
             };
             const fromMapToSortedBuckets = (map) => {
                 return Array.from(map.entries())
                     .map(([key, val]) => val)
                     .filter(v => (v.sum ?? v.value ?? 0) > 0)
-                    .sort((a,b)=> a.sort - b.sort);
+                    .sort((a, b) => a.sort - b.sort);
             };
             // Daily yields: compute % change vs previous period (yesterday or previous day with data)
             let yieldsSeries = [];
@@ -823,7 +1014,7 @@ class EnhancedDashboard {
                     'Date',
                     'Nombre de levées'
                 ) || [];
-            } catch(_) {}
+            } catch (_) { }
             if (Array.isArray(yieldsSeries) && yieldsSeries.length) {
                 const buckets = new Map(); // key -> {sum, sort}
                 yieldsSeries.forEach(p => {
@@ -836,9 +1027,9 @@ class EnhancedDashboard {
                 });
                 const arr = fromMapToSortedBuckets(buckets);
                 if (arr.length >= 2) {
-                    const prev = arr[arr.length-2].sum;
-                    const last = arr[arr.length-1].sum;
-                    const change = prev === 0 ? (last>0 ? 100 : 0) : ((last - prev)/prev)*100;
+                    const prev = arr[arr.length - 2].sum;
+                    const last = arr[arr.length - 1].sum;
+                    const change = prev === 0 ? (last > 0 ? 100 : 0) : ((last - prev) / prev) * 100;
                     this._setTrend('dailyYieldsTrend', 'dailyYieldsTrendIcon', 'dailyYieldsTrendValue', change);
                 }
             }
@@ -852,10 +1043,10 @@ class EnhancedDashboard {
                     display.forEach(r => {
                         const d = dataAggregationService.parseDate(r['Date']);
                         if (!d) return;
-                        const key = d.toISOString().slice(0,10);
-                        const ok = dataAggregationService._getNumericField ? dataAggregationService._getNumericField(r, ['Nombre de parcelles affichées sans erreurs']) : Number(r['Nombre de parcelles affichées sans erreurs']||0);
-                        const ko = dataAggregationService._getNumericField ? dataAggregationService._getNumericField(r, ['Nombre Parcelles avec erreur']) : Number(r['Nombre Parcelles avec erreur']||0);
-                        const cur = byDate.get(key) || {ok:0,ko:0};
+                        const key = d.toISOString().slice(0, 10);
+                        const ok = dataAggregationService._getNumericField ? dataAggregationService._getNumericField(r, ['Nombre de parcelles affichées sans erreurs']) : Number(r['Nombre de parcelles affichées sans erreurs'] || 0);
+                        const ko = dataAggregationService._getNumericField ? dataAggregationService._getNumericField(r, ['Nombre Parcelles avec erreur']) : Number(r['Nombre Parcelles avec erreur'] || 0);
+                        const cur = byDate.get(key) || { ok: 0, ko: 0 };
                         cur.ok += ok; cur.ko += ko; byDate.set(key, cur);
                     });
                     // Bucket by timeframe
@@ -864,19 +1055,19 @@ class EnhancedDashboard {
                         const d = new Date(iso);
                         const info = getBucketInfo(d);
                         if (!info) return;
-                        const cur = buckets.get(info.key) || { ok:0, ko:0, sort: info.sort };
+                        const cur = buckets.get(info.key) || { ok: 0, ko: 0, sort: info.sort };
                         cur.ok += val.ok; cur.ko += val.ko; cur.sort = info.sort; buckets.set(info.key, cur);
                     });
                     const arr = Array.from(buckets.values())
-                        .map(v => ({ pct: (v.ok+v.ko)>0 ? (v.ok/(v.ok+v.ko))*100 : 0, sort: v.sort }))
-                        .filter(v => v.pct>0 || timeframe!=='daily') // allow 0 in weekly/monthly if needed
-                        .sort((a,b)=> a.sort - b.sort);
+                        .map(v => ({ pct: (v.ok + v.ko) > 0 ? (v.ok / (v.ok + v.ko)) * 100 : 0, sort: v.sort }))
+                        .filter(v => v.pct > 0 || timeframe !== 'daily') // allow 0 in weekly/monthly if needed
+                        .sort((a, b) => a.sort - b.sort);
                     if (arr.length >= 2) {
-                        const qa = arr[arr.length-2].pct;
-                        const qb = arr[arr.length-1].pct;
-                        qChange = qa === 0 ? (qb>0 ? 100 : 0) : ((qb - qa) / qa) * 100;
+                        const qa = arr[arr.length - 2].pct;
+                        const qb = arr[arr.length - 1].pct;
+                        qChange = qa === 0 ? (qb > 0 ? 100 : 0) : ((qb - qa) / qa) * 100;
                     }
-                } catch(_) {}
+                } catch (_) { }
             }
             if (typeof qChange === 'number' && !isNaN(qChange)) {
                 this._setTrend('qualityTrendHeader', 'qualityTrendIcon', 'qualityTrendValue', qChange);
@@ -888,13 +1079,13 @@ class EnhancedDashboard {
                 const byDate = new Map();
                 const getNum = (r, keys) => {
                     if (dataAggregationService && dataAggregationService._getNumericField) return dataAggregationService._getNumericField(r, keys);
-                    for (const k of keys) { const v = r[k]; const n = Number(String(v).replace(/\s+/g,'').replace(/,/g,'.')); if (!isNaN(n)) return n; }
+                    for (const k of keys) { const v = r[k]; const n = Number(String(v).replace(/\s+/g, '').replace(/,/g, '.')); if (!isNaN(n)) return n; }
                     return 0;
                 };
                 ctasf.forEach(r => {
                     const d = dataAggregationService.parseDate(r['Date']);
                     if (!d) return;
-                    const key = d.toISOString().slice(0,10);
+                    const key = d.toISOString().slice(0, 10);
                     const retenues = getNum(r, ['Nombre parcelles retenues CTASF']);
                     const cur = byDate.get(key) || 0; byDate.set(key, cur + retenues);
                 });
@@ -904,17 +1095,17 @@ class EnhancedDashboard {
                     const d = new Date(iso);
                     const info = getBucketInfo(d);
                     if (!info) return;
-                    const cur = buckets.get(info.key) || { sum:0, sort: info.sort };
+                    const cur = buckets.get(info.key) || { sum: 0, sort: info.sort };
                     cur.sum += val; cur.sort = info.sort; buckets.set(info.key, cur);
                 });
                 const arr = fromMapToSortedBuckets(buckets);
                 if (arr.length >= 2) {
-                    const prev = arr[arr.length-2].sum;
-                    const last = arr[arr.length-1].sum;
-                    const change = prev === 0 ? (last>0 ? 100 : 0) : ((last - prev)/prev)*100;
+                    const prev = arr[arr.length - 2].sum;
+                    const last = arr[arr.length - 1].sum;
+                    const change = prev === 0 ? (last > 0 ? 100 : 0) : ((last - prev) / prev) * 100;
                     this._setTrend('ctasfTrendHeader', 'ctasfTrendIcon', 'ctasfTrendValue', change);
                 }
-            } catch(_) {}
+            } catch (_) { }
 
             // Post-Processing trend: use 'Parcelles post traitées (Sans Doublons et topoplogie correcte)' last vs previous
             try {
@@ -922,13 +1113,13 @@ class EnhancedDashboard {
                 const byDate = new Map();
                 const getNum = (r, keys) => {
                     if (dataAggregationService && dataAggregationService._getNumericField) return dataAggregationService._getNumericField(r, keys);
-                    for (const k of keys) { const v = r[k]; const n = Number(String(v).replace(/\s+/g,'').replace(/,/g,'.')); if (!isNaN(n)) return n; }
+                    for (const k of keys) { const v = r[k]; const n = Number(String(v).replace(/\s+/g, '').replace(/,/g, '.')); if (!isNaN(n)) return n; }
                     return 0;
                 };
                 post.forEach(r => {
                     const d = dataAggregationService.parseDate(r['Date']);
                     if (!d) return;
-                    const key = d.toISOString().slice(0,10);
+                    const key = d.toISOString().slice(0, 10);
                     const processed = getNum(r, ['Parcelles post traitées (Sans Doublons et topoplogie correcte)']);
                     const cur = byDate.get(key) || 0; byDate.set(key, cur + processed);
                 });
@@ -938,17 +1129,17 @@ class EnhancedDashboard {
                     const d = new Date(iso);
                     const info = getBucketInfo(d);
                     if (!info) return;
-                    const cur = buckets.get(info.key) || { sum:0, sort: info.sort };
+                    const cur = buckets.get(info.key) || { sum: 0, sort: info.sort };
                     cur.sum += val; cur.sort = info.sort; buckets.set(info.key, cur);
                 });
                 const arr = fromMapToSortedBuckets(buckets);
                 if (arr.length >= 2) {
-                    const prev = arr[arr.length-2].sum;
-                    const last = arr[arr.length-1].sum;
-                    const change = prev === 0 ? (last>0 ? 100 : 0) : ((last - prev)/prev)*100;
+                    const prev = arr[arr.length - 2].sum;
+                    const last = arr[arr.length - 1].sum;
+                    const change = prev === 0 ? (last > 0 ? 100 : 0) : ((last - prev) / prev) * 100;
                     this._setTrend('postProcTrendHeader', 'postProcTrendIcon', 'postProcTrendValue', change);
                 }
-            } catch(_) {}
+            } catch (_) { }
         } catch (e) {
             console.warn('Failed to update header trends:', e);
         }
@@ -961,13 +1152,13 @@ class EnhancedDashboard {
         if (!container || !icon || !valueEl) return;
         const val = (changePct || 0);
         const isUp = val > 0; const isDown = val < 0;
-        container.classList.remove('positive','negative');
+        container.classList.remove('positive', 'negative');
         if (isUp) container.classList.add('positive');
         if (isDown) container.classList.add('negative');
         icon.className = `fas ${isUp ? 'fa-arrow-up' : (isDown ? 'fa-arrow-down' : 'fa-minus')}`;
         valueEl.textContent = `${(Math.abs(val)).toFixed(1)}%`;
     }
-    
+
     /**
      * Filter data based on current filters
      * @param {Object} data - Raw data
@@ -975,21 +1166,35 @@ class EnhancedDashboard {
      */
     filterData(data) {
         if (!data) return {};
-        
+
         // Create a copy of the data
-        const filteredData = {...data};
-        
+        const filteredData = { ...data };
+
+        // Sheets that should NOT be filtered for display tables
+        const noFilterSheets = [
+            'Post Process Follow-up',
+            'Public Display Follow-up',
+            'CTASF Follow-up',
+            'Yields Projections'
+        ];
+
         // Apply filters to each relevant dataset
         Object.keys(filteredData).forEach(key => {
             const arr = filteredData[key];
             if (Array.isArray(arr)) {
+                // Skip filtering for display tables
+                if (noFilterSheets.includes(key)) {
+                    console.info(`[filterData] Skipping filter for table: ${key}`);
+                    return;
+                }
+                
                 const beforeLen = arr.length;
                 const after = dataAggregationService.applyFilters(arr, this.currentFilters, key);
                 // Avoid completely wiping dataset for charts: if after filtering it's empty but before had data, keep original
                 filteredData[key] = (beforeLen > 0 && after.length === 0) ? arr : after;
             }
         });
-        
+
         return filteredData;
     }
 
@@ -1015,7 +1220,7 @@ class EnhancedDashboard {
                     const d = dataAggregationService.parseDate(val);
                     return d ? d.toLocaleDateString('fr-FR') : String(val || '');
                 }
-            } catch(_) {}
+            } catch (_) { }
             return UTILS.formatDate(val);
         };
 
@@ -1028,16 +1233,16 @@ class EnhancedDashboard {
                 rows.forEach(r => {
                     const tr = document.createElement('tr');
                     tr.innerHTML = `
-                        <td>${fmtDMY(get(r, ['Date','date']))}</td>
-                        <td>${get(r, ['Région','Region','region'])}</td>
-                        <td>${get(r, ['Commune','commune'])}</td>
-                        <td>${get(r, ['Nombre de levées','Nombre de Levees','Nombre de levees','levées','levees'])}</td>
+                        <td>${fmtDMY(get(r, ['Date', 'date']))}</td>
+                        <td>${get(r, ['Région', 'Region', 'region'])}</td>
+                        <td>${get(r, ['Commune', 'commune'])}</td>
+                        <td>${get(r, ['Nombre de levées', 'Nombre de Levees', 'Nombre de levees', 'levées', 'levees'])}</td>
                         <td></td>
                     `;
                     tbody.appendChild(tr);
                 });
             }
-        } catch(e) { console.warn('Yields table render error', e); }
+        } catch (e) { console.warn('Yields table render error', e); }
 
         // Public Display Follow-up table
         try {
@@ -1048,17 +1253,17 @@ class EnhancedDashboard {
                 rows.forEach(r => {
                     const tr = document.createElement('tr');
                     tr.innerHTML = `
-                        <td>${fmtDMY(get(r, ['Date','date']))}</td>
-                        <td>${get(r, ['Région','Region','region'])}</td>
-                        <td>${get(r, ['Commune','commune'])}</td>
+                        <td>${fmtDMY(get(r, ['Date', 'date']))}</td>
+                        <td>${get(r, ['Région', 'Region', 'region'])}</td>
+                        <td>${get(r, ['Commune', 'commune'])}</td>
                         <td>${get(r, ['Nombre de parcelles affichées sans erreurs'])}</td>
                         <td>${get(r, ['Nombre Parcelles avec erreur'])}</td>
-                        <td>${get(r, ['Motif retour','Motif'])}</td>
+                        <td>${get(r, ['Motif retour', 'Motif'])}</td>
                     `;
                     tbody.appendChild(tr);
                 });
             }
-        } catch(e) { console.warn('Display table render error', e); }
+        } catch (e) { console.warn('Display table render error', e); }
 
         // CTASF Follow-up table
         try {
@@ -1069,90 +1274,75 @@ class EnhancedDashboard {
                 rows.forEach(r => {
                     const tr = document.createElement('tr');
                     tr.innerHTML = `
-                        <td>${fmtDMY(get(r, ['Date','date']))}</td>
-                        <td>${get(r, ['Région','Region','region'])}</td>
-                        <td>${get(r, ['Commune','commune'])}</td>
+                        <td>${fmtDMY(get(r, ['Date', 'date']))}</td>
+                        <td>${get(r, ['Région', 'Region', 'region'])}</td>
+                        <td>${get(r, ['Commune', 'commune'])}</td>
                         <td>${get(r, ['Nombre parcelles emmenées au CTASF'])}</td>
                         <td>${get(r, ['Nombre parcelles retenues CTASF'])}</td>
-                        <td>${get(r, ['Nombre parcelles à délibérer','Nombre parcelles a deliberer'])}</td>
-                        <td>${get(r, ['Nombre parcelles délibérées','Nombre parcelles deliberees'])}</td>
+                        <td>${get(r, ['Nombre parcelles à délibérer', 'Nombre parcelles a deliberer'])}</td>
+                        <td>${get(r, ['Nombre parcelles délibérées', 'Nombre parcelles deliberees'])}</td>
                     `;
                     tbody.appendChild(tr);
                 });
             }
-        } catch(e) { console.warn('CTASF table render error', e); }
+        } catch (e) { console.warn('CTASF table render error', e); }
 
         // Post Process Follow-up table
         try {
             const tbody = document.getElementById('processingTableBody');
             if (tbody) {
-                const rows = (data['Post Process Follow-up'] || []).slice(0, 200);
+                const sheetData = data['Post Process Follow-up'] || data['Post Process Follow up'] || data['postProcessFollowup'] || [];
+                console.info(`[DEBUG populateDataTables] Post Process table: found ${sheetData.length} rows`);
+                if (sheetData.length > 0) {
+                    console.info(`[DEBUG populateDataTables] Sample row:`, sheetData[0]);
+                    console.info(`[DEBUG populateDataTables] Sample row keys:`, Object.keys(sheetData[0]));
+                }
+                const rows = sheetData.slice(0, 200);
                 tbody.innerHTML = '';
                 rows.forEach(r => {
                     const tr = document.createElement('tr');
                     tr.innerHTML = `
-                        <td>${fmtDMY(get(r, ['Date','date']))}</td>
-                        <td>${get(r, ['Région','Region','region'])}</td>
-                        <td>${get(r, ['Commune','commune'])}</td>
-                        <td>${get(r, ['Parcelles reçues (Brutes)','Parcelles recues (Brutes)','Parcelles reçues'])}</td>
-                        <td>${get(r, ['Parcelles post traitées (Sans Doublons et topoplogie correcte)','Parcelles post traitees'])}</td>
-                        <td>${get(r, ['Parcelles individuelles Jointes'])}</td>
-                        <td>${get(r, ['Parcelles collectives Jointes'])}</td>
+                        <td>${fmtDMY(get(r, ['Date', 'date']))}</td>
+                        <td>${get(r, ['Région', 'Region', 'region'])}</td>
+                        <td>${get(r, ['Commune', 'commune'])}</td>
+                        <td>${get(r, ['Parcelles reçues (Brutes)', 'Parcelles recues (Brutes)', 'Parcelles reçues', 'Parcelles recues'])}</td>
+                        <td>${get(r, ['Parcelles post traitées (Sans Doublons et topoplogie correcte)', 'Parcelles post traitees', 'Parcelles post traitées'])}</td>
+                        <td>${get(r, ['Parcelles individuelles Jointes', 'Parcelles individuelles jointes'])}</td>
+                        <td>${get(r, ['Parcelles collectives Jointes', 'Parcelles collectives jointes'])}</td>
                         <td>${get(r, ['Parcelles sans jointure'])}</td>
-                        <td>${get(r, ['Parcelles retournées aux topos','Parcelles retournees aux topos'])}</td>
-                        <td>${get(r, ['Geomaticien','Géomaticien'])}</td>
-                        <td>${get(r, ['Motif'])}</td>
+                        <td>${get(r, ['Parcelles retournées aux topos', 'Parcelles retournees aux topos'])}</td>
+                        <td>${get(r, ['Geomaticien', 'Géomaticien', 'geomaticien'])}</td>
+                        <td>${get(r, ['Motif', 'motif'])}</td>
                     `;
                     tbody.appendChild(tr);
                 });
+                console.info(`[DEBUG populateDataTables] Post Process table populated with ${rows.length} rows`);
             }
-        } catch(e) { console.warn('Processing table render error', e); }
+        } catch (e) { console.warn('Processing table render error', e); }
     }
-    
+
     /**
      * Update quality rate display
      * @param {number} rate - Quality rate percentage
      */
     updateQualityRate(rate) {
-        const qualityElement = document.getElementById('qualityRate');
-        if (qualityElement) {
-            qualityElement.textContent = `${rate}%`;
-            
-            // Update color based on rate
-            if (rate >= 90) {
-                qualityElement.className = 'text-2xl font-bold text-green-600';
-            } else if (rate >= 75) {
-                qualityElement.className = 'text-2xl font-bold text-blue-600';
-            } else if (rate >= 60) {
-                qualityElement.className = 'text-2xl font-bold text-yellow-500';
-            } else {
-                qualityElement.className = 'text-2xl font-bold text-red-600';
-            }
-        }
+        const textEl = document.getElementById('qualityRate');
+        const progressEl = document.getElementById('qualityProgress');
+        if (textEl) textEl.textContent = `${rate}%`;
+        if (progressEl) progressEl.style.width = `${rate}%`;
     }
-    
+
     /**
      * Update CTASF rate display
      * @param {number} rate - CTASF rate percentage
      */
     updateCTASFRate(rate) {
-        const ctasfRateElement = document.getElementById('ctasfRate');
-        if (ctasfRateElement) {
-            ctasfRateElement.textContent = `${rate}%`;
-            
-            // Update color based on rate
-            if (rate >= 90) {
-                ctasfRateElement.className = 'text-2xl font-bold text-green-600';
-            } else if (rate >= 75) {
-                ctasfRateElement.className = 'text-2xl font-bold text-blue-600';
-            } else if (rate >= 60) {
-                ctasfRateElement.className = 'text-2xl font-bold text-yellow-500';
-            } else {
-                ctasfRateElement.className = 'text-2xl font-bold text-red-600';
-            }
-        }
+        const textEl = document.getElementById('ctasfRate');
+        const progressEl = document.getElementById('ctasfProgress');
+        if (textEl) textEl.textContent = `${rate}%`;
+        if (progressEl) progressEl.style.width = `${rate}%`;
     }
-    
+
     /**
      * Handle real-time data update 
      * This method can be called with new data to update the dashboard without a full reload
@@ -1165,9 +1355,9 @@ class EnhancedDashboard {
                 console.warn('No data provided for real-time update');
                 return false;
             }
-            
+
             console.log('Processing real-time data update...');
-            
+
             // For partial updates, merge with existing data
             let updatedData = newData;
             if (isPartialUpdate && this.rawData) {
@@ -1176,18 +1366,18 @@ class EnhancedDashboard {
                 // For full data replacement
                 this.rawData = newData;
             }
-            
+
             // Mark data as streaming update for optimized chart rendering
             updatedData.streamingUpdate = true;
-            
+
             // Apply current filters
             const filteredData = this.applyFilters(updatedData);
-            
+
             // Compute KPIs with updated data
             let kpis = {};
             if (window.dataAggregationService) {
                 kpis = dataAggregationService.computeMainKPIs(filteredData);
-                
+
                 // Update KPI displays
                 if (kpis.qualityScore !== undefined) {
                     this.updateQualityRate(kpis.qualityScore);
@@ -1196,7 +1386,7 @@ class EnhancedDashboard {
                     this.updateCTASFRate(kpis.ctasfRate);
                 }
             }
-            
+
             // Update tube progress indicators
             if (window.tubeProgressService) {
                 tubeProgressService.updateTubes({
@@ -1217,15 +1407,15 @@ class EnhancedDashboard {
                     }
                 });
             }
-            
+
             // Update charts with streaming data
             if (window.chartService) {
                 chartService.updateCharts(filteredData, kpis, updatedData);
             }
-            
+
             // Update last refresh time
             this.updateLastRefreshTime();
-            
+
             console.log('Real-time update completed successfully');
             return true;
         } catch (error) {
@@ -1233,7 +1423,7 @@ class EnhancedDashboard {
             return false;
         }
     }
-    
+
     /**
      * Helper method to merge new data with existing data
      * @private
@@ -1244,40 +1434,40 @@ class EnhancedDashboard {
     _mergeData(existingData, newData) {
         if (!existingData) return newData;
         if (!newData) return existingData;
-        
+
         const result = { ...existingData };
-        
+
         // Merge arrays from each sheet
         Object.keys(newData).forEach(key => {
             const newSheet = newData[key];
-            
+
             // If we have a new array for a sheet
             if (Array.isArray(newSheet)) {
                 const existingSheet = result[key];
-                
+
                 // If we don't have this sheet yet, just use the new data
                 if (!existingSheet || !Array.isArray(existingSheet)) {
                     result[key] = newSheet;
                     return;
                 }
-                
+
                 // For existing sheets, we need to merge items
                 // First build a map of existing items by ID or other unique field
                 const idField = this._getSheetIdField(key);
                 const existingMap = new Map();
-                
+
                 existingSheet.forEach((item, index) => {
                     // Use the ID field if available, otherwise position index
                     const itemId = idField && item[idField] ? item[idField] : `index_${index}`;
                     existingMap.set(itemId, item);
                 });
-                
+
                 // Update existing items and add new ones
                 newSheet.forEach(newItem => {
                     if (!newItem) return;
-                    
+
                     const itemId = idField && newItem[idField] ? newItem[idField] : null;
-                    
+
                     if (itemId && existingMap.has(itemId)) {
                         // Update existing item
                         const existingItem = existingMap.get(itemId);
@@ -1295,10 +1485,10 @@ class EnhancedDashboard {
                 result[key] = newSheet;
             }
         });
-        
+
         return result;
     }
-    
+
     /**
      * Helper to determine the ID field for a given sheet
      * @private
@@ -1307,20 +1497,20 @@ class EnhancedDashboard {
      */
     _getSheetIdField(sheetName) {
         const normalizedName = String(sheetName).toLowerCase();
-        
+
         // Map common sheet names to their ID fields
         if (normalizedName.includes('daily') || normalizedName.includes('quotidien')) return 'Date';
         if (normalizedName.includes('parcels') || normalizedName.includes('parcelle')) return 'ParcelID';
         if (normalizedName.includes('geomatician') || normalizedName.includes('geometre')) return 'GeomaticianID';
         if (normalizedName.includes('commune')) return 'CommuneID';
         if (normalizedName.includes('region')) return 'RegionName';
-        
+
         // Default ID fields to try
         const commonIdFields = ['ID', 'Id', 'id', '_id', 'UUID', 'Uuid', 'uuid'];
-        
+
         return null; // If no specific mapping, let the caller use index
     }
-    
+
     /**
      * Update CTASF rate display
      * @param {number} rate - The CTASF rate percentage
@@ -1328,14 +1518,14 @@ class EnhancedDashboard {
     updateCtasfRateDisplay(rate) {
         const ctasfRateElement = document.getElementById('ctasfRate');
         const ctasfRateBarElement = document.getElementById('ctasfRateBar');
-        
+
         if (ctasfRateElement) {
             ctasfRateElement.textContent = `${rate}%`;
         }
-        
+
         if (ctasfRateBarElement) {
             ctasfRateBarElement.style.width = `${rate}%`;
-            
+
             // Update color based on rate
             if (rate >= 90) {
                 ctasfRateBarElement.className = 'bg-green-500 h-2 rounded-full';
@@ -1348,33 +1538,16 @@ class EnhancedDashboard {
             }
         }
     }
-    
+
     /**
      * Update processing rate display
      * @param {number} rate - Processing rate percentage
      */
     updateProcessingRate(rate) {
-        const processingRateElement = document.getElementById('processingRate');
-        const processingRateBarElement = document.getElementById('processingRateBar');
-        
-        if (processingRateElement) {
-            processingRateElement.textContent = `${rate}%`;
-        }
-        
-        if (processingRateBarElement) {
-            processingRateBarElement.style.width = `${rate}%`;
-            
-            // Update color based on rate
-            if (rate >= 90) {
-                processingRateBarElement.className = 'bg-green-500 h-2 rounded-full';
-            } else if (rate >= 75) {
-                processingRateBarElement.className = 'bg-blue-500 h-2 rounded-full';
-            } else if (rate >= 60) {
-                processingRateBarElement.className = 'bg-yellow-500 h-2 rounded-full';
-            } else {
-                processingRateBarElement.className = 'bg-red-500 h-2 rounded-full';
-            }
-        }
+        const textEl = document.getElementById('processingRate');
+        const progressEl = document.getElementById('processingProgress');
+        if (textEl) textEl.textContent = `${rate}%`;
+        if (progressEl) progressEl.style.width = `${rate}%`;
     }
 
     /**
@@ -1394,7 +1567,7 @@ class EnhancedDashboard {
             container = document.createElement('div');
             container.className = isInline ? 'trend-badge-container inline-flex items-center ml-2' : 'trend-badge-container mt-2';
             if (isInline) {
-                target.parentElement.classList.add('flex','items-center','gap-2');
+                target.parentElement.classList.add('flex', 'items-center', 'gap-2');
                 target.insertAdjacentElement('afterend', container);
             } else {
                 target.parentElement.appendChild(container);
@@ -1414,7 +1587,7 @@ class EnhancedDashboard {
             : `<i class="fas fa-arrow-${direction === 'up' ? 'up' : 'down'} text-[10px]"></i><span>${direction === 'down' ? '-' : '+'}${absVal}%</span>`;
         container.appendChild(badge);
     }
-    
+
     /**
      * Generate commune heatmap
      * @param {Array} data - Commune data
@@ -1422,16 +1595,16 @@ class EnhancedDashboard {
     generateCommuneHeatmap(data) {
         const communeListElement = document.getElementById('communePerformanceList');
         if (!communeListElement || !Array.isArray(data)) return;
-        
+
         // Clear existing content
         communeListElement.innerHTML = '';
-        
+
         // Group by commune
         const communeGroups = {};
         data.forEach(item => {
             const commune = item.Commune || 'Unknown';
             const region = item.Region || 'Unknown';
-            
+
             if (!communeGroups[commune]) {
                 communeGroups[commune] = {
                     region,
@@ -1445,7 +1618,7 @@ class EnhancedDashboard {
                 };
             }
         });
-        
+
         // Create commune items
         Object.entries(communeGroups).forEach(([commune, data]) => {
             const communeItem = document.createElement('div');
@@ -1488,11 +1661,11 @@ class EnhancedDashboard {
                     Total: ${data.total.toLocaleString()} parcelles
                 </div>
             `;
-            
+
             communeListElement.appendChild(communeItem);
         });
     }
-    
+
     /**
      * Update last refresh time display
      */
@@ -1509,9 +1682,9 @@ class EnhancedDashboard {
                 hour: '2-digit',
                 minute: '2-digit'
             });
-            
+
             lastUpdateElement.textContent = `${formattedDate}, ${formattedTime}`;
-            
+
             // Add debug button next to last update time if not already there
             if (!document.getElementById('debugButton')) {
                 const debugButton = document.createElement('button');
@@ -1526,7 +1699,7 @@ class EnhancedDashboard {
             }
         }
     }
-    
+
     /**
      * Show loading indicator
      * @param {boolean} show - Whether to show or hide
@@ -1539,7 +1712,7 @@ class EnhancedDashboard {
             console.error('Loading overlay element not found');
         }
     }
-    
+
     /**
      * Show success message
      * @param {string} message - Message to display
@@ -1547,7 +1720,7 @@ class EnhancedDashboard {
     showSuccess(message) {
         this.showToast(message, 'success');
     }
-    
+
     /**
      * Show error message
      * @param {string} message - Message to display
@@ -1555,7 +1728,7 @@ class EnhancedDashboard {
     showError(message) {
         this.showToast(message, 'error');
     }
-    
+
     /**
      * Show warning message
      * @param {string} message - Message to display
@@ -1563,7 +1736,7 @@ class EnhancedDashboard {
     showWarning(message) {
         this.showToast(message, 'warning');
     }
-    
+
     /**
      * Show toast notification
      * @param {string} message - Message to display
@@ -1573,18 +1746,18 @@ class EnhancedDashboard {
     showToast(message, type = 'info', duration = 3000) {
         // Check if toast container exists, create if not
         let toastContainer = document.getElementById('toastContainer');
-        
+
         if (!toastContainer) {
             toastContainer = document.createElement('div');
             toastContainer.id = 'toastContainer';
             toastContainer.className = 'fixed bottom-4 right-4 z-50 space-y-2';
             document.body.appendChild(toastContainer);
         }
-        
+
         // Create toast element
         const toast = document.createElement('div');
         toast.className = 'px-4 py-2 rounded shadow-lg transition-all duration-300 transform translate-y-2 opacity-0';
-        
+
         // Set color based on type
         switch (type) {
             case 'success':
@@ -1599,30 +1772,30 @@ class EnhancedDashboard {
             default:
                 toast.classList.add('bg-blue-500', 'text-white');
         }
-        
+
         // Set message
         toast.textContent = message;
-        
+
         // Add to container
         toastContainer.appendChild(toast);
-        
+
         // Show toast (with animation)
         setTimeout(() => {
             toast.classList.replace('opacity-0', 'opacity-100');
             toast.classList.replace('translate-y-2', 'translate-y-0');
         }, 10);
-        
+
         // Auto-hide toast
         setTimeout(() => {
             toast.classList.replace('opacity-100', 'opacity-0');
             toast.classList.replace('translate-y-0', 'translate-y-2');
-            
+
             // Remove after animation
             setTimeout(() => {
                 if (toast.parentNode === toastContainer) {
                     toastContainer.removeChild(toast);
                 }
-                
+
                 // Remove container if empty
                 if (toastContainer.children.length === 0) {
                     document.body.removeChild(toastContainer);

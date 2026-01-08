@@ -1,13 +1,13 @@
 // communePanel.js - Commune table and KPIs (charts removed per requested simplification)
 
-(function(){
-    function average(arr){ if(!arr||!arr.length) return 0; return Math.round((arr.reduce((a,b)=>a+(Number(b)||0),0)/arr.length)*10)/10; }
+(function () {
+    function average(arr) { if (!arr || !arr.length) return 0; return Math.round((arr.reduce((a, b) => a + (Number(b) || 0), 0) / arr.length) * 10) / 10; }
 
-    async function fetchCsvByGid(gid){
-        try{
-            const base = (window.CONFIG && window.CONFIG.SHEETS_BASE_URL) ? window.CONFIG.SHEETS_BASE_URL : 'https://docs.google.com/spreadsheets/d/1CbDBJtoWWPRjEH4DOSlv4jjnJ2G-1MvW/export?format=csv&gid=';
+    async function fetchCsvByGid(gid) {
+        try {
+            const base = (window.CONFIG && window.CONFIG.SHEETS_BASE_URL) ? window.CONFIG.SHEETS_BASE_URL : 'https://docs.google.com/spreadsheets/d/1IbV-vzaby_xwdzeENu7qgsZyqb7eWKQSHmp1hw3nPvg/export?format=csv&gid=';
             const url = base + gid;
-            const resp = await fetch(url, {cache: 'no-cache'});
+            const resp = await fetch(url, { cache: 'no-cache' });
             if (!resp || !resp.ok) return [];
             const text = await resp.text();
             // Improved CSV parse supporting quoted fields and commas/newlines inside quotes (simple RFC4180-ish)
@@ -15,16 +15,16 @@
             let cur = '';
             let inQuotes = false;
             const lines = [];
-            for (let i=0;i<text.length;i++){
+            for (let i = 0; i < text.length; i++) {
                 const ch = text[i];
                 cur += ch;
                 if (ch === '"') {
                     // toggle quote state unless it's an escaped quote
-                    if (i+1 < text.length && text[i+1] === '"') { cur += '"'; i++; continue; }
+                    if (i + 1 < text.length && text[i + 1] === '"') { cur += '"'; i++; continue; }
                     inQuotes = !inQuotes;
                 }
                 if (!inQuotes && ch === '\n') {
-                    lines.push(cur.replace(/\r?\n$/,''));
+                    lines.push(cur.replace(/\r?\n$/, ''));
                     cur = '';
                 }
             }
@@ -40,21 +40,21 @@
                 const out = [];
                 let field = '';
                 let inside = false;
-                for (let j=0;j<ln.length;j++){
+                for (let j = 0; j < ln.length; j++) {
                     const c = ln[j];
                     if (c === '"') {
-                        if (inside && j+1 < ln.length && ln[j+1] === '"') { field += '"'; j++; continue; }
+                        if (inside && j + 1 < ln.length && ln[j + 1] === '"') { field += '"'; j++; continue; }
                         inside = !inside; continue;
                     }
                     if (!inside && c === delimiter) { out.push(field); field = ''; continue; }
                     field += c;
                 }
                 out.push(field);
-                return out.map(f=>f.trim().replace(/^"|"$/g,''));
+                return out.map(f => f.trim().replace(/^"|"$/g, ''));
             };
 
             const headers = parseLine(lines[0]);
-            for (let i=1;i<lines.length;i++){
+            for (let i = 1; i < lines.length; i++) {
                 const vals = parseLine(lines[i]);
                 if (vals.length === 1 && !vals[0]) continue;
                 const obj = {};
@@ -62,11 +62,11 @@
                 rows.push(obj);
             }
             return rows;
-        }catch(err){ console.warn('CSV fetch failed', err); return []; }
+        } catch (err) { console.warn('CSV fetch failed', err); return []; }
     }
 
-    async function getRows(){
-        try{
+    async function getRows() {
+        try {
             if (window.fetchCommuneStatus) {
                 const r = await window.fetchCommuneStatus();
                 if (r && r.length) return r;
@@ -75,19 +75,19 @@
                 const r = window.enhancedDashboard.rawData['Commune Analysis'] || window.enhancedDashboard.rawData['Commune Status'] || [];
                 if (r && r.length) return r;
             }
-            const gid = '1421590976';
+            const gid = (window.GOOGLE_SHEETS && window.GOOGLE_SHEETS.communeDetails) ? window.GOOGLE_SHEETS.communeDetails.gid : '1421590976';
             const csvRows = await fetchCsvByGid(gid);
             if (csvRows && csvRows.length) return csvRows;
             return [];
-        } catch(e){ console.warn('getRows error', e); return []; }
+        } catch (e) { console.warn('getRows error', e); return []; }
     }
 
-    function setLoading(visible){
-        const el = document.getElementById('communeTableLoader'); if(el) el.style.display = visible ? 'flex' : 'none';
+    function setLoading(visible) {
+        const el = document.getElementById('communeTableLoader'); if (el) el.style.display = visible ? 'flex' : 'none';
     }
-    function setNoData(hasNo){
-        const nod = document.getElementById('communeTableNoData'); if(nod) nod.style.display = hasNo ? 'flex' : 'none';
-        const ldr = document.getElementById('communeTableLoader'); if(ldr && hasNo) ldr.style.display='none';
+    function setNoData(hasNo) {
+        const nod = document.getElementById('communeTableNoData'); if (nod) nod.style.display = hasNo ? 'flex' : 'none';
+        const ldr = document.getElementById('communeTableLoader'); if (ldr && hasNo) ldr.style.display = 'none';
     }
 
     function normalizeKey(key) {
@@ -132,7 +132,7 @@
         });
     }
 
-    function buildTable(rows){
+    function buildTable(rows) {
         // store current rows for re-render after reorder
         buildTable._currentRows = rows;
         const head = document.getElementById('liveCommuneHead');
@@ -148,14 +148,14 @@
         const savedOrderKey = 'communes_table_order';
         const detected = Object.keys(rows[0]);
         let cols = detected.slice();
-        try{
+        try {
             const saved = localStorage.getItem(savedOrderKey);
             if (saved) {
                 const arr = JSON.parse(saved);
                 // keep only columns that exist in detected, append any new detected cols
                 cols = arr.filter(a => detected.includes(a)).concat(detected.filter(d => !arr.includes(d)));
             }
-        }catch(e){ /* ignore */ }
+        } catch (e) { /* ignore */ }
 
         // user-friendly header labels dictionary (use normalized keys)
         const headerLabelMap = {
@@ -194,15 +194,15 @@
             'messagederrerjointre': 'Message d\'erreur'
         };
 
-        function humanizeKey(k){
-            if(!k) return '';
+        function humanizeKey(k) {
+            if (!k) return '';
             if (String(k).endsWith('_pct')) {
                 const base = k.slice(0, -4);
-                const s = String(base).replace(/[^a-z0-9]+/gi,' ').trim();
-                return '% ' + s.split(/\s+/).map(w=> w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+                const s = String(base).replace(/[^a-z0-9]+/gi, ' ').trim();
+                return '% ' + s.split(/\s+/).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
             }
-            const s = String(k).replace(/[^a-z0-9]+/gi,' ').trim();
-            return s.split(/\s+/).map(w=> w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+            const s = String(k).replace(/[^a-z0-9]+/gi, ' ').trim();
+            return s.split(/\s+/).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
         }
 
         const thr = document.createElement('tr'); thr.className = 'bg-gray-50';
@@ -227,7 +227,7 @@
             // keep dataset.key as the canonical internal key, but show a friendly label
             th.dataset.key = c;
             th.draggable = true;
-            th.setAttribute('tabindex','0'); // make focusable for keyboard
+            th.setAttribute('tabindex', '0'); // make focusable for keyboard
             th.dataset.colIndex = idx;
             const label = headerLabelMap[c] || humanizeKey(c);
             th.textContent = label;
@@ -239,11 +239,12 @@
                 ev.dataTransfer.effectAllowed = 'move';
                 th.classList.add('opacity-50');
             });
-            th.addEventListener('dragend', (ev) => { th.classList.remove('opacity-50'); insertionIndicator.style.display='none'; });
-            th.addEventListener('dragover', (ev) => { ev.preventDefault(); ev.dataTransfer.dropEffect = 'move'; th.classList.add('bg-gray-100');
+            th.addEventListener('dragend', (ev) => { th.classList.remove('opacity-50'); insertionIndicator.style.display = 'none'; });
+            th.addEventListener('dragover', (ev) => {
+                ev.preventDefault(); ev.dataTransfer.dropEffect = 'move'; th.classList.add('bg-gray-100');
                 // show insertion indicator at left or right depending on pointer
                 const rect = th.getBoundingClientRect();
-                const mid = rect.left + rect.width/2;
+                const mid = rect.left + rect.width / 2;
                 const containerRect = (document.querySelector('#liveCommuneTable').closest('.overflow-x-auto') || document.body).getBoundingClientRect();
                 insertionIndicator.style.display = 'block';
                 if (ev.clientX < mid) {
@@ -252,10 +253,10 @@
                     insertionIndicator.style.left = (rect.right - containerRect.left) + 'px';
                 }
             });
-            th.addEventListener('dragleave', (ev) => { th.classList.remove('bg-gray-100'); insertionIndicator.style.display='none'; });
+            th.addEventListener('dragleave', (ev) => { th.classList.remove('bg-gray-100'); insertionIndicator.style.display = 'none'; });
             th.addEventListener('drop', (ev) => {
-                ev.preventDefault(); th.classList.remove('bg-gray-100'); insertionIndicator.style.display='none';
-                try{
+                ev.preventDefault(); th.classList.remove('bg-gray-100'); insertionIndicator.style.display = 'none';
+                try {
                     const fromKey = ev.dataTransfer.getData('text/plain');
                     const toKey = c;
                     if (!fromKey || fromKey === toKey) return;
@@ -264,14 +265,14 @@
                     if (fromIdx === -1 || toIdx === -1) return;
                     // If dropping on right half, insert after
                     const rect = th.getBoundingClientRect();
-                    const mid = rect.left + rect.width/2;
+                    const mid = rect.left + rect.width / 2;
                     if (ev.clientX > mid) toIdx = toIdx + 1;
                     cols.splice(fromIdx, 1);
-                    cols.splice(toIdx > fromIdx ? toIdx-1 : toIdx, 0, fromKey);
+                    cols.splice(toIdx > fromIdx ? toIdx - 1 : toIdx, 0, fromKey);
                     localStorage.setItem(savedOrderKey, JSON.stringify(cols));
                     const current = buildTable._currentRows || rows;
                     buildTable(current);
-                }catch(e){ console.warn('column drop handling failed', e); }
+                } catch (e) { console.warn('column drop handling failed', e); }
             });
 
             // Touch / pointer support (pointer events fallback)
@@ -288,7 +289,7 @@
                 // show indicator following finger roughly
                 const rect = th.getBoundingClientRect();
                 const containerRect = (document.querySelector('#liveCommuneTable').closest('.overflow-x-auto') || document.body).getBoundingClientRect();
-                insertionIndicator.style.display='block';
+                insertionIndicator.style.display = 'block';
                 insertionIndicator.style.left = (ev.clientX - containerRect.left) + 'px';
             });
             th.addEventListener('pointerup', (ev) => {
@@ -310,8 +311,8 @@
                             buildTable(current);
                         }
                     }
-                } catch(e) { console.warn('pointer reorder failed', e); }
-                insertionIndicator.style.display='none';
+                } catch (e) { console.warn('pointer reorder failed', e); }
+                insertionIndicator.style.display = 'none';
                 pointerState = null;
             });
 
@@ -322,7 +323,7 @@
                     const fromKey = c;
                     const fromIdx = cols.indexOf(fromKey);
                     if (fromIdx === -1) return;
-                    const toIdx = ev.key === 'ArrowLeft' ? Math.max(0, fromIdx-1) : Math.min(cols.length-1, fromIdx+1);
+                    const toIdx = ev.key === 'ArrowLeft' ? Math.max(0, fromIdx - 1) : Math.min(cols.length - 1, fromIdx + 1);
                     if (toIdx === fromIdx) return;
                     cols.splice(fromIdx, 1);
                     cols.splice(toIdx, 0, fromKey);
@@ -353,7 +354,7 @@
 
     // charts removed: this panel focuses on table and KPIs only
 
-    async function refresh(){
+    async function refresh() {
         setLoading(true);
         setNoData(false);
         const rows = await getRows();
@@ -372,12 +373,18 @@
 
     // Fetch and parse Commune Status sheet
     async function fetchCommuneStatus() {
-        const PUBLISHED_BASE = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSu_1nF47cOxavQnnbiyo2XbTnV-6XLypzrsHnHmIjHVhhtYMKYVQHBgurb7Mh8fg/pub';
-        const SPREADSHEET_ID = '1CbDBJtoWWPRjEH4DOSlv4jjnJ2G-1MvW';
-        const GID = '1421590976';
+        const SPREADSHEET_ID = (window.CONFIG && window.CONFIG.SHEETS_BASE_URL) ?
+            window.CONFIG.SHEETS_BASE_URL.split('/d/')[1].split('/')[0] :
+            '1IbV-vzaby_xwdzeENu7qgsZyqb7eWKQSHmp1hw3nPvg';
+        const GID = (window.GOOGLE_SHEETS && window.GOOGLE_SHEETS.communeDetails) ?
+            window.GOOGLE_SHEETS.communeDetails.gid :
+            '1421590976';
+        const BASE_URL = (window.CONFIG && window.CONFIG.SHEETS_BASE_URL) ?
+            window.CONFIG.SHEETS_BASE_URL :
+            `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/export?format=csv&gid=`;
 
         try {
-            const res = await fetch(`${PUBLISHED_BASE}?gid=${GID}&single=true&output=csv`, { cache: 'no-store' });
+            const res = await fetch(`${BASE_URL}${GID}`, { cache: 'no-store' });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const csvText = await res.text();
             return parseCSV(csvText);
@@ -472,31 +479,31 @@
         console.log('Rows for KPI calculation:', rows);
 
         // helper: try a list of candidate keys (already-normalized) and sum the first matching column
-        function sumByCandidates(candidates){
-            if(!candidates || !candidates.length) return 0;
-            for(const cand of candidates){
+        function sumByCandidates(candidates) {
+            if (!candidates || !candidates.length) return 0;
+            for (const cand of candidates) {
                 const nk = normalizeKey(cand);
-                if(rows[0].hasOwnProperty(nk)){
-                    return rows.reduce((s,r)=>{
+                if (rows[0].hasOwnProperty(nk)) {
+                    return rows.reduce((s, r) => {
                         const v = r[nk];
                         if (v == null || v === '') return s;
-                        const num = Number(String(v).replace(/[^0-9.-]/g,''));
+                        const num = Number(String(v).replace(/[^0-9.-]/g, ''));
                         return s + (Number.isFinite(num) ? num : 0);
                     }, 0);
                 }
             }
             // fallback: try to find any numeric column
             const keys = Object.keys(rows[0]);
-            for(const k of keys){ const sample = String(rows[0][k]||''); if(sample.match(/\d/)) return rows.reduce((s,r)=>{ const n = Number(String(r[k]||'').replace(/[^0-9.-]/g,'')); return s + (Number.isFinite(n)? n : 0); },0); }
+            for (const k of keys) { const sample = String(rows[0][k] || ''); if (sample.match(/\d/)) return rows.reduce((s, r) => { const n = Number(String(r[k] || '').replace(/[^0-9.-]/g, '')); return s + (Number.isFinite(n) ? n : 0); }, 0); }
             return 0;
         }
 
-        const totalParcels = sumByCandidates(['totalparcelles','totalparcels','parcelles','parcellesbrtes','parcellesbrutes']);
-        const nicadParcels = sumByCandidates(['nicad','nicadparcels','nicad_parcels']);
-        const ctasfParcels = sumByCandidates(['ctasf','ctas','ctas_parcels']);
-        const rejectedParcels = sumByCandidates(['parcellesrejeteesparlurm','rejected','rejectedparcels','rejected_parcels']);  // Fixed to 'parlurm'
-        const validatedParcels = sumByCandidates(['parcellesvalideesparlurm','validated','validatedparcels','validated_parcels']);  // Fixed to 'parlurm'
-        const deliberatedParcels = sumByCandidates(['deliberees','deliberee','deliberated','deliberatedparcels']);
+        const totalParcels = sumByCandidates(['totalparcelles', 'totalparcels', 'parcelles', 'parcellesbrtes', 'parcellesbrutes']);
+        const nicadParcels = sumByCandidates(['nicad', 'nicadparcels', 'nicad_parcels']);
+        const ctasfParcels = sumByCandidates(['ctasf', 'ctas', 'ctas_parcels']);
+        const rejectedParcels = sumByCandidates(['parcellesrejeteesparlurm', 'rejected', 'rejectedparcels', 'rejected_parcels']);  // Fixed to 'parlurm'
+        const validatedParcels = sumByCandidates(['parcellesvalideesparlurm', 'validated', 'validatedparcels', 'validated_parcels']);  // Fixed to 'parlurm'
+        const deliberatedParcels = sumByCandidates(['deliberees', 'deliberee', 'deliberated', 'deliberatedparcels']);
 
         console.log('Calculated KPI values:', {
             totalParcels,
@@ -561,9 +568,9 @@
     // Initialize table rendering on page load
     document.addEventListener('DOMContentLoaded', () => {
         const search = document.getElementById('communeSearch');
-        if (search) search.addEventListener('input', (e)=>{ const q=e.target.value.trim().toLowerCase(); const tbody=document.getElementById('liveCommuneBody'); if(!tbody) return; Array.from(tbody.querySelectorAll('tr')).forEach(tr=>{ tr.style.display = q ? (tr.textContent.toLowerCase().includes(q) ? '' : 'none') : ''; }); });
+        if (search) search.addEventListener('input', (e) => { const q = e.target.value.trim().toLowerCase(); const tbody = document.getElementById('liveCommuneBody'); if (!tbody) return; Array.from(tbody.querySelectorAll('tr')).forEach(tr => { tr.style.display = q ? (tr.textContent.toLowerCase().includes(q) ? '' : 'none') : ''; }); });
         // kick off
-        try{ AOS && AOS.refresh(); }catch(e){}
+        try { AOS && AOS.refresh(); } catch (e) { }
         refresh();
         renderCommuneTable();
 

@@ -23,7 +23,7 @@ class GoogleSheetsService {
         // Group requests that need fetching
         for (const config of sheetConfigs) {
             const cacheKey = `${spreadsheetId}_${config.gid}`;
-            
+
             if (this.cache.has(cacheKey)) {
                 const cached = this.cache.get(cacheKey);
                 if (Date.now() - cached.timestamp < this.cacheExpiry) {
@@ -31,7 +31,7 @@ class GoogleSheetsService {
                     continue;
                 }
             }
-            
+
             // Check if there's a pending request for this sheet
             if (this.pendingRequests.has(cacheKey)) {
                 fetchPromises.push(this.pendingRequests.get(cacheKey));
@@ -41,22 +41,22 @@ class GoogleSheetsService {
                 this.pendingRequests.set(cacheKey, promise);
                 fetchPromises.push(promise);
             }
-            
+
             sheetNames.push({ name: config.name, gid: config.gid });
         }
 
         // Wait for all pending requests to complete
         if (fetchPromises.length > 0) {
             const fetchedData = await Promise.allSettled(fetchPromises);
-            
+
             // Process results
             fetchedData.forEach((result, index) => {
                 const { name, gid } = sheetNames[index];
                 const cacheKey = `${spreadsheetId}_${gid}`;
-                
+
                 if (result.status === 'fulfilled') {
                     results[name] = result.value;
-                    
+
                     // Update cache
                     this.cache.set(cacheKey, {
                         data: result.value,
@@ -66,7 +66,7 @@ class GoogleSheetsService {
                     console.error(`Failed to fetch sheet ${name}:`, result.reason);
                     results[name] = { error: result.reason.message || 'Unknown error' };
                 }
-                
+
                 // Remove pending request
                 this.pendingRequests.delete(cacheKey);
             });
@@ -83,13 +83,13 @@ class GoogleSheetsService {
      */
     async fetchSheet(spreadsheetId, gid) {
         const url = `${this.baseUrl}${spreadsheetId}${this.exportFormat}${gid}`;
-        
+
         try {
             const response = await fetch(url);
             if (!response.ok) {
                 throw new Error(`Network response was not ok: ${response.status}`);
             }
-            
+
             const csvText = await response.text();
             return this.parseCSV(csvText);
         } catch (error) {
@@ -107,21 +107,21 @@ class GoogleSheetsService {
         // Split by line breaks
         const lines = csvText.split(/\\r?\\n/).filter(line => line.trim());
         if (lines.length === 0) return [];
-        
+
         // Parse header row
         const headers = this.parseCSVLine(lines[0]);
-        
+
         // Parse data rows
         return lines.slice(1).map(line => {
             const values = this.parseCSVLine(line);
             const row = {};
-            
+
             headers.forEach((header, index) => {
                 // Clean header names
                 const cleanHeader = header.trim();
                 row[cleanHeader] = values[index] !== undefined ? values[index].trim() : '';
             });
-            
+
             return row;
         });
     }
@@ -135,11 +135,11 @@ class GoogleSheetsService {
         const values = [];
         let currentValue = '';
         let inQuotes = false;
-        
+
         for (let i = 0; i < line.length; i++) {
             const char = line[i];
             const nextChar = line[i + 1];
-            
+
             if (char === '"' && !inQuotes) {
                 // Start of quoted field
                 inQuotes = true;
@@ -159,10 +159,10 @@ class GoogleSheetsService {
                 currentValue += char;
             }
         }
-        
+
         // Push the last value
         values.push(currentValue);
-        
+
         return values;
     }
 
@@ -176,7 +176,7 @@ class GoogleSheetsService {
             this.cache.clear();
             return;
         }
-        
+
         if (!gid) {
             // Clear all sheets from this spreadsheet
             for (const key of this.cache.keys()) {
@@ -186,19 +186,19 @@ class GoogleSheetsService {
             }
             return;
         }
-        
+
         // Clear specific sheet
         const cacheKey = `${spreadsheetId}_${gid}`;
         this.cache.delete(cacheKey);
     }
-    
+
     /**
      * Get sheets configuration for PROCASSEF Dashboard
      * @returns {Object} - Configuration for sheet fetching
      */
     getPROCASSEFConfig() {
-        const spreadsheetId = '1CbDBJtoWWPRjEH4DOSlv4jjnJ2G-1MvW';
-        
+        const spreadsheetId = '1IbV-vzaby_xwdzeENu7qgsZyqb7eWKQSHmp1hw3nPvg';
+
         return {
             spreadsheetId,
             sheets: [

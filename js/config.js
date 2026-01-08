@@ -3,23 +3,30 @@
 
 const CONFIG = {
     // Base Google Sheets URL
-    SHEETS_BASE_URL: 'https://docs.google.com/spreadsheets/d/1CbDBJtoWWPRjEH4DOSlv4jjnJ2G-1MvW/export?format=csv&gid=',
-    
+    SHEETS_BASE_URL: 'https://docs.google.com/spreadsheets/d/1IbV-vzaby_xwdzeENu7qgsZyqb7eWKQSHmp1hw3nPvg/export?format=csv&gid=',
+
     // Refresh interval (5 minutes)
     REFRESH_INTERVAL: 5 * 60 * 1000,
-    
+
     // Performance targets
     TARGETS: {
-        DAILY_PARCELS: 832.77,
-        WEEKLY_PARCELS: 5829.39, // 832.77 * 7
+        // January 2026 Goal: 12,000
+        // Daily: 12000 / 31 = 387.096
+        // Weekly: 387.096 * 7 = 2709.67
+        JANUARY_2026_GOAL: 12000,
+        DAILY_PARCELS: 387.1,
+        WEEKLY_PARCELS: 2710,
+        TOTAL_GOAL: 75000,
+
+        // Legacy / Fallback
         SEPTEMBER_2025_GOAL: 60830.22,
         TEAMS_COUNT: 20,
-        TOTAL_PER_DAY_PER_TEAM: 832.777777777778 / 20
+        TOTAL_PER_DAY_PER_TEAM: 387.1 / 20
     },
-    
+
     // Regional data
     REGIONS: ['Tambacounda', 'Kedougou'],
-    
+
     // Chart colors
     COLORS: {
         primary: '#3B82F6',
@@ -54,65 +61,78 @@ const CONFIG = {
 // Google Sheets Configuration
 const GOOGLE_SHEETS = {
     // Main Data Sheets
+    dailyLeveeSource: {
+        gid: '870166470',
+        name: 'Daily Levee Source',
+        columns: ['Date', 'Région', 'Commune', 'Nombre de levées', 'Equipe'],
+        url: 'https://docs.google.com/spreadsheets/d/1IbV-vzaby_xwdzeENu7qgsZyqb7eWKQSHmp1hw3nPvg/export?format=csv&gid=870166470'
+    },
     overview: {
         gid: '589154853',
         name: 'Overview Metrics',
         columns: ['Metric', 'Value'],
-        url: CONFIG.SHEETS_BASE_URL + '589154853'
+        url: 'https://docs.google.com/spreadsheets/d/1CbDBJtoWWPRjEH4DOSlv4jjnJ2G-1MvW/export?format=csv&gid=589154853'
     },
-    
+
+    totalMoyenne: {
+        gid: '1703269267',
+        name: 'Total-Moyenne',
+        columns: ['Date', 'Total', 'Moyenne'], // Assuming standard cols, can be adjusted
+        url: 'https://docs.google.com/spreadsheets/d/1CbDBJtoWWPRjEH4DOSlv4jjnJ2G-1MvW/export?format=csv&gid=1703269267'
+    },
+
     processing1: {
         gid: '778550489',
         name: 'Processing Phase 1',
         columns: ['Phase', 'Tool', 'Parcel Type', 'Total'],
-        url: CONFIG.SHEETS_BASE_URL + '778550489'
+        url: 'https://docs.google.com/spreadsheets/d/1CbDBJtoWWPRjEH4DOSlv4jjnJ2G-1MvW/export?format=csv&gid=778550489'
     },
-    
+
     processing2: {
         gid: '1687610293',
-        name: 'Processing Phase 2', 
+        name: 'Processing Phase 2',
         columns: ['Phase', 'Tool', 'Parcel Type', 'Total'],
-        url: CONFIG.SHEETS_BASE_URL + '1687610293'
+        url: 'https://docs.google.com/spreadsheets/d/1CbDBJtoWWPRjEH4DOSlv4jjnJ2G-1MvW/export?format=csv&gid=1687610293'
     },
-    
+
     teamProductivity: {
         gid: '1397416280',
-    name: 'Team Productivity',
+        name: 'Team Productivity',
         columns: ['Team', 'Champs/Equipe/Jour'],
-        url: CONFIG.SHEETS_BASE_URL + '1397416280'
+        url: 'https://docs.google.com/spreadsheets/d/1CbDBJtoWWPRjEH4DOSlv4jjnJ2G-1MvW/export?format=csv&gid=1397416280'
     },
-    
+
     projectTimeline: {
         gid: '660642704',
         name: 'Project Timeline',
         columns: ['Order', 'Tambacounda', 'Tambacounda Status', 'Tambacounda Start Date', 'Tambacounda End Date', 'Kedougou', 'Kedougou Status', 'Kedougou Start Date', 'Kedougou End Date'],
-        url: CONFIG.SHEETS_BASE_URL + '660642704'
+        url: 'https://docs.google.com/spreadsheets/d/1CbDBJtoWWPRjEH4DOSlv4jjnJ2G-1MvW/export?format=csv&gid=660642704'
     },
-    
+
     projectionCollection: {
         gid: '1151168155',
         name: 'Collection Projections',
         columns: ['Metric', 'Value', 'Sept 2025', 'Oct 2025', 'Nov 2025', 'Dec 2025'],
-        url: CONFIG.SHEETS_BASE_URL + '1151168155'
+        url: 'https://docs.google.com/spreadsheets/d/1CbDBJtoWWPRjEH4DOSlv4jjnJ2G-1MvW/export?format=csv&gid=1151168155'
     },
-    
+
     projectionDisplay: {
         gid: '2035205606',
         name: 'Display Projections',
         columns: ['Metric', 'Value', 'Parcels Displayed', 'Expected Display', 'Sept 2025', 'Oct 2025', 'Nov 2025', 'Dec 2025'],
-        url: CONFIG.SHEETS_BASE_URL + '2035205606'
+        url: 'https://docs.google.com/spreadsheets/d/1CbDBJtoWWPRjEH4DOSlv4jjnJ2G-1MvW/export?format=csv&gid=2035205606'
     },
-    
+
     projectionCtasf: {
         gid: '1574818070',
         name: 'CTASF Projections',
         columns: ['Metric', 'Value', 'Parcels NICAD', 'Parcels CTASF', 'Sept 2025', 'Oct 2025', 'Nov 2025', 'Dec 2025'],
-        url: CONFIG.SHEETS_BASE_URL + '1574818070'
+        url: 'https://docs.google.com/spreadsheets/d/1CbDBJtoWWPRjEH4DOSlv4jjnJ2G-1MvW/export?format=csv&gid=1574818070'
     },
-    
+
     communeDetails: {
         gid: '1421590976',
-    name: 'Commune Analysis',
+        name: 'Commune Analysis',
         columns: [
             'Commune',
             'Région',
@@ -145,14 +165,14 @@ const GOOGLE_SHEETS = {
             'Statut jointure',
             'Message d’erreur jointure'
         ],
-        url: CONFIG.SHEETS_BASE_URL + '1421590976'
+        url: 'https://docs.google.com/spreadsheets/d/1CbDBJtoWWPRjEH4DOSlv4jjnJ2G-1MvW/export?format=csv&gid=1421590976'
     },
-    
+
     documentation: {
         gid: '1203072335',
         name: 'Documentation',
         columns: ['Section', 'Description'],
-        url: CONFIG.SHEETS_BASE_URL + '1203072335'
+        url: 'https://docs.google.com/spreadsheets/d/1CbDBJtoWWPRjEH4DOSlv4jjnJ2G-1MvW/export?format=csv&gid=1203072335'
     }
 };
 
@@ -162,28 +182,36 @@ const MONITORING_SHEETS = {
         gid: '614496809',
         name: 'Public Display Follow-up',
         columns: ['Date', 'Région', 'Commune', 'Motif retour', 'Nombre de parcelles affichées sans erreurs', 'Nombre Parcelles avec erreur'],
-        url: CONFIG.SHEETS_BASE_URL + '614496809'
+        url: 'https://docs.google.com/spreadsheets/d/1CbDBJtoWWPRjEH4DOSlv4jjnJ2G-1MvW/export?format=csv&gid=614496809'
     },
-    
+
     ctasfFollowup: {
-        gid: '1629996903', 
+        gid: '1629996903',
         name: 'CTASF Follow-up',
         columns: ['Date', 'Région', 'Commune', 'Nombre parcelles emmenées au CTASF', 'Nombre parcelles retenues CTASF', 'Nombre parcelles à délibérer', 'Nombre parcelles délibérées'],
-        url: CONFIG.SHEETS_BASE_URL + '1629996903'
+        url: 'https://docs.google.com/spreadsheets/d/1CbDBJtoWWPRjEH4DOSlv4jjnJ2G-1MvW/export?format=csv&gid=1629996903'
     },
-    
+
     postProcessFollowup: {
         gid: '202408760',
-        name: 'Post Process Follow-up', 
+        name: 'Post Process Follow-up',
         columns: ['Date', 'Geomaticien', 'Région', 'Commune', 'Parcelles reçues (Brutes)', 'Parcelles post traitées (Sans Doublons et topoplogie correcte)', 'Parcelles individuelles Jointes', 'Parcelles collectives Jointes', 'Parcelles sans jointure', 'Parcelles retournées aux topos', 'Motif'],
-        url: CONFIG.SHEETS_BASE_URL + '202408760'
+        url: 'https://docs.google.com/spreadsheets/d/1CbDBJtoWWPRjEH4DOSlv4jjnJ2G-1MvW/export?format=csv&gid=202408760'
     },
-    
+
     yieldsProjection: {
         gid: '1397416280',
         name: 'Yields Projections',
         columns: ['Date', 'Région', 'Commune', 'Nombre de levées'],
-        url: CONFIG.SHEETS_BASE_URL + '1397416280'
+        url: 'https://docs.google.com/spreadsheets/d/1CbDBJtoWWPRjEH4DOSlv4jjnJ2G-1MvW/export?format=csv&gid=1397416280'
+    },
+
+    dailyLeveeSource: {
+        gid: '870166470',
+        name: 'Daily Levee Source',
+        columns: ['Date', 'Equipe', 'Région', 'Commune', 'Nombre de levées'], // Assumed columns based on context
+        // Note: Different Spreadsheet ID than base
+        url: 'https://docs.google.com/spreadsheets/d/1IbV-vzaby_xwdzeENu7qgsZyqb7eWKQSHmp1hw3nPvg/export?format=csv&gid=870166470'
     }
 };
 
@@ -191,7 +219,7 @@ const MONITORING_SHEETS = {
 const CHART_CONFIGS = {
     defaultOptions: {
         responsive: true,
-        maintainAspectRatio: true,
+        maintainAspectRatio: false, // Fix compression
         aspectRatio: 2,  // Width:Height ratio
         plugins: {
             legend: {
@@ -228,7 +256,7 @@ const CHART_CONFIGS = {
             }
         }
     },
-    
+
     gaugeOptions: {
         circumference: Math.PI,
         rotation: Math.PI,
@@ -249,7 +277,7 @@ const CHART_CONFIGS = {
             }
         }
     },
-    
+
     timeSeriesOptions: {
         scales: {
             x: {
@@ -291,7 +319,7 @@ const UTILS = {
             maximumFractionDigits: 2
         }).format(num);
     },
-    
+
     // Format percentage
     formatPercentage: (num) => {
         return new Intl.NumberFormat('fr-FR', {
@@ -300,7 +328,7 @@ const UTILS = {
             maximumFractionDigits: 1
         }).format(num / 100);
     },
-    
+
     // Robust day-first date parser returning a real Date or null
     parseDateDMY: (val) => {
         if (!val && val !== 0) return null;
@@ -324,14 +352,14 @@ const UTILS = {
         // Fallback: try Date again
         return isNaN(iso) ? null : iso;
     },
-    
+
     // Format date for display (force fr-FR day-first)
     formatDate: (dateString) => {
         const date = UTILS.parseDateDMY(dateString);
         if (!date) return String(dateString || '');
         return date.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
     },
-    
+
     // Parse CSV data
     parseCSV: (csvText) => {
         try {
@@ -368,12 +396,12 @@ const UTILS = {
             return [];
         }
     },
-    
+
     // Calculate date ranges
     getDateRange: (type) => {
         const now = new Date();
         let startDate, endDate = new Date(now);
-        
+
         switch (type) {
             case 'day':
                 startDate = new Date(now);
@@ -390,10 +418,10 @@ const UTILS = {
                 startDate = new Date(now);
                 startDate.setMonth(now.getMonth() - 3);
         }
-        
+
         return { startDate, endDate };
     },
-    
+
     // Filter data by date range
     filterByDateRange: (data, startDate, endDate, dateColumn = 'Date') => {
         return data.filter(row => {
@@ -402,7 +430,7 @@ const UTILS = {
             return rowDate >= startDate && rowDate <= endDate;
         });
     },
-    
+
     // Group data by key
     groupBy: (data, key) => {
         return data.reduce((groups, item) => {
@@ -412,20 +440,20 @@ const UTILS = {
             return groups;
         }, {});
     },
-    
+
     // Calculate sum of numeric column
     sumColumn: (data, column) => {
         return data.reduce((sum, row) => {
             return sum + (parseFloat(row[column]) || 0);
         }, 0);
     },
-    
+
     // Calculate average of numeric column
     avgColumn: (data, column) => {
         if (data.length === 0) return 0;
         return UTILS.sumColumn(data, column) / data.length;
     },
-    
+
     // Debounce function for performance
     debounce: (func, wait) => {
         let timeout;

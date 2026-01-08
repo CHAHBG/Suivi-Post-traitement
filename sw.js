@@ -1,53 +1,93 @@
-// Simple service worker to prefer network (network-first) and avoid serving stale cached content.
-// Note: Service workers require HTTPS (or localhost) to register.
-const STATIC_CACHE = 'static-cache-v1';
-const DYNAMIC_CACHE = 'dynamic-cache-v1';
+// Modern service worker with network-first strategy for fresh data
+// Follows latest PWA best practices
+const CACHE_VERSION = 'v2.0.0';
+const STATIC_CACHE = `static-${CACHE_VERSION}`;
+const DYNAMIC_CACHE = `dynamic-${CACHE_VERSION}`;
+
 const STATIC_URLS = [
   '/',
   '/index.html',
   '/styles.css',
-  '/js/accessibilityHelpers.js'
+  '/manifest.webmanifest'
 ];
 
-self.addEventListener('install', (e) => {
-  e.waitUntil(
-    caches.open(STATIC_CACHE).then(cache => cache.addAll(STATIC_URLS))
+// Install event - cache static assets
+self.addEventListener('install', (event) => {
+  event.waitUntil(
+    caches.open(STATIC_CACHE)
+      .then(cache => cache.addAll(STATIC_URLS))
+      .then(() => self.skipWaiting())
   );
-  self.skipWaiting();
 });
 
-self.addEventListener('activate', (e) => {
-  e.waitUntil(self.clients.claim());
+// Activate event - clean up old caches
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys().then(cacheNames => {
+      return Promise.all(
+        cacheNames
+          .filter(name => name.startsWith('static-') || name.startsWith('dynamic-'))
+          .filter(name => name !== STATIC_CACHE && name !== DYNAMIC_CACHE)
+          .map(name => caches.delete(name))
+      );
+    }).then(() => self.clients.claim())
+  );
 });
 
-function isStaticRequest(req){
-  return req.destination === 'style' || req.destination === 'script' || req.destination === 'font' || req.destination === 'image' || req.url.endsWith('.css') || req.url.endsWith('.js') || req.url.endsWith('.woff2') || req.url.endsWith('.woff') || req.url.endsWith('.ttf');
+// Helper to determine if request is for static asset
+function isStaticAsset(request) {
+  const url = new URL(request.url);
+  return request.destination === 'style' ||
+         request.destination === 'script' ||
+         request.destination === 'font' ||
+         request.destination === 'image' ||
+         url.pathname.match(/\.(css|js|woff2?|ttf|png|jpg|jpeg|svg|webp)$/);
 }
 
+// Fetch event - network-first for data, cache-first for assets
 self.addEventListener('fetch', (event) => {
-  const req = event.request;
-  if(req.method !== 'GET') return;
+  const { request } = event;
+  
+  // Only handle GET requests
+  if (request.method !== 'GET') return;
 
-  try{
-    const reqUrl = new URL(req.url);
-    // Only handle same-origin requests here
-    if(reqUrl.origin !== self.location.origin) return;
-  }catch(e){ return; }
+  // Only handle same-origin requests
+  try {
+    const url = new URL(request.url);
+    if (url.origin !== self.location.origin) return;
+  } catch (e) {
+    return;
+  }
 
-  // For static assets: cache-first (faster)
-  if(isStaticRequest(req)){
+  // Cache-first strategy for static assets
+  if (isStaticAsset(request)) {
     event.respondWith(
-      caches.match(req).then(cached => cached || fetch(req).then(resp => { caches.open(STATIC_CACHE).then(c=> c.put(req, resp.clone())); return resp; }).catch(()=> caches.match('/index.html')))
+      caches.match(request).then(cached => {
+        return cached || fetch(request).then(response => {
+          if (response.ok) {
+            const clone = response.clone();
+            caches.open(STATIC_CACHE).then(cache => cache.put(request, clone));
+          }
+          return response;
+        }).catch(() => caches.match('/index.html'));
+      })
     );
     return;
   }
 
-  // For dynamic data (APIs, sheets): network-first with short timeout fallback to cache
+  // Network-first strategy for dynamic data
   event.respondWith(
-    fetch(req, { cache: 'no-store' }).then(resp => {
-      // store a copy for offline fallback
-      const clone = resp.clone();
-      caches.open(DYNAMIC_CACHE).then(c=> c.put(req, clone));
+    fetch(request, { cache: 'no-store' })
+      .then(response => {
+        if (response.ok) {
+          const clone = response.clone();
+          caches.open(DYNAMIC_CACHE).then(cache => cache.put(request, clone));
+        }
+        return response;
+      })
+      .catch(() => caches.match(request))
+  );
+});
       return resp;
     }).catch(()=> caches.match(req)).catch(()=> new Response(null, { status: 504 }))
   );

@@ -1,15 +1,21 @@
 <!DOCTYPE html>
 <html lang="fr">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="PROCASSEF - Tableau de bord du cadastre du Sénégal pour le suivi des levées, affichage, CTASF et post-traitement">
+    <meta name="theme-color" content="#3B82F6">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>Suivi Opérations | BETPLUSAUDETAG</title>
     <!-- Prevent aggressive caching; favours fresh data on reload/reopen -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🗺️</text></svg>">
-    
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🗺️</text></svg>">
+
     <!-- CSS Libraries -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
@@ -19,15 +25,18 @@
     <meta name="theme-color" content="#4f46e5">
     <!-- Minimal Content Security Policy (meta fallback) - recommend setting on server for production -->
     <!-- CSP: allow HTTPS-hosted fonts and data URIs (keeps policy permissive for CDNs; tighten on server if possible) -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https:; script-src 'self' https: 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: https:; connect-src 'self' https: https://docs.google.com; font-src 'self' https: data:;">
-    
+    <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self' https:; script-src 'self' https: 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: https:; connect-src 'self' https: https://docs.google.com; font-src 'self' https: data:;">
+
     <!-- JavaScript Libraries -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-moment@1.0.1/dist/chartjs-adapter-moment.min.js"></script>
-    
+    <!-- SheetJS for XLSX export -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+
     <!-- Custom Styles -->
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles.css?v=3.0">
     <link rel="stylesheet" href="css/tubeProgress.css">
     <link rel="stylesheet" href="css/charts.css">
     <!-- Data refresher: periodically fetch configured sheet endpoints -->
@@ -35,1008 +44,385 @@
     <script src="js/dataRefresher.js" defer></script>
     <script src="js/accessibilityHelpers.js" defer></script>
 </head>
-<body class="bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50 font-inter antialiased selection:bg-blue-200 selection:text-blue-900" data-theme="light">
-    <a class="skip-link" href="#tabPanels">Passer au contenu</a>
-    
+
+<body class="font-inter antialiased" data-theme="light">
     <!-- Navigation Header -->
-    <nav class="nav-glass sticky top-0 z-50 border-b border-white/20" role="navigation" aria-label="En-tête du site">
-        <div class="max-w-8xl mx-auto px-6 sm:px-8 lg:px-12">
-            <div class="flex justify-between items-center h-20">
-                <!-- Logo Section -->
-                <div class="flex items-center space-x-4">
-                    <div class="logo-container">
-                        <div class="logo-icon">
-                            <i class="fas fa-map-marked-alt"></i>
-                        </div>
+    <nav class="border-b border-subtle bg-surface z-50 sticky top-0" role="navigation" aria-label="En-tête">
+        <div class="max-w-8xl mx-auto px-6 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-8 h-8 bg-primary rounded-md flex items-center justify-center text-white">
+                    <i class="fas fa-map-marked-alt text-sm"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold tracking-tight">Suivi PROCASEF</h1>
+                    <p class="text-xs text-secondary font-medium uppercase tracking-wider">BETPLUSAUDETAG</p>
+                </div>
+            </div>
+
+            <div class="flex items-center space-x-4">
+                <div class="hidden md:flex items-center space-x-6 border-r border-subtle pr-6 mr-2">
+                    <div class="stat-pill flex flex-col">
+                        <span class="stat-label text-[10px] font-bold text-tertiary uppercase">Actif</span>
+                        <span class="stat-value text-sm font-bold text-success">0</span>
                     </div>
-                    <div class="flex flex-col">
-                        <h1 class="text-2xl font-bold text-gradient">BETPLUSAUDETAG</h1>
-                        <span class="text-sm text-slate-600 font-medium">Suivi des Opérations</span>
+                    <div class="stat-pill flex flex-col">
+                        <span class="stat-label text-[10px] font-bold text-tertiary uppercase">En cours</span>
+                        <span class="stat-value text-sm font-bold text-warning">0</span>
                     </div>
                 </div>
 
-                <!-- Controls Section -->
-                <div class="flex items-center space-x-3">
-                    <!-- Quick Stats -->
-                    <div class="hidden lg:flex items-center space-x-6 mr-6">
-                        <div class="stat-pill">
-                            <span class="stat-label">Actif</span>
-                            <span class="stat-value text-green-600">12</span>
-                        </div>
-                        <div class="stat-pill">
-                            <span class="stat-label">En cours</span>
-                            <span class="stat-value text-orange-500">8</span>
-                        </div>
-                    </div>
-                    
-                    <!-- Theme Toggle -->
-                    <button id="themeToggle" class="control-button" title="Basculer thème">
-                        <i id="themeIcon" class="fas fa-moon"></i>
-                    </button>
-                    
-                    <!-- Filters -->
-                    <select id="regionFilter" class="modern-select">
-                        <option value="">Toutes les régions</option>
-                        <option value="Tambacounda">Tambacounda</option>
-                        <option value="Kedougou">Kedougou</option>
-                    </select>
-                    
-                    <select id="timeFilter" class="modern-select">
-                        <option value="daily">Quotidien</option>
-                        <option value="weekly">Hebdomadaire</option>
-                        <option value="monthly">Mensuel</option>
-                    </select>
-                    
-                    <!-- Action Button -->
-                    <button id="refreshBtn" class="action-button" aria-label="Actualiser les données">
-                        <i class="fas fa-sync-alt mr-2"></i>
-                        <span>Actualiser</span>
-                    </button>
-                </div>
+                <button id="themeToggle" class="p-2 text-secondary hover:text-primary transition-colors">
+                    <i id="themeIcon" class="fas fa-moon"></i>
+                </button>
+
+                <button id="refreshBtn"
+                    class="bg-primary hover:bg-primary-dark text-white px-4 py-1.5 rounded-md text-sm font-semibold transition-all">
+                    <i class="fas fa-sync-alt mr-2 text-xs"></i> Actualiser
+                </button>
             </div>
         </div>
     </nav>
 
-    <!-- Main Dashboard Container -->
-    <main id="mainContent" class="max-w-8xl mx-auto px-6 sm:px-8 lg:px-12 py-8" role="main">
+    <!-- Global Utility Bar (Sticky) -->
+    <div class="utility-bar sticky top-16 border-b border-subtle z-40">
+        <div class="max-w-8xl mx-auto px-6 flex items-center justify-between">
+            <nav class="flex space-x-1" role="tablist">
+                <button class="nav-tab active" data-tab="overview" role="tab" aria-selected="true" id="tab-overview">Vue
+                    d'ensemble</button>
+                <button class="nav-tab" data-tab="regional" role="tab" aria-selected="false" id="tab-regional">Analyse
+                    Régionale</button>
+                <button class="nav-tab" data-tab="temporal" role="tab" aria-selected="false" id="tab-temporal">Suivi
+                    Temporel</button>
+            </nav>
 
-        <!-- Live region for important alerts (WCAG 2.2: document changes should be announced) -->
-        <div id="siteNotifications" aria-live="polite" aria-atomic="true" class="visually-hidden"></div>
-
-        <!-- Header Tab Navigation -->
-        <div class="tab-navigation mb-8">
-            <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-                <div class="flex flex-col space-y-2">
-                    <h2 class="dashboard-title">Suivi PROCASEF BOUNDOU</h2>
-                    <p class="dashboard-subtitle">Surveillance en temps réel des opérations cadastrales</p>
-                </div>
-                
-                <nav class="tab-container" aria-label="Navigation principale" role="tablist">
-                    <button class="nav-tab active" data-tab="overview" role="tab" id="tab-overview" aria-controls="panel-overview" aria-selected="true" tabindex="0">
-                        <i class="fas fa-chart-pie"></i>
-                        <span>Vue d'ensemble</span>
-                    </button>
-                    <button class="nav-tab" data-tab="regional" role="tab" id="tab-regional" aria-controls="panel-regional" aria-selected="false" tabindex="-1">
-                        <i class="fas fa-map"></i>
-                        <span>Analyse Régionale</span>
-                    </button>
-                    <button class="nav-tab" data-tab="process" role="tab" id="tab-process" aria-controls="panel-process" aria-selected="false" tabindex="-1">
-                        <i class="fas fa-cogs"></i>
-                        <span>Analyse des processus</span>
-                    </button>
-                    <button class="nav-tab" data-tab="temporal" role="tab" id="tab-temporal" aria-controls="panel-temporal" aria-selected="false" tabindex="-1">
-                        <i class="fas fa-chart-line"></i>
-                        <span>Suivi Temporel</span>
-                    </button>
-                    <button class="nav-tab" data-tab="commune-table" role="tab" id="tab-commune-table" aria-controls="panel-commune-table" aria-selected="false" tabindex="-1">
-                        <i class="fas fa-table"></i>
-                        <span>Tableau - Statut des Communes</span>
-                    </button>
-                </nav>
-                <script>
-                (function(){
-                    const tabs = Array.from(document.querySelectorAll('[role="tab"]'));
-                    if(!tabs.length) return;
-                    tabs.forEach(tab=> tab.addEventListener('keydown', (e)=>{
-                        const idx = tabs.indexOf(e.currentTarget);
-                        if(e.key === 'ArrowRight') { const next = tabs[(idx+1)%tabs.length]; next.focus(); next.click(); e.preventDefault(); }
-                        if(e.key === 'ArrowLeft') { const prev = tabs[(idx-1+tabs.length)%tabs.length]; prev.focus(); prev.click(); e.preventDefault(); }
-                    }));
-                    tabs.forEach(tab=> tab.addEventListener('click', (e)=>{
-                        tabs.forEach(t=> { t.setAttribute('aria-selected','false'); t.tabIndex = -1; });
-                        e.currentTarget.setAttribute('aria-selected','true'); e.currentTarget.tabIndex = 0;
-                        const tabName = e.currentTarget.dataset.tab;
-                        document.querySelectorAll('[data-panel]').forEach(p=> { if(p.dataset.panel === tabName){ p.classList.add('active'); p.removeAttribute('hidden'); } else { p.classList.remove('active'); p.setAttribute('hidden',''); } });
-                    }));
-                })();
-                </script>
+            <div class="flex items-center space-x-3">
+                <select id="regionFilter"
+                    class="border border-subtle rounded-md px-3 py-1.5 text-sm bg-surface focus:border-primary outline-none transition-colors">
+                    <option value="">Toutes les régions</option>
+                    <option value="Tambacounda">Tambacounda</option>
+                    <option value="Kedougou">Kedougou</option>
+                </select>
+                <select id="timeFilter"
+                    class="border border-subtle rounded-md px-3 py-1.5 text-sm bg-surface focus:border-primary outline-none transition-colors">
+                    <option value="daily">Quotidien</option>
+                    <option value="weekly">Hebdomadaire</option>
+                    <option value="monthly">Mensuel</option>
+                </select>
             </div>
         </div>
+    </div>
+
+    <!-- Main Dashboard Container -->
+    <main id="mainContent" class="max-w-8xl mx-auto px-6 pb-20 mt-32" role="main">
+        <div id="siteNotifications" aria-live="polite" class="sr-only"></div>
 
         <!-- Tab Panels -->
-        <div id="tabPanels" class="relative">
+        <div id="tabPanels">
 
             <!-- Overview Panel -->
-            <div id="panel-overview" data-panel="overview" class="panel active" role="tabpanel" aria-labelledby="tab-overview">
-                
-                <!-- Hero KPIs Section -->
-                <section class="hero-section mb-12">
-                    <div class="hero-grid">
-                        <!-- Progress Tubes -->
-                        <div class="metric-card" id="dailyTube">
-                            <!-- Populated by JS -->
-                        </div>
-                        
-                        <div class="metric-card" id="weeklyTube">
-                            <!-- Populated by JS -->
-                        </div>
-                        
-                        <div class="metric-card" id="monthlyTube">
-                            <!-- Populated by JS -->
+            <div id="panel-overview" data-panel="overview" class="panel active" role="tabpanel">
+
+                <!-- Bento Grid Layout -->
+                <div class="bento-grid">
+
+                    <!-- KPI Stat Cards (formerly Tubes) -->
+                    <div class="col-span-12 lg:col-span-3 grid grid-cols-1 gap-4">
+                        <div id="dailyStat" class="bento-card flex flex-col justify-between">
+                            <div class="flex justify-between items-start mb-2">
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex items-center justify-between mb-1">
+                                        <h3 class="text-[10px] font-bold text-tertiary uppercase tracking-wider">Performance
+                                            Jour
+                                            <span id="dailyDateLabel"
+                                                class="normal-case font-medium ml-1 text-slate-400"></span>
+                                        </h3>
+                                        <div id="dailyBadge" class="stat-card-badge"></div>
+                                    </div>
+                                    <div class="flex items-baseline space-x-2">
+                                        <span id="dailyValue" class="text-2xl font-bold">0</span>
+                                        <span id="dailyDelta" class="text-[10px] font-bold"></span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="stat-card-progress-wrapper">
+                                <div class="stat-card-progress-bar">
+                                    <div id="dailyProgressFill" class="stat-card-progress-fill" style="width: 0%"></div>
+                                </div>
+                                <div class="stat-card-target-label">
+                                    <span>Objectif: <span id="dailyTarget">387</span> parcelles</span>
+                                    <span id="dailyPercent">0%</span>
+                                </div>
+                            </div>
+                            <div class="mt-4 h-10 overflow-hidden" id="dailySparkline">
+                                <canvas id="dailySparklineCanvas"></canvas>
+                            </div>
                         </div>
 
-                        <!-- Forecast Card (separate from tubes) -->
-                        <div class="metric-card" id="monthlyForecastCard">
-                            <div class="metric-header" style="position:relative;">
-                                <button type="button" class="forecast-icon-btn alt" title="Afficher prévisions" style="position: absolute; top: 12px; right: 12px;">
-                                    <i class="fas fa-chart-line"></i>
-                                </button>
-                                <div class="metric-info">
-                                    <h3 class="metric-title">Prévisions Mensuelles</h3>
-                                    <p class="metric-subtitle">Projection à fin de mois et achievabilité</p>
+                        <div id="weeklyStat" class="bento-card flex flex-col justify-between">
+                            <div class="flex justify-between items-start mb-2">
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex items-center justify-between mb-1">
+                                        <h3 class="text-[10px] font-bold text-tertiary uppercase tracking-wider">
+                                            Hebdomadaire
+                                            <span id="weeklyDateLabel"
+                                                class="normal-case font-medium ml-1 text-slate-400"></span>
+                                        </h3>
+                                        <div id="weeklyBadge" class="stat-card-badge"></div>
+                                    </div>
+                                    <div class="flex items-baseline space-x-2">
+                                        <span id="weeklyValue" class="text-2xl font-bold">0</span>
+                                        <span id="weeklyDelta" class="text-[10px] font-bold"></span>
+                                    </div>
                                 </div>
                             </div>
-                            <div id="forecastContent" class="p-3 text-sm text-slate-700">Chargement...</div>
+
+                            <div class="stat-card-progress-wrapper">
+                                <div class="stat-card-progress-bar">
+                                    <div id="weeklyProgressFill" class="stat-card-progress-fill" style="width: 0%">
+                                    </div>
+                                </div>
+                                <div class="stat-card-target-label">
+                                    <span>Objectif: <span id="weeklyTarget">2 710</span> parcelles</span>
+                                    <span id="weeklyPercent">0%</span>
+                                </div>
+                            </div>
+                            <div class="mt-4 h-10 overflow-hidden" id="weeklySparkline">
+                                <canvas id="weeklySparklineCanvas"></canvas>
+                            </div>
                         </div>
-                        
-                        <!-- Quality Rate Card -->
-                        <div class="metric-card">
-                            <div class="metric-header">
-                                <div class="metric-icon bg-emerald-500">
-                                    <i class="fas fa-check-circle"></i>
-                                </div>
-                                <div class="metric-info">
-                                    <h3 class="metric-title">Taux de Qualité</h3>
-                                    <p class="metric-subtitle">Affichage sans erreur</p>
+
+                        <div id="monthlyStat" class="bento-card flex flex-col justify-between">
+                            <div class="flex justify-between items-start mb-2">
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex items-center justify-between mb-1">
+                                        <h3 class="text-[10px] font-bold text-tertiary uppercase tracking-wider">Objectif
+                                            Mensuel
+                                            <span id="monthlyDateLabel"
+                                                class="normal-case font-medium ml-1 text-slate-400"></span>
+                                        </h3>
+                                        <div id="monthlyBadge" class="stat-card-badge"></div>
+                                    </div>
+                                    <div class="flex items-baseline space-x-2">
+                                        <span id="monthlyValue" class="text-2xl font-bold">0</span>
+                                        <span id="monthlyDelta" class="text-[10px] font-bold"></span>
+                                    </div>
                                 </div>
                             </div>
-                            <div class="metric-value text-emerald-600" id="qualityRate">--</div>
-                            <div class="metric-trend positive">
-                                <i class="fas fa-arrow-up"></i>
-                                <span>+5.2%</span>
+
+                            <div class="stat-card-progress-wrapper">
+                                <div class="stat-card-progress-bar">
+                                    <div id="monthlyProgressFill" class="stat-card-progress-fill" style="width: 0%">
+                                    </div>
+                                </div>
+                                <div class="stat-card-target-label">
+                                    <span>Objectif: <span id="monthlyTarget">12 000</span> parcelles</span>
+                                    <span id="monthlyPercent">0%</span>
+                                </div>
+                            </div>
+                            <div class="mt-4 h-10 overflow-hidden" id="monthlySparkline">
+                                <canvas id="monthlySparklineCanvas"></canvas>
                             </div>
                         </div>
                     </div>
-                </section>
 
-                <!-- Performance Gauges -->
-                <section class="gauges-section mb-12">
-                    <h3 class="section-header">Indicateurs de Performance</h3>
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                        <div class="gauge-card">
-                            <canvas id="dailyEfficiencyGauge" width="200" height="200"></canvas>
-                            <div class="gauge-label">
-                                <h4 class="gauge-title">Efficacité Quotidienne</h4>
-                                <p class="gauge-subtitle">Performance journalière</p>
+                    <!-- Main Chart: Daily Evolution -->
+                    <div class="col-span-12 lg:col-span-9 bento-card">
+                        <div class="flex justify-between items-center mb-6">
+                            <div>
+                                <h3 class="text-sm font-bold">ÉVOLUTION QUOTIDIENNE DES LEVÉES</h3>
+                                <p class="text-[11px] text-tertiary font-medium">Performance journalière vs Objectifs de
+                                    production</p>
+                            </div>
+                            <div class="flex space-x-2">
+                                <span
+                                    class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-primary-soft text-primary border border-primary/10">Saison
+                                    2026</span>
                             </div>
                         </div>
-                        
-                        <div class="gauge-card">
-                            <canvas id="qualityScoreGauge" width="200" height="200"></canvas>
-                            <div class="gauge-label">
-                                <h4 class="gauge-title">Score Qualité</h4>
-                                <p class="gauge-subtitle">Niveau de conformité</p>
-                            </div>
+                        <div class="chart-container" style="height: 380px; width: 100%;">
+                            <canvas id="overviewDailyYieldsChart"></canvas>
                         </div>
-                        
-                        <div class="gauge-card">
-                            <canvas id="ctasfConversionGauge" width="200" height="200"></canvas>
-                            <div class="gauge-label">
-                                <h4 class="gauge-title">Conversion CTASF</h4>
-                                <p class="gauge-subtitle">Taux de transformation</p>
-                            </div>
+                    </div>
+
+                    <!-- Forecast & Secondary Metrics -->
+                    <div class="col-span-12 lg:col-span-4 bento-card">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-xs font-bold uppercase text-tertiary">Projection fin de mois</h3>
+                            <i class="fas fa-magic text-primary text-xs"></i>
                         </div>
-                        
-                        <div class="gauge-card">
-                            <canvas id="processingEfficiencyGauge" width="200" height="200"></canvas>
-                            <div class="gauge-label">
-                                <h4 class="gauge-title">Efficacité du traitement</h4>
-                                <p class="gauge-subtitle">Vitesse de traitement</p>
+                        <div id="forecastContent" class="space-y-4">
+                            <!-- Injected by forecastCard.js -->
+                            <div class="animate-pulse flex space-x-4">
+                                <div class="flex-1 space-y-4 py-1">
+                                    <div class="h-4 bg-slate-200 rounded w-3/4"></div>
+                                    <div class="space-y-2">
+                                        <div class="h-4 bg-slate-200 rounded"></div>
+                                        <div class="h-4 bg-slate-200 rounded w-5/6"></div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </section>
 
-                <!-- Progress Indicators Section -->
-                <section class="progress-indicators-section mb-12">
-                    <h3 class="section-header">Indicateurs de Progression</h3>
-                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-
-                        <!-- Overview Metrics Progress -->
-                        <div class="progress-group lg:col-span-2">
-                            <h4 class="progress-group-title">Vue Synthèse</h4>
-                            <p class="progress-group-subtitle">Indicateurs clés de performance</p>
-                            <div class="space-y-4 mt-6">
-                                <!-- Total Parcelles -->
-                                <div class="progress-item">
-                                    <div class="flex justify-between items-center mb-2">
-                                        <span class="progress-label">Total Parcelles</span>
-                                        <span class="progress-value" id="totalParcelsOverviewValue">--</span>
-                                    </div>
-                                    <div class="progress-bar">
-                                        <div class="progress-fill" id="totalParcelsOverviewProgress" style="width: 100%"></div>
-                                    </div>
+                    <!-- Status Overview -->
+                    <div class="col-span-12 lg:col-span-8 bento-card">
+                        <div class="flex items-center justify-between mb-6">
+                            <h3 class="text-xs font-bold uppercase text-tertiary">Statut du Pipeline</h3>
+                            <div class="flex space-x-4 text-[10px] font-bold">
+                                <div class="flex items-center"><span
+                                        class="w-2 h-2 rounded-full bg-primary mr-2"></span>NICAD</div>
+                                <div class="flex items-center"><span
+                                        class="w-2 h-2 rounded-full bg-warning mr-2"></span>CTASF</div>
+                                <div class="flex items-center"><span
+                                        class="w-2 h-2 rounded-full bg-success mr-2"></span>Délibérées</div>
+                            </div>
+                        </div>
+                        <div id="monitoringIndicators" class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                            <!-- Progress elements updated by dashboard logic -->
+                            <div class="space-y-3">
+                                <div class="flex justify-between text-[11px] font-bold">
+                                    <span>NICAD</span>
+                                    <span id="nicadOverviewValue">0</span>
                                 </div>
-
-                                <!-- NICAD Parcelles -->
-                                <div class="progress-item">
-                                    <div class="flex justify-between items-center mb-2">
-                                        <span class="progress-label">NICAD</span>
-                                        <span class="progress-value" id="nicadOverviewValue">--</span>
-                                    </div>
-                                    <div class="progress-bar">
-                                        <div class="progress-fill" id="nicadOverviewProgress" style="width: 0%"></div>
-                                    </div>
-                                </div>
-
-                                <!-- CTASF Parcelles -->
-                                <div class="progress-item">
-                                    <div class="flex justify-between items-center mb-2">
-                                        <span class="progress-label">CTASF</span>
-                                        <span class="progress-value" id="ctasfOverviewValue">--</span>
-                                    </div>
-                                    <div class="progress-bar">
-                                        <div class="progress-fill" id="ctasfOverviewProgress" style="width: 0%"></div>
-                                    </div>
-                                </div>
-
-                                <!-- Parcelles Délibérées -->
-                                <div class="progress-item">
-                                    <div class="flex justify-between items-center mb-2">
-                                        <span class="progress-label">Délibérées</span>
-                                        <span class="progress-value" id="deliberatedOverviewValue">--</span>
-                                    </div>
-                                    <div class="progress-bar">
-                                        <div class="progress-fill" id="deliberatedOverviewProgress" style="width: 0%"></div>
-                                    </div>
+                                <div class="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                                    <div id="nicadOverviewProgress"
+                                        class="h-full bg-primary transition-all duration-1000" style="width: 0%"></div>
                                 </div>
                             </div>
-                        </div>
-
-                        <!-- Phases de Traitement block removed as requested -->
-                    </div>
-                </section>
-
-                <!-- Progress Bars & Details -->
-                <section class="details-section">
-                    <!-- Chronogramme quick action removed (moved into Analyse Régionale panel) -->
-
-                    <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
-                        <div class="progress-card">
-                            <div class="progress-header">
-                                <h4 class="progress-title">CTASF Conversion<br><span class="text-sm text-gray-500">parcelles retenues / parcelles emmenées au CTASF</span></h4>
-                                <span class="progress-value" id="ctasfRate">--</span>
+                            <div class="space-y-3">
+                                <div class="flex justify-between text-[11px] font-bold">
+                                    <span>CTASF</span>
+                                    <span id="ctasfOverviewValue">0</span>
+                                </div>
+                                <div class="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                                    <div id="ctasfOverviewProgress"
+                                        class="h-full bg-warning transition-all duration-1000" style="width: 0%"></div>
+                                </div>
                             </div>
-                            <div class="progress-bar">
-                                <div class="progress-fill bg-gradient-to-r from-orange-400 to-orange-500" id="ctasfRateBar"></div>
-                            </div>
-                        </div>
-
-                        <div class="progress-card">
-                            <div class="progress-header">
-                                <h4 class="progress-title">Efficacité Processing<br><span class="text-sm text-gray-500">parcelles post-traitées / parcelles reçues (brutes)</span></h4>
-                                <span class="progress-value" id="processingRate">--</span>
-                            </div>
-                            <div class="progress-bar">
-                                <div class="progress-fill bg-gradient-to-r from-emerald-400 to-emerald-500" id="processingRateBar"></div>
-                            </div>
-                        </div>
-
-                        <!-- Deduplication Rate Card -->
-                        <div class="progress-card">
-                            <div class="progress-header">
-                                <h4 class="progress-title">Parcelles collectées (sans doublon géométrique)<br><span class="text-sm text-gray-500">par rapport à Parcelles brutes</span></h4>
-                                <span class="progress-value" id="dedupRate">--%</span>
-                            </div>
-                            <div class="progress-bar">
-                                <div class="progress-fill bg-gradient-to-r from-indigo-400 to-indigo-500" id="dedupRateBar"></div>
-                            </div>
-                        </div>
-
-                        <!-- Post-Processing Retention Rate Card -->
-                        <div class="progress-card">
-                            <div class="progress-header">
-                                <h4 class="progress-title">Parcelles retenues après post-traitement<br><span class="text-sm text-gray-500">par rapport à Parcelles brutes</span></h4>
-                                <span class="progress-value" id="surveyRate">--%</span>
-                            </div>
-                            <div class="progress-bar">
-                                <div class="progress-fill bg-gradient-to-r from-blue-400 to-blue-500" id="surveyRateBar"></div>
-                            </div>
-                        </div>
-                        
-                        <!-- URM Validation Card -->
-                        <div class="progress-card">
-                            <div class="progress-header">
-                                <h4 class="progress-title">Parcelles validées par l'URM<br><span class="text-sm text-gray-500">par rapport à Parcelles brutes</span></h4>
-                                <span class="progress-value" id="urmValidationValue">--%</span>
-                            </div>
-                            <div class="progress-bar">
-                                <div class="progress-fill bg-gradient-to-r from-purple-400 to-purple-500" id="urmValidationRateBar"></div>
+                            <div class="space-y-3">
+                                <div class="flex justify-between text-[11px] font-bold">
+                                    <span>DÉLIBÉRÉES</span>
+                                    <span id="deliberatedOverviewValue">0</span>
+                                </div>
+                                <div class="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                                    <div id="deliberatedOverviewProgress"
+                                        class="h-full bg-success transition-all duration-1000" style="width: 0%"></div>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </section>
-
-                <!-- Chronogramme quick action removed; navigation remains available in the Analyse Régionale panel -->
+                </div>
 
             </div>
 
-            <!-- Regional Panel -->
-            <div id="panel-regional" data-panel="regional" class="panel" role="tabpanel" aria-labelledby="tab-regional" hidden>
-                <section class="regional-section">
-                    <div class="section-intro mb-8">
-                        <h2 class="section-title">Analyse Régionale</h2>
-                        <p class="section-description">Comparaison des performances par région et commune</p>
-                    </div>
-                    
-                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                        <div class="lg:col-span-2 chart-card large">
-                            <div class="chart-header">
-                                <h3 class="chart-title">Performance par Commune</h3>
-                                <div class="chart-controls">
-                                    <button class="chart-filter active" data-filter="all">Tout</button>
-                                    <button class="chart-filter" data-filter="active">Actif</button>
-                                    <button class="chart-filter" data-filter="completed">Terminé</button>
-                                </div>
-                            </div>
-                            <div class="chart-content">
-                                <canvas id="communeStatusChart"></canvas>
-                            </div>
-                        </div>
+            <!-- Chronogramme quick action removed; navigation remains available in the Analyse Régionale panel -->
 
-                        <div class="chart-card">
-                            <div class="chart-header">
-                                <h3 class="chart-title">Comparaison Régionale</h3>
-                                <p class="chart-subtitle">Comparer les volumes clés entre régions</p>
-                            </div>
-                            <div class="chart-content">
-                                <canvas id="regionalComparisonChart"></canvas>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mt-8">
-                        <div class="chart-card">
-                            <div class="chart-header">
-                                <h3 class="chart-title">Projections Multi-Métriques</h3>
-                                <p class="chart-subtitle">Projection mensuelle NICAD / Affichage / CTASF</p>
-                            </div>
-                            <div class="chart-content">
-                                <canvas id="projectionsMultiMetricChart"></canvas>
-                            </div>
-                        </div>
-
-                        <div class="chart-card">
-                            <div class="chart-header">
-                                <h3 class="chart-title">Rétention vs Rejet</h3>
-                                <p class="chart-subtitle">Collectées vs Traitées (rétention / rejet)</p>
-                            </div>
-                            <div class="chart-content">
-                                <canvas id="retentionDonutChart"></canvas>
-                                <p id="retentionAnalysisText" class="text-sm text-gray-600 mt-4"></p>
-                            </div>
-                        </div>
-
-                        <div class="chart-card w-full md:col-span-2">
-    <div class="chart-header chart-header--chronogram">
-        <div class="chart-header-left">
-            <h3 class="chart-title">Chronologie du projet</h3>
-            <p class="chart-subtitle">Début / fin par lot pour le suivi global</p>
-        </div>
-        <div class="chart-header-right">
-            <div class="chrono-legend" aria-hidden="false" role="list" aria-label="Légende chronogramme">
-                <div class="legend-row flex items-center gap-2 mb-1" role="listitem">
-                    <span class="legend-swatch legend-swatch--planned" aria-hidden="true"></span>
-                    <span>Période planifiée</span>
-                </div>
-                <div class="legend-row flex items-center gap-2 mb-1" role="listitem">
-                    <span class="legend-swatch legend-swatch--inprogress" aria-hidden="true"></span>
-                    <span>En cours</span>
-                </div>
-                <div class="legend-row flex items-center gap-2 mb-1" role="listitem">
-                    <span class="legend-swatch legend-swatch--review" aria-hidden="true"></span>
-                    <span>En revue</span>
-                </div>
-                <div class="legend-row flex items-center gap-2 mb-1" role="listitem">
-                    <span class="legend-swatch legend-swatch--completed" aria-hidden="true"></span>
-                    <span>Terminé</span>
-                </div>
-                <div class="legend-row flex items-center gap-2 mb-1" role="listitem">
-                    <span class="legend-swatch legend-swatch--nodate" aria-hidden="true"></span>
-                    <span class="legend-note">Dates non précisées</span>
-                </div>
-                <div class="legend-row flex items-center gap-2" role="listitem">
-                    <span class="legend-swatch legend-swatch--urgent" aria-hidden="true"></span>
-                    <span class="legend-note">Urgent / Proche échéance</span>
-                </div>
-            </div>
-            <button id="chronogram-toggle-labels" class="chart-action chronogram-toggle mt-2" title="Basculer étiquettes" aria-pressed="false" aria-label="Basculer les étiquettes du chronogramme">Afficher / Masquer étiquettes</button>
-        </div>
-    </div>
-
-    <div class="chart-content chart-content--chronogram w-full">
-        <!-- Timeline header (months) -->
-        <div class="chronogram-timeline-header flex justify-between px-4 py-2 bg-gray-100 text-sm font-medium text-gray-700" id="projectTimelineHeader" aria-hidden="true">
-            <div class="month">août 2025</div>
-            <div class="month">sept. 2025</div>
-            <div class="month">oct. 2025</div>
-            <div class="month">nov. 2025</div>
-            <div class="month">déc. 2025</div>
-            <div class="month">janv. 2026</div>
-            <div class="month">févr. 2026</div>
-            <div class="month">mars 2026</div>
-            <div class="month">avr. 2026</div>
-            <div class="month">mai 2026</div>
-            <div class="month">juin 2026</div>
-            <div class="month">juil. 2026</div>
-            <div class="month">août 2026</div>
-            <div class="month">sept. 2026</div>
-            <div class="month">oct. 2026</div>
-            <div class="month">nov. 2026</div>
-            <div class="month">déc. 2026</div>
         </div>
 
-        <!-- DOM-based chronogram Gantt rendered by js/chronogramIntegration.js -->
-        <div id="projectTimelineGantt" class="chronogram-gantt p-4" aria-label="Chronologie du projet">
-            <!-- rows injected from js/chronogramContent.js or generated by chronogramIntegration.js -->
+
+        <!-- Regional Panel -->
+        <div id="panel-regional" data-panel="regional" class="panel" role="tabpanel" hidden>
+            <div class="bento-grid">
+                <!-- Dynamic per Region -->
+                <div class="col-span-12 lg:col-span-8 bento-card">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-sm font-bold">Dynamique par Région</h3>
+                        <button class="text-xs font-bold text-primary hover:underline">Détails</button>
+                    </div>
+                    <div class="chart-container" style="height: 350px;">
+                        <canvas id="regionalTrendChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Performance per Commune -->
+                <div class="col-span-12 lg:col-span-4 bento-card">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-sm font-bold">Top 15 Communes</h3>
+                        <span
+                            class="text-[10px] bg-slate-100 px-2 py-0.5 rounded text-secondary font-bold">Volume</span>
+                    </div>
+                    <div class="chart-container" style="height: 350px;">
+                        <canvas id="communeComparisonChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Team Productivity -->
+                <div class="col-span-12 lg:col-span-4 bento-card">
+                    <h3 class="text-sm font-bold mb-6">Productivité Équipe</h3>
+                    <div class="chart-container" style="height: 300px;">
+                        <canvas id="teamProductivityChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Chronogram / Timeline -->
+                <div class="col-span-12 lg:col-span-8 bento-card">
+                    <div class="flex justify-between items-center mb-6">
+                        <div>
+                            <h3 class="text-sm font-bold">Chronologie du Projet</h3>
+                            <p class="text-[11px] text-tertiary">Suivi temporel des phases par lot</p>
+                        </div>
+                        <div class="flex items-center space-x-4">
+                            <div class="flex items-center space-x-2 text-[10px] font-bold">
+                                <span class="w-1.5 h-1.5 rounded-full bg-slate-200"></span><span
+                                    class="text-tertiary">Prévu</span>
+                                <span class="w-1.5 h-1.5 rounded-full bg-primary"></span><span class="text-primary">En
+                                    cours</span>
+                                <span class="w-1.5 h-1.5 rounded-full bg-success"></span><span
+                                    class="text-success">Fait</span>
+                            </div>
+                            <button id="chronogram-toggle-labels"
+                                class="text-[10px] font-bold border border-subtle px-2 py-1 rounded hover:bg-slate-50">Libellés</button>
+                        </div>
+                    </div>
+                    <div id="projectTimelineGantt" class="chronogram-gantt">
+                        <!-- Injected by JS -->
+                    </div>
+                    <canvas id="projectTimelineChart" class="hidden"></canvas>
+                </div>
+            </div>
         </div>
 
-        <!-- Canvas fallback (hidden) -->
-        <canvas id="projectTimelineChart" width="300" height="150" class="hidden"></canvas>
-    </div>
-</div>
-            <!-- chronogram reminders removed per user request -->
+
+        <!-- Temporal Panel -->
+        <div id="panel-temporal" data-panel="temporal" class="panel" role="tabpanel" hidden>
+            <div class="bento-grid">
+                <div class="col-span-12 lg:col-span-6 bento-card">
+                    <h3 class="text-sm font-bold mb-4">ÉVOLUTION QUOTIDIENNE DES LEVÉES</h3>
+                    <div class="chart-container" style="height: 300px;">
+                        <canvas id="dailyYieldsChart"></canvas>
                     </div>
-                </section>
+                </div>
+                <div class="col-span-12 lg:col-span-6 bento-card">
+                    <h3 class="text-sm font-bold mb-4">Qualité de l'affichage</h3>
+                    <div class="chart-container" style="height: 300px;">
+                        <canvas id="qualityTrendChart"></canvas>
+                    </div>
+                </div>
+                <!-- CTASF Pipeline chart removed -->
+                <div class="col-span-12 lg:col-span-6 bento-card">
+                    <h3 class="text-sm font-bold mb-4">Post-traitement</h3>
+                    <div class="chart-container" style="height: 300px;">
+                        <canvas id="postProcessingChart"></canvas>
+                    </div>
+                </div>
             </div>
-
-            <!-- Commune Status Table Panel (reshaped) -->
-            <div id="panel-commune-table" data-panel="commune-table" class="panel" role="tabpanel" aria-labelledby="tab-commune-table" hidden>
-                <section class="commune-panel">
-                    <div class="tooltip" style="display:none"></div>
-
-                    <!-- Summary Cards -->
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                        <div class="data-card bg-white rounded-xl shadow-md p-6">
-                            <div class="flex justify-between items-start">
-                                <div>
-                                    <p class="text-gray-500 font-medium">Parcelles Totales</p>
-                                    <h3 class="text-3xl font-bold mt-2" id="commune-total-parcels">--</h3>
-                                </div>
-                                <div class="bg-indigo-100 p-3 rounded-lg"><i class="fas fa-layer-group text-indigo-600"></i></div>
-                            </div>
-                            <div class="mt-4">
-                                <div class="flex justify-between text-sm text-gray-600 mb-1">
-                                    <span>Boundou</span>
-                                    <span id="commune-kedougou">--</span>
-                                </div>
-                                <div class="progress-bar"><div class="progress-fill bg-indigo-500" id="commune-kedougou-fill" style="width:0%"></div></div>
-                            </div>
-                        </div>
-
-                        <div class="data-card bg-white rounded-xl shadow-md p-6">
-                            <div class="flex justify-between items-start">
-                                <div>
-                                    <p class="text-gray-500 font-medium">NICAD</p>
-                                    <h3 class="text-3xl font-bold mt-2" id="commune-nicad">--</h3>
-                                    <p class="text-green-600 text-sm mt-1" id="commune-nicad-rate">--</p>
-                                </div>
-                                <div class="bg-green-100 p-3 rounded-lg"><i class="fas fa-check-circle text-green-600"></i></div>
-                            </div>
-                        </div>
-
-                        <div class="data-card bg-white rounded-xl shadow-md p-6">
-                            <div class="flex justify-between items-start">
-                                <div>
-                                    <p class="text-gray-500 font-medium">CTASF</p>
-                                    <h3 class="text-3xl font-bold mt-2" id="commune-ctasf">--</h3>
-                                    <p class="text-blue-600 text-sm mt-1" id="commune-ctasf-rate">--</p>
-                                </div>
-                                <div class="bg-blue-100 p-3 rounded-lg"><i class="fas fa-file-alt text-blue-600"></i></div>
-                            </div>
-                        </div>
-
-                        <!-- Validated Parcels KPI -->
-                        <div class="data-card bg-white rounded-xl shadow-md p-6">
-                            <div class="flex justify-between items-start">
-                                <div>
-                                    <p class="text-gray-500 font-medium">Parcelles Validées</p>
-                                    <h3 class="text-3xl font-bold mt-2" id="commune-validated">--</h3>
-                                    <p class="text-blue-600 text-sm mt-1" id="commune-validated-rate">--</p>
-                                </div>
-                                <div class="bg-emerald-100 p-3 rounded-lg"><i class="fas fa-check text-emerald-600"></i></div>
-                            </div>
-                        </div>
-
-                        <!-- Deliberated Parcels KPI -->
-                        <div class="data-card bg-white rounded-xl shadow-md p-6">
-                            <div class="flex justify-between items-start">
-                                <div>
-                                    <p class="text-gray-500 font-medium">Parcelles Délibérées</p>
-                                    <h3 class="text-3xl font-bold mt-2" id="commune-deliberated">--</h3>
-                                    <p class="text-blue-600 text-sm mt-1" id="commune-deliberated-rate">--</p>
-                                </div>
-                                <div class="bg-indigo-100 p-3 rounded-lg"><i class="fas fa-gavel text-indigo-600"></i></div>
-                            </div>
-                        </div>
-
-                        <div class="data-card bg-white rounded-xl shadow-md p-6">
-                            <div class="flex justify-between items-start">
-                                <div>
-                                    <p class="text-gray-500 font-medium">Parcelles Rejetéees</p>
-                                    <h3 class="text-3xl font-bold mt-2" id="commune-rejected">--</h3>
-                                    <p class="text-red-600 text-sm mt-1" id="commune-rejected-rate">--</p>
-                                </div>
-                                <div class="bg-red-100 p-3 rounded-lg"><i class="fas fa-times-circle text-red-600"></i></div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Charts removed: Commune panel now focuses on table only -->
-
-                    <!-- Detailed Data Table -->
-                    <div class="data-card bg-white rounded-xl shadow-md overflow-hidden mb-8">
-                        <div class="p-6 pb-0 flex justify-between items-center">
-                            <h2 class="text-lg font-bold">Commune Details</h2>
-                                <div class="flex items-center space-x-2">
-                                <div class="relative">
-                                    <input id="communeSearch" type="text" placeholder="Search..." class="bg-gray-100 border-0 rounded-lg px-3 py-1 pl-8 text-sm focus:outline-none">
-                                </div>
-                                <div class="relative" id="columnFilter">
-                                    <button id="communeFilterBtn" class="text-gray-500 hover:text-gray-700 dropdown-toggle" aria-haspopup="true" aria-expanded="false" title="Afficher/masquer colonnes"><i class="fas fa-filter"></i></button>
-                                    <div id="columnFilterMenu" class="dropdown-menu" style="display:none;position:absolute;z-index:40;min-width:220px;background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:6px;box-shadow:0 8px 24px rgba(0,0,0,0.08);">
-                                        <!-- dynamically populated -->
-                                    </div>
-                                </div>
-                                <button id="communeResetColumnsBtn" class="text-sm text-gray-500 hover:text-gray-700" title="Reset column order" style="margin-left:6px;padding:6px 8px;border-radius:6px;background:#f3f4f6;border:1px solid #e5e7eb">Reset columns</button>
-                            </div>
-                        </div>
-                        <div class="overflow-x-auto relative">
-                            <div id="communeTableLoader" class="absolute inset-0 flex items-center justify-center text-gray-500" style="background:rgba(255,255,255,0.7);display:none">Chargement...</div>
-                            <div id="communeTableNoData" class="absolute inset-0 flex items-center justify-center text-gray-500" style="display:none;">Aucune donnée disponible</div>
-                            <table id="liveCommuneTable" class="min-w-full divide-y divide-gray-200">
-                                <thead id="liveCommuneHead" class="bg-gray-50"></thead>
-                                <tbody id="liveCommuneBody" class="bg-white divide-y divide-gray-200"></tbody>
-                            </table>
-                        </div>
-                        <div class="px-6 py-3 bg-gray-50 text-right">
-                            <button id="viewAllCommunes" class="text-sm text-indigo-600 hover:text-indigo-800 font-medium">Voir KPI des communes →</button>
-                        <script type="module" src="js/communePanel.js"></script>
-                        <script>
-                            // Simple absolute-in-parent column filter menu
-                            (function(){
-                                const menuEl = document.getElementById('columnFilterMenu');
-                                const toggleBtn = document.getElementById('communeFilterBtn');
-                                const tableId = 'liveCommuneTable';
-
-                                function getHeaders(){
-                                    const table = document.getElementById(tableId);
-                                    if(!table) return [];
-                                    const ths = Array.from(table.querySelectorAll('thead th'));
-                                    return ths.map(th => ({ key: th.dataset.key || th.textContent.trim(), label: th.textContent.trim() }));
-                                }
-
-                                function buildMenu(){
-                                    if(!menuEl) return;
-                                    const headers = getHeaders();
-                                    if(!headers.length){ menuEl.innerHTML = '<div style="padding:8px;color:#6b7280">Aucune colonne détectée</div>'; return; }
-                                    const vis = JSON.parse(localStorage.getItem('communes_table_visibility')||'{}');
-                                    menuEl.innerHTML = headers.map(h=>{
-                                        const checked = vis[h.key] === undefined ? true : !!vis[h.key];
-                                        return `<label style="display:block;padding:6px 10px;white-space:nowrap;font-size:13px;color:#111827"><input type="checkbox" data-col="${h.key.replace(/"/g,'&quot;')}" ${checked? 'checked': ''} style="margin-right:8px"/> ${h.label}</label>`;
-                                    }).join('');
-
-                                    // wire up checkboxes
-                                    menuEl.querySelectorAll('input[type=checkbox]').forEach(cb=>{
-                                        cb.addEventListener('change', ()=>{
-                                            const key = cb.getAttribute('data-col');
-                                            const table = document.getElementById(tableId);
-                                            if(!table) return;
-                                            const ths = Array.from(table.querySelectorAll('thead th'));
-                                            const idx = ths.findIndex(th => (th.dataset.key || th.textContent.trim()) === key);
-                                            if(idx === -1) return;
-                                            const show = cb.checked;
-                                            // header
-                                            const th = ths[idx]; if(th) th.style.display = show ? '' : 'none';
-                                            // body
-                                            table.querySelectorAll('tbody tr').forEach(tr=>{ const td = tr.children[idx]; if(td) td.style.display = show ? '' : 'none'; });
-                                            const curr = JSON.parse(localStorage.getItem('communes_table_visibility')||'{}'); curr[key] = show; localStorage.setItem('communes_table_visibility', JSON.stringify(curr));
-                                        });
-                                    });
-                                }
-
-                                function toggleMenu(e){
-                                    e && e.stopPropagation && e.stopPropagation();
-                                    if(!menuEl || !toggleBtn) return;
-                                    if(menuEl.style.display === 'block'){
-                                        menuEl.style.display = 'none';
-                                        return;
-                                    }
-                                    buildMenu();
-                                    // ensure menu is positioned as absolute child of its parent
-                                    menuEl.style.position = 'absolute';
-                                    // temporarily show hidden and invisible to measure
-                                    menuEl.style.visibility = 'hidden';
-                                    menuEl.style.display = 'block';
-
-                                    // compute coordinates relative to parent so top-right aligns with button bottom-right
-                                    const btnRect = toggleBtn.getBoundingClientRect();
-                                    const parent = menuEl.parentElement || menuEl.offsetParent || document.body;
-                                    const parentRect = parent.getBoundingClientRect();
-                                    const menuRect = menuEl.getBoundingClientRect();
-
-                                    // top: button bottom relative to parent + small gap
-                                    let top = btnRect.bottom - parentRect.top + 6;
-
-                                    // use 'right' so the menu's right edge aligns with the button's right edge
-                                    // desiredRight is distance from parent's right edge to button's right edge
-                                    let desiredRight = Math.round(parentRect.right - btnRect.right);
-
-                                    // clamp desiredRight so menu stays visible within parent (leave 8px padding)
-                                    const minRight = 8;
-                                    const maxRight = Math.max(8, Math.round(parentRect.width - menuRect.width - 8));
-                                    if (desiredRight < minRight) desiredRight = minRight;
-                                    if (desiredRight > maxRight) desiredRight = maxRight;
-
-                                    // apply positioning using right/top; clear left to avoid conflicts
-                                    menuEl.style.left = 'auto';
-                                    menuEl.style.right = `${desiredRight}px`;
-                                    menuEl.style.top = `${Math.round(top)}px`;
-                                    menuEl.style.visibility = 'visible';
-                                }
-
-                                // Close on outside click / escape
-                                document.addEventListener('click', (ev)=>{
-                                    if(!menuEl) return;
-                                    if (menuEl.style.display !== 'block') return;
-                                    const target = ev.target;
-                                    if (toggleBtn && (toggleBtn === target || toggleBtn.contains(target))) return;
-                                    if (menuEl.contains(target)) return;
-                                    menuEl.style.display = 'none';
-                                });
-                                document.addEventListener('keydown', (ev)=>{ if(ev.key==='Escape' && menuEl) menuEl.style.display='none'; });
-
-                                toggleBtn && toggleBtn.addEventListener('click', toggleMenu);
-
-                                // Rebuild menu after table render; observe DOM for changes
-                                const table = document.getElementById(tableId);
-                                if(table){
-                                    const obs = new MutationObserver(()=>{ setTimeout(buildMenu, 50); });
-                                    obs.observe(table, { childList: true, subtree: true });
-                                    // Apply saved visibility on load
-                                    const applySaved = ()=>{
-                                        const vis = JSON.parse(localStorage.getItem('communes_table_visibility')||'{}');
-                                        const ths = Array.from(table.querySelectorAll('thead th'));
-                                        ths.forEach((th, idx)=>{
-                                            const key = th.dataset.key || th.textContent.trim();
-                                            const show = vis[key] === undefined ? true : !!vis[key];
-                                            if(!show) { th.style.display = 'none'; table.querySelectorAll('tbody tr').forEach(tr=>{ const td = tr.children[idx]; if(td) td.style.display='none'; }); }
-                                        });
-                                    };
-                                    applySaved();
-                                }
-                            })();
-                        </script>
-                        </div>
-                    </div>
-
-                    <script>
-                        // Basic panel initialization using existing fetch helper
-                        (function(){
-                            function average(arr){ if(!arr||!arr.length) return 0; return Math.round((arr.reduce((a,b)=>a+(Number(b)||0),0)/arr.length)*10)/10; }
-
-                            // Normalize header keys: lowercase, strip diacritics, remove non-alnum
-                            function normalizeKey(k){ if(!k && k!==0) return ''; try{ return k.toString().normalize('NFD').replace(/\p{Diacritic}/gu,'').toLowerCase().replace(/[^a-z0-9]/g,'').trim(); }catch(e){ return String(k).toLowerCase().replace(/[^a-z0-9]/g,'').trim(); } }
-
-                            // Normalize rows: accept array-of-objects or array-of-arrays with headers
-                            function normalizeRows(rows){
-                                if(!rows || !rows.length) return [];
-                                // If rows are arrays (first row headers)
-                                if (Array.isArray(rows[0]) ){
-                                    const hdr = rows[0];
-                                    return rows.slice(1).map(r=>{ const obj={}; hdr.forEach((h,i)=> obj[normalizeKey(h||`col${i}`)] = r[i] != null ? r[i] : ''); return obj; });
-                                }
-                                // else assume array of objects: normalize keys
-                                return rows.map(raw=>{ const obj={}; Object.keys(raw||{}).forEach(k=> obj[normalizeKey(k)] = raw[k]); return obj; });
-                            }
-
-                            async function fetchCsvByGid(gid){
-                                try{
-                                    const base = (window.CONFIG && window.CONFIG.SHEETS_BASE_URL) ? window.CONFIG.SHEETS_BASE_URL : 'https://docs.google.com/spreadsheets/d/1CbDBJtoWWPRjEH4DOSlv4jjnJ2G-1MvW/export?format=csv&gid=';
-                                    const url = base + gid;
-                                    const resp = await fetch(url, {cache: 'no-cache'});
-                                    if (!resp || !resp.ok) return [];
-                                    const text = await resp.text();
-                                    // RFC4180-ish parse that handles quoted fields
-                                    const rows = [];
-                                    const lines = text.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n');
-                                    if (!lines.length) return [];
-                                    // simple delimiter detection
-                                    const sample = lines.slice(0,4).join('\n');
-                                    const delimiter = (sample.includes(';') && !sample.includes(',')) ? ';' : ',';
-                                    // basic parser supporting quoted fields
-                                    const parseLine = (line)=>{
-                                        const out=[]; let cur=''; let inQuotes=false; for(let i=0;i<line.length;i++){ const ch=line[i]; if(ch==='"'){ if(inQuotes && line[i+1]==='"'){ cur+='"'; i++; } else { inQuotes=!inQuotes; } } else if(ch===delimiter && !inQuotes){ out.push(cur); cur=''; } else { cur+=ch; } } out.push(cur); return out.map(s=>s.trim().replace(/^"|"$/g,''));
-                                    };
-                                    for(let i=0;i<lines.length;i++){
-                                        if(!lines[i] || lines[i].trim()==='') continue;
-                                        const parsed = parseLine(lines[i]);
-                                        rows.push(parsed);
-                                    }
-                                    if(!rows.length) return [];
-                                    // if first row is headers, return array-of-arrays (let normalizeRows handle it)
-                                    return rows;
-                                }catch(err){ console.warn('CSV fetch failed', err); return []; }
-                            }
-
-                            async function getRows(){
-                                try{
-                                    // 1) prefer shared helper
-                                    if (window.fetchCommuneStatus) {
-                                        const r = await window.fetchCommuneStatus();
-                                        if (r && r.length) return r;
-                                    }
-                                    // 2) enhancedDashboard rawData
-                                    if (window.enhancedDashboard && window.enhancedDashboard.rawData) {
-                                        const r = window.enhancedDashboard.rawData['Commune Analysis'] || window.enhancedDashboard.rawData['Commune Status'] || [];
-                                        if (r && r.length) return r;
-                                    }
-                                    // 3) Try direct CSV fetch by gid (explicit sheet)
-                                    const gid = '1421590976';
-                                    const csvRows = await fetchCsvByGid(gid);
-                                    if (csvRows && csvRows.length) return csvRows;
-                                    return [];
-                                } catch(e){ console.warn('getRows error', e); return []; }
-                            }
-
-                            function setChartVisibility(hasData){
-                                const communeLoader = document.getElementById('communeChartLoader');
-                                const communeNoData = document.getElementById('communeChartNoData');
-                                const statusLoader = document.getElementById('statusChartLoader');
-                                const statusNoData = document.getElementById('statusChartNoData');
-                                if(communeLoader) communeLoader.style.display = 'none';
-                                if(statusLoader) statusLoader.style.display = 'none';
-                                if(hasData){ if(communeNoData) communeNoData.style.display='none'; if(statusNoData) statusNoData.style.display='none'; }
-                                else { if(communeNoData) communeNoData.style.display='flex'; if(statusNoData) statusNoData.style.display='flex'; }
-                            }
-
-                            function buildTable(rows){
-                                const head=document.getElementById('liveCommuneHead');
-                                const body=document.getElementById('liveCommuneBody');
-                                head.innerHTML=''; body.innerHTML='';
-                                if(!rows||!rows.length){ head.innerHTML='<tr><th class="px-6 py-3">Aucune donnée</th></tr>'; return; }
-                                const cols=Object.keys(rows[0]);
-                                const thr=document.createElement('tr'); thr.className='bg-gray-50';
-                                cols.forEach(c=>{ const th=document.createElement('th'); th.dataset.key = c; th.className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'; th.textContent=c; thr.appendChild(th); });
-                                head.appendChild(thr);
-                                rows.forEach(r=>{ const tr=document.createElement('tr'); tr.className='hover:bg-gray-50'; cols.forEach(c=>{ const td=document.createElement('td'); td.className='px-6 py-4 whitespace-nowrap text-sm text-gray-500'; td.textContent = r[c] != null ? r[c] : ''; tr.appendChild(td); }); body.appendChild(tr); });
-                            }
-
-                            // pick numeric arrays from normalized rows
-                            function pickNumericField(rows, possibleKeys){
-                                if(!rows||!rows.length) return null;
-                                for(const k of possibleKeys){
-                                    const nk = normalizeKey(k);
-                                    if(rows[0].hasOwnProperty(nk)){
-                                        const arr = rows.map(r=>{ const v = r[nk]; if(v==null||v==='') return 0; const num = Number(String(v).replace(/[^0-9.-]/g,'')); return Number.isFinite(num)? num : 0; });
-                                        return { key: nk, values: arr };
-                                    }
-                                }
-                                // fallback: try first numeric-like column
-                                const keys = Object.keys(rows[0]);
-                                for(const k of keys){ const sample = String(rows[0][k]||''); if(sample.match(/\d/)) return { key:k, values: rows.map(r=> Number(String(r[k]||'').replace(/[^0-9.-]/g,''))||0) }; }
-                                return null;
-                            }
-
-                            async function buildCharts(rows){
-                                try{
-                                    const normalized = normalizeRows(rows);
-                                    const labels = normalized.map(r=> r[normalizeKey('Commune')] || r[normalizeKey('commune')] || Object.values(r)[0] || '');
-
-                                    const totalField = pickNumericField(normalized, ['Total','Parcels','total','parcels']);
-                                    const validatedField = pickNumericField(normalized, ['Validated','validated','Validés','valides']);
-
-                                    const total = totalField ? totalField.values : normalized.map(()=>0);
-                                    const validated = validatedField ? validatedField.values : normalized.map(()=>0);
-
-                                    const hasData = normalized.length && (total.some(v=>v>0) || validated.some(v=>v>0));
-                                    setChartVisibility(!!hasData);
-
-                                    // delegate to chartService if available
-                                    if(window.chartService && typeof window.chartService.buildCommuneChart === 'function'){
-                                        try{ window.chartService.buildCommuneChart(normalized); }catch(e){ console.warn('chartService.buildCommuneChart failed', e); }
-                                    } else {
-                                        // fallback: inline Chart creation (safe)
-                                        const ctxEl = document.getElementById('communeChart');
-                                        if(ctxEl && ctxEl.getContext){
-                                            const ctx = ctxEl.getContext('2d');
-                                            if(window._communeChart) try{ window._communeChart.destroy(); }catch(e){}
-                                            window._communeChart = new Chart(ctx,{type:'bar',data:{labels,total:[],datasets:[{label:'Total Parcelles',data:total,backgroundColor:'rgba(79,70,229,0.7)'},{label:'Parcelles Validées',data:validated,backgroundColor:'rgba(16,185,129,0.7)'}]},options:{responsive:true,maintainAspectRatio:false}});
-                                        }
-                                    }
-
-                                    // status chart
-                                    const nicadField = pickNumericField(normalized, ['NICAD','nicad']);
-                                    const ctasfField = pickNumericField(normalized, ['CTASF','ctasf']);
-                                    const nicad = nicadField ? nicadField.values : normalized.map(()=>0);
-                                    const ctasf = ctasfField ? ctasfField.values : normalized.map(()=>0);
-
-                                    if(window.chartService && typeof window.chartService.buildStatusChart === 'function'){
-                                        try{ window.chartService.buildStatusChart(normalized); }catch(e){ console.warn('chartService.buildStatusChart failed', e); }
-                                    } else {
-                                        const sEl = document.getElementById('statusChart');
-                                        if(sEl && sEl.getContext){
-                                            const sctx = sEl.getContext('2d');
-                                            if(window._statusChart) try{ window._statusChart.destroy(); }catch(e){}
-                                            window._statusChart = new Chart(sctx,{type:'radar',data:{labels:['NICAD','CTASF','Validated'],datasets:[{label:'Communes (sample)',data:[average(nicad),average(ctasf),average(validated)],backgroundColor:'rgba(79,70,229,0.2)',borderColor:'rgba(79,70,229,1)'}]},options:{responsive:true,maintainAspectRatio:false,scales:{r:{suggestedMin:0,suggestedMax:100}}}});
-                                        }
-                                    }
-
-                                }catch(e){console.warn(e);} }
-
-                            async function refresh(){
-                                const rows=await getRows();
-                                let normalized = rows;
-                                // if rows are array-of-arrays, normalizeRows will convert
-                                normalized = normalizeRows(rows);
-                                if(!normalized || !normalized.length){ setChartVisibility(false); buildTable([]); return; }
-                                buildTable(normalized);
-                                await buildCharts(normalized);
-                            }
-
-                            document.getElementById('communeSearch').addEventListener('input', (e)=>{ const q=e.target.value.trim().toLowerCase(); const tbody=document.getElementById('liveCommuneBody'); Array.from(tbody.querySelectorAll('tr')).forEach(tr=>{ tr.style.display = q ? (tr.textContent.toLowerCase().includes(q) ? '' : 'none') : ''; }); });
-                            // init
-                            try{ AOS && AOS.refresh(); } catch(e){}
-                            refresh();
-                        })();
-                    </script>
-                </section>
-            </div>
-            <!-- Process Panel -->
-            <div id="panel-process" data-panel="process" class="panel" role="tabpanel" aria-labelledby="tab-process" hidden>
-                <section class="process-section">
-                    <div class="section-intro mb-8">
-                        <h2 class="section-title">Analyse des processus</h2>
-                        <p class="section-description">Analyse détaillée des flux de traitement et performances</p>
-                    </div>
-                    
-                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                        <!-- Moved from Overview: Vue Synthèse -->
-                        <div class="chart-card">
-                            <div class="chart-header">
-                                <h3 class="chart-title">Vue Synthèse</h3>
-                                <p class="chart-subtitle">Indicateurs clés de performance</p>
-                            </div>
-                            <div class="chart-content">
-                                <canvas id="overviewMetricsChart"></canvas>
-                            </div>
-                        </div>
-
-                        
-
-                        <!-- Moved from Overview: Productivité Équipe -->
-                        <div class="chart-card">
-                            <div class="chart-header">
-                                <h3 class="chart-title">Productivité Équipe</h3>
-                                <p class="chart-subtitle">Performance par équipe</p>
-                            </div>
-                            <div class="chart-content">
-                                <canvas id="teamProductivityChart"></canvas>
-                            </div>
-                        </div>
-
-                        
-
-                        <div class="chart-card">
-                            <div class="chart-header">
-                                <h3 class="chart-title">Distribution Types de Parcelles</h3>
-                            </div>
-                            <div class="chart-content">
-                                <canvas id="parcelTypeDistributionChart"></canvas>
-                            </div>
-                        </div>
-
-                        <div class="chart-card">
-                            <div class="chart-header">
-                                <h3 class="chart-title">Performance par Géomaticien</h3>
-                            </div>
-                            <div class="chart-content">
-                                <canvas id="geomaticianPerformanceChart"></canvas>
-                            </div>
-                        </div>
-
-                        <!-- Chronologie canvas removed — DOM-based chronogram is rendered elsewhere -->
-                    </div>
-                </section>
-            </div>
-
-            <!-- Temporal Panel -->
-            <div id="panel-temporal" data-panel="temporal" class="panel" role="tabpanel" aria-labelledby="tab-temporal" hidden>
-                <section class="temporal-section">
-                    <div class="section-intro mb-8">
-                        <h2 class="section-title">Suivi Temporel</h2>
-                        <p class="section-description">Évolution des métriques dans le temps</p>
-                    </div>
-                    
-                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <div class="chart-card">
-                            <div class="chart-header">
-                                <h3 class="chart-title">Évolution Quotidienne des Levées</h3>
-                <p class="chart-subtitle">Tendance des levées selon l'intervalle choisi</p>
-                                <div id="dailyYieldsTrend" class="chart-trend">
-                                    <i id="dailyYieldsTrendIcon" class="fas fa-minus"></i>
-                                    <span id="dailyYieldsTrendValue">--%</span>
-                                </div>
-                            </div>
-                            <div class="chart-content">
-                                <canvas id="dailyYieldsChart"></canvas>
-                            </div>
-                        </div>
-                        
-            <div class="chart-card">
-                            <div class="chart-header">
-                                <h3 class="chart-title">Qualité de l'affichage public</h3>
-                <p class="chart-subtitle">Part des affichages sans erreur</p>
-                                <div id="qualityTrendHeader" class="chart-trend">
-                                    <i id="qualityTrendIcon" class="fas fa-minus"></i>
-                                    <span id="qualityTrendValue">--%</span>
-                                </div>
-                            </div>
-                            <div class="chart-content">
-                                <canvas id="qualityTrendChart"></canvas>
-                            </div>
-                        </div>
-                        
-            <div class="chart-card">
-                            <div class="chart-header">
-                                <h3 class="chart-title">Pipeline CTASF</h3>
-                <p class="chart-subtitle">Flux emmenées → retenues → délibérées</p>
-                                <div id="ctasfTrendHeader" class="chart-trend">
-                                    <i id="ctasfTrendIcon" class="fas fa-minus"></i>
-                                    <span id="ctasfTrendValue">--%</span>
-                                </div>
-                            </div>
-                            <div class="chart-content">
-                                <canvas id="ctasfPipelineChart"></canvas>
-                            </div>
-                        </div>
-                        
-            <div class="chart-card">
-                            <div class="chart-header">
-                                <h3 class="chart-title">Performance du post-traitement</h3>
-                <p class="chart-subtitle">Évolution des volumes traités quotidiennement</p>
-                                <div id="postProcTrendHeader" class="chart-trend">
-                                    <i id="postProcTrendIcon" class="fas fa-minus"></i>
-                                    <span id="postProcTrendValue">--%</span>
-                                </div>
-                            </div>
-                            <div class="chart-content">
-                                <canvas id="postProcessingChart"></canvas>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-            </div>
+        </div>
 
         </div>
 
         <!-- Data Tables Section -->
         <section class="tables-section mt-16">
             <div class="section-intro mb-8">
-                        <h2 class="section-title">Données détaillées</h2>
-                <p class="section-description">Accès aux données brutes et historiques</p>
+                <h2 class="section-title">Données détaillées</h2>
+                <div class="flex justify-between items-end">
+                    <p class="section-description">Accès aux données brutes et historiques</p>
+                    <button class="action-button text-sm download-btn" title="Télécharger les données affichées">
+                        <i class="fas fa-download mr-1"></i> XLSX
+                    </button>
+                </div>
             </div>
-            
+
             <div class="table-container">
                 <div class="table-tabs">
                     <button class="table-tab active" data-tab="yields">
@@ -1056,7 +442,7 @@
                         Traitement
                     </button>
                 </div>
-                
+
                 <div class="table-content">
                     <div id="yieldsTable" class="table-panel active">
                         <div class="table-wrapper">
@@ -1163,7 +549,7 @@
             <p class="loading-subtitle" id="loadingTimer">Chargement en cours...</p>
         </div>
     </div>
-    
+
     <script>
         // Loading timer and overlay management
         let loadingSeconds = 0;
@@ -1173,7 +559,7 @@
             if (timerElement) {
                 timerElement.textContent = `${loadingSeconds}s écoulées`;
             }
-            
+
             const messageElement = document.getElementById('loadingMessage');
             if (messageElement) {
                 if (loadingSeconds > 3) {
@@ -1186,14 +572,14 @@
                     messageElement.textContent = 'Finalisation...';
                 }
             }
-            
+
             if (loadingSeconds >= 15) {
                 const overlay = document.getElementById('loadingOverlay');
                 if (overlay) overlay.style.display = 'none';
                 clearInterval(loadingTimer);
             }
         }, 1000);
-        
+
         function hideLoadingOverlay() {
             const loadingOverlay = document.getElementById('loadingOverlay');
             if (loadingOverlay) {
@@ -1204,14 +590,14 @@
                 }, 300);
             }
         }
-        
+
         // Initialize dashboard
         window.dashboardInitialized = false;
-        
+
         document.addEventListener('DOMContentLoaded', async () => {
             try {
                 setTimeout(hideLoadingOverlay, 5000);
-                
+
                 // Wait for scripts to load
                 setTimeout(async () => {
                     console.log('Initializing PROCASSEF Dashboard...');
@@ -1220,7 +606,7 @@
                         console.error('EnhancedDashboard class not found! Check script loading order.');
                         return;
                     }
-                    
+
                     window.dashboard = new EnhancedDashboard();
                     await window.dashboard.initialize();
                     window.dashboardInitialized = true;
@@ -1232,42 +618,42 @@
                 hideLoadingOverlay();
             }
         });
-        
+
         // Tab switching
         document.addEventListener('click', (e) => {
-            if (e.target.matches('.nav-tab') || e.target.closest('.nav-tab')) {
-                const tab = e.target.closest('.nav-tab');
+            const tab = e.target.closest('.nav-tab');
+            if (tab) {
                 const targetPanel = tab.dataset.tab;
-                
+
                 // Update tabs
                 document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
                 tab.classList.add('active');
-                
+
                 // Update panels
                 document.querySelectorAll('.panel').forEach(p => {
                     if (p.dataset.panel === targetPanel) {
                         p.classList.add('active');
+                        p.removeAttribute('hidden');
                     } else {
                         p.classList.remove('active');
+                        p.setAttribute('hidden', '');
                     }
                 });
-                
-                // Refresh charts
-                setTimeout(() => {
-                    if (window.dashboard?.refreshDashboard) {
-                        window.dashboard.refreshDashboard(false);
-                    }
-                }, 200);
+
+                // Trigger chart resize
+                if (window.chartService && window.chartService._debouncedResize) {
+                    window.chartService._debouncedResize();
+                }
             }
-            
+
             // Table tabs
             if (e.target.matches('.table-tab') || e.target.closest('.table-tab')) {
                 const tab = e.target.closest('.table-tab');
                 const targetTable = tab.dataset.tab;
-                
+
                 document.querySelectorAll('.table-tab').forEach(t => t.classList.remove('active'));
                 tab.classList.add('active');
-                
+
                 document.querySelectorAll('.table-panel').forEach(p => {
                     if (p.id === targetTable + 'Table') {
                         p.classList.add('active');
@@ -1282,19 +668,19 @@
         document.getElementById('themeToggle')?.addEventListener('click', () => {
             const currentTheme = document.body.dataset.theme;
             const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-            
+
             document.body.dataset.theme = newTheme;
             document.documentElement.classList.toggle('dark', newTheme === 'dark');
-            
+
             const icon = document.getElementById('themeIcon');
             icon.className = newTheme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
-            
+
             localStorage.setItem('proc-theme', newTheme);
         });
 
         // Initialize theme
-    const savedTheme = localStorage.getItem('proc-theme') || 'light';
-        
+        const savedTheme = localStorage.getItem('proc-theme') || 'light';
+
         document.body.dataset.theme = savedTheme;
         if (savedTheme === 'dark') {
             document.documentElement.classList.add('dark');
@@ -1306,34 +692,34 @@
     <script src="js/localization.js"></script>
     <script src="js/config.js"></script>
     <script src="js/mockData.js"></script>
-    
+
     <!-- Services -->
     <script src="js/dataService.js"></script>
-    <script type="module" src="js/chartService.js"></script>
+    <script src="js/chartService.js"></script>
     <script src="js/enhancedGoogleSheetsService.js"></script>
-    
+
     <!-- Dashboard Components -->
     <script src="js/enhancedMockData.js"></script>
     <script src="js/dataAggregation.js"></script>
     <script src="js/dateParsingLoader.js"></script>
-    <script src="js/tubeProgress.js"></script>
+    <script src="js/statCardService.js"></script>
     <script src="js/forecastCard.js"></script>
     <script src="js/debugPanel.js"></script>
-    <script src="js/communeTable.js"></script>
-    <script src="js/enhancedDashboard.js"></script>
+    <script src="js/enhancedDashboard.js?v=3.0"></script>
     <script src="js/streamingUpdates.js"></script>
     <script src="js/yieldsDateFix.js"></script>
     <script src="js/chronogramContent.js"></script>
     <script src="js/chronogramData.js"></script>
     <script src="js/chronogramIntegration.js"></script>
 
-        <script>
-            // wire the "View All Communes" button to the new communes page
-            document.addEventListener('DOMContentLoaded', function(){
-                const btn = document.getElementById('viewAllCommunes');
-                if(btn) btn.addEventListener('click', function(ev){ ev.preventDefault(); window.location.href = 'communes.html'; });
-            });
-        </script>
+    <script>
+        // wire the "View All Communes" button to the new communes page
+        document.addEventListener('DOMContentLoaded', function () {
+            const btn = document.getElementById('viewAllCommunes');
+            if (btn) btn.addEventListener('click', function (ev) { ev.preventDefault(); window.location.href = 'communes.html'; });
+        });
+    </script>
 
 </body>
+
 </html>

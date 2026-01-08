@@ -25,18 +25,18 @@ class DataService {
             if (!response.ok) {
                 throw new Error(`Network response was not ok: ${response.status}`);
             }
-            
+
             const csvText = await response.text();
             const data = UTILS.parseCSV(csvText);
             // Log parsed row count for debugging
             console.debug(`fetchCSV: parsed ${Array.isArray(data) ? data.length : 0} rows from ${url}`);
-            
+
             // Update cache
             this.cache.set(url, {
                 data,
                 timestamp: Date.now()
             });
-            
+
             return data;
         } catch (error) {
             // Suppressed CSV fetch error log (parsing-related)
@@ -46,11 +46,11 @@ class DataService {
 
     // Fetch all needed data in parallel
     async getAllData() {
-    const errors = [];
-    const data = {};
-    const fetchPromises = [];
-    // Preserve the canonical sheet names in the same order as fetchPromises
-    const sheetNames = [];
+        const errors = [];
+        const data = {};
+        const fetchPromises = [];
+        // Preserve the canonical sheet names in the same order as fetchPromises
+        const sheetNames = [];
 
         // Add main sheets to fetch
         for (const [key, sheet] of Object.entries(GOOGLE_SHEETS)) {
@@ -67,14 +67,14 @@ class DataService {
 
         // Wait for all fetches to complete with Promise.allSettled for resilience
         const results = await Promise.allSettled(fetchPromises);
-        
+
         // Map results to data object with proper names
         results.forEach((result, index) => {
             const sheetName = sheetNames[index] || `sheet_${index}`;
             if (result.status === 'fulfilled') {
                 data[sheetName] = result.value;
             } else {
-                errors.push({sheet: sheetName, error: result.reason});
+                errors.push({ sheet: sheetName, error: result.reason });
                 data[sheetName] = [];
             }
             // Debug: show how many rows were returned for each sheet
@@ -89,127 +89,19 @@ class DataService {
     }
 
     // Calculate KPIs for dashboard
-    calculateKPIs(rawData) {
-        try {
-            // For demo purposes, let's set some sample data
-            // In production, replace with the actual data from the Google Sheets
-            
-            // Daily progress
-            const yieldsData = rawData['Yields Projections'] || [];
-            // Set current date to September 10, 2025 (from the screenshot)
-            const today = "2025-09-10"; 
-            const dailyData = yieldsData.filter(d => d['Date'] === today);
-            // Use sample data for demo (showing the numbers from the screenshot)
-            const totalDaily = 350; // Sample value
-            const dailyPercentage = (totalDaily / CONFIG.TARGETS.DAILY_PARCELS) * 100;
-
-            // Weekly progress
-            const weekDates = this.getWeekDates();
-            const weeklyData = yieldsData.filter(d => weekDates.includes(d['Date']));
-            // Use sample data for demo
-            const totalWeekly = 4200; // Sample value
-            const weeklyPercentage = (totalWeekly / CONFIG.TARGETS.WEEKLY_PARCELS) * 100;
-
-            // Monthly progress
-            const monthlyData = yieldsData;
-            // Use sample data for demo - match screenshot value
-            const totalMonthly = 1178; // Value shown in screenshot
-            const monthlyPercentage = (totalMonthly / CONFIG.TARGETS.SEPTEMBER_2025_GOAL) * 100;
-
-            // Quality rate
-            const displayData = rawData['Public Display Follow-up'] || [];
-            const sansErreur = displayData.reduce((sum, d) => sum + Number(d['Nombre de parcelles affichées sans erreurs'] || 0), 0);
-            const avecErreur = displayData.reduce((sum, d) => sum + Number(d['Nombre Parcelles avec erreur'] || 0), 0);
-            const qualityRate = sansErreur + avecErreur > 0 ? Math.round(sansErreur / (sansErreur + avecErreur) * 100) : 0;
-
-            // CTASF conversion
-            const ctasfData = rawData['CTASF Follow-up'] || [];
-            const ctasfTotal = ctasfData.reduce((sum, d) => sum + Number(d['Nombre parcelles emmenées au CTASF'] || 0), 0);
-            const ctasfRetained = ctasfData.reduce((sum, d) => sum + Number(d['Nombre parcelles retenues CTASF'] || 0), 0);
-            const ctasfConversion = ctasfTotal > 0 ? Math.round(ctasfRetained / ctasfTotal * 100) : 0;
-
-            // Processing efficiency
-            const postProcessData = rawData['Post Process Follow-up'] || [];
-            const processed = postProcessData.reduce((sum, d) => sum + Number(d['Parcelles post traitées (Sans Doublons et topoplogie correcte)'] || 0), 0);
-            const received = postProcessData.reduce((sum, d) => sum + Number(d['Parcelles reçues (Brutes)'] || 0), 0);
-            // For demo, we'll use 100% as shown in screenshot
-            const processingEfficiency = 100; // Set to 100% to match screenshot
-
-            // No mock data usage here; compute KPIs from live data
-            
-            return {
-                daily: {
-                    current: totalDaily,
-                    target: 832.77,
-                    percentage: 42, // Sample value to match screenshot (showing progress)
-                    status: this.getStatusFromPercentage(42),
-                    gap: -482.77000
-                },
-                weekly: {
-                    current: totalWeekly,
-                    target: 5829.39,
-                    percentage: 72, // Sample value to match screenshot (showing progress)
-                    status: this.getStatusFromPercentage(72),
-                    gap: -629.3900
-                },
-                monthly: {
-                    current: totalMonthly,
-                    target: 60830.22,
-                    percentage: 2, // Value calculated from screenshot (1178/60830.22*100 ~= 2%)
-                    status: this.getStatusFromPercentage(2),
-                    gap: -9652.2200
-                },
-                quality: {
-                    sansErreur: 0,
-                    avecErreur: 0,
-                    rate: 0, // Set to 0% to match screenshot
-                    status: this.getStatusFromPercentage(0)
-                },
-                ctasf: {
-                    total: 0,
-                    retained: 0,
-                    rate: 0, // Set to 0% to match screenshot
-                    status: this.getStatusFromPercentage(0)
-                },
-                processing: {
-                    received: 100, // Sample value
-                    processed: 100, // Sample value
-                    rate: 100, // Set to 100% to match screenshot
-                    status: this.getStatusFromPercentage(100)
-                }
-            };
-        } catch (error) {
-            console.error('Error calculating KPIs:', error);
-            return {
-                daily: { current: 0, target: CONFIG.TARGETS.DAILY_PARCELS, percentage: 0, status: 'critical' },
-                weekly: { current: 0, target: CONFIG.TARGETS.WEEKLY_PARCELS, percentage: 0, status: 'critical' },
-                monthly: { current: 0, target: CONFIG.TARGETS.SEPTEMBER_2025_GOAL, percentage: 0, status: 'critical' },
-                quality: { sansErreur: 0, avecErreur: 0, rate: 0, status: 'critical' },
-                ctasf: { total: 0, retained: 0, rate: 0, status: 'critical' },
-                processing: { received: 0, processed: 0, rate: 0, status: 'critical' }
-            };
-        }
-    }
-
-    // Get status from percentage
-    getStatusFromPercentage(percentage) {
-        if (percentage >= 100) return 'success';
-        if (percentage >= 80) return 'good';
-        if (percentage >= 60) return 'warning';
-        return 'critical';
-    }
+    // KPI calculation is now handled by DataAggregationService
 
     // Get week dates (last 7 days)
     getWeekDates() {
         const dates = [];
         const today = new Date();
-        
+
         for (let i = 0; i < 7; i++) {
             const date = new Date(today);
             date.setDate(today.getDate() - i);
             dates.push(date.toISOString().slice(0, 10));
         }
-        
+
         return dates;
     }
 
@@ -218,10 +110,10 @@ class DataService {
         try {
             const data = rawData[sheetName] || [];
             if (!data.length) return [];
-            
+
             // If valueColumns is a string, convert to array
             const columns = Array.isArray(valueColumns) ? valueColumns : [valueColumns];
-            
+
             // Centralized date parsing
             const parseDate = (dateStr) => {
                 if (dateStr === undefined || dateStr === null || dateStr === '') return null;
@@ -236,7 +128,7 @@ class DataService {
                         const d = window.dataAggregationService.parseDate(dateStr);
                         if (d) return d;
                     }
-                } catch (_) {}
+                } catch (_) { }
                 // Fallback: basic DMY parser
                 const cleaned = String(dateStr).trim();
                 // Only trust native Date for true ISO
@@ -246,7 +138,7 @@ class DataService {
                 }
                 const m = /^([0-3]?\d)[/.-]([01]?\d)[/.-](\d{2,4})$/.exec(cleaned);
                 if (m) {
-                    let d = parseInt(m[1],10), mo = parseInt(m[2],10), y = parseInt(m[3],10);
+                    let d = parseInt(m[1], 10), mo = parseInt(m[2], 10), y = parseInt(m[3], 10);
                     if (y < 100) y = 2000 + y; // 2-digit year -> 20xx
                     const dt = new Date(y, mo - 1, d);
                     return isNaN(dt) ? null : dt;
@@ -257,13 +149,13 @@ class DataService {
             const toNumber = (val) => {
                 if (val === undefined || val === null || val === '') return 0;
                 if (typeof val === 'number') return isNaN(val) ? 0 : val;
-                const s = String(val).trim().replace(/\u00A0/g,' ').replace(/\s+/g,'');
+                const s = String(val).trim().replace(/\u00A0/g, ' ').replace(/\s+/g, '');
                 // Replace French decimal comma
-                const normalized = s.replace(/,/g,'.').replace(/[^0-9.+-]/g,'');
+                const normalized = s.replace(/,/g, '.').replace(/[^0-9.+-]/g, '');
                 const n = parseFloat(normalized);
                 return isNaN(n) ? 0 : n;
             };
-            
+
             // Group by date if single value column (aggregate multiple rows same date)
             if (columns.length === 1) {
                 const byDate = new Map();
@@ -282,12 +174,12 @@ class DataService {
                     try {
                         console.debug('[TimeSeriesDebug] Distinct raw dates in', sheetName, Array.from(rawDateSet));
                         console.debug('[TimeSeriesDebug] Parsed date keys', Array.from(byDate.keys()));
-                    } catch(e){}
+                    } catch (e) { }
                 }
-                const result = Array.from(byDate.entries()).map(([k,v]) => ({
+                const result = Array.from(byDate.entries()).map(([k, v]) => ({
                     date: k, // keep as ISO string for stable label / sorting
                     value: v
-                })).sort((a,b)=> a.date.localeCompare(b.date));
+                })).sort((a, b) => a.date.localeCompare(b.date));
                 return result;
             } else {
                 // Multiple value columns: aggregate by date (sum per day per column)
@@ -304,7 +196,7 @@ class DataService {
                     const acc = byDate.get(key);
                     columns.forEach(col => { acc[col] += toNumber(row[col]); });
                 });
-                return Array.from(byDate.values()).sort((a,b)=> a.date.localeCompare(b.date));
+                return Array.from(byDate.values()).sort((a, b) => a.date.localeCompare(b.date));
             }
         } catch (error) {
             console.error(`Error getting time series data for ${sheetName}:`, error);
@@ -317,7 +209,7 @@ class DataService {
         try {
             const data = rawData['Commune Analysis'] || [];
             if (!data.length) return [];
-            
+
             return data.map(row => ({
                 commune: row['Commune'],
                 region: row['Region'],
@@ -352,10 +244,10 @@ class DataService {
         try {
             const data = rawData['Project Timeline'] || [];
             if (!data.length) return [];
-            
+
             // Process timeline data
             const timelineItems = [];
-            
+
             data.forEach(row => {
                 // Tambacounda
                 if (row['Tambacounda']) {
@@ -369,7 +261,7 @@ class DataService {
                         progress: this.calculateTaskProgress(row['Tambacounda Start Date'], row['Tambacounda End Date'], row['Tambacounda Status'])
                     });
                 }
-                
+
                 // Kedougou
                 if (row['Kedougou']) {
                     timelineItems.push({
@@ -383,7 +275,7 @@ class DataService {
                     });
                 }
             });
-            
+
             return timelineItems.sort((a, b) => (a.order - b.order) || (a.region.localeCompare(b.region)));
         } catch (error) {
             console.error('Error getting timeline data:', error);
@@ -395,19 +287,19 @@ class DataService {
     calculateTaskProgress(startDateStr, endDateStr, status) {
         if (status === 'completed') return 100;
         if (!startDateStr || !endDateStr) return 0;
-        
+
         try {
             const startDate = (window.UTILS && UTILS.parseDateDMY) ? UTILS.parseDateDMY(startDateStr) : this.parseDateDMY(startDateStr);
             const endDate = (window.UTILS && UTILS.parseDateDMY) ? UTILS.parseDateDMY(endDateStr) : this.parseDateDMY(endDateStr);
             const today = new Date();
-            
+
             if (!startDate || !endDate) return 0;
             if (today < startDate) return 0;
             if (today > endDate) return 100;
-            
+
             const totalDuration = endDate - startDate;
             const elapsedDuration = today - startDate;
-            
+
             return Math.round((elapsedDuration / totalDuration) * 100);
         } catch (error) {
             return 0;
