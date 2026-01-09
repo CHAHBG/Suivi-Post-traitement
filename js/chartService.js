@@ -1705,17 +1705,45 @@ class ChartService {
             // FTR: First Time Right (% validated without rework)
             const ftr = totalBrutes > 0 ? Math.round((totalValidees / totalBrutes) * 100) : 0;
             
-            // Avg Cycle Time (simplified: avg days of data)
-            const uniqueDates = new Set();
-            postProcessSheet.forEach(row => {
+            // Calcul du nombre de parcelles à transmettre pour le prochain lot
+            // Somme des levées du lundi au samedi de la semaine en cours
+            let weeklyYields = 0;
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            
+            // Trouver le lundi de la semaine en cours
+            const dayOfWeek = today.getDay(); // 0 = dimanche, 1 = lundi, etc.
+            const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Si dimanche, remonter de 6 jours
+            const monday = new Date(today);
+            monday.setDate(today.getDate() - daysFromMonday);
+            monday.setHours(0, 0, 0, 0);
+            
+            // Samedi de la semaine en cours
+            const saturday = new Date(monday);
+            saturday.setDate(monday.getDate() + 5); // Lundi + 5 jours = Samedi
+            saturday.setHours(23, 59, 59, 999);
+            
+            yieldsSheet.forEach(row => {
                 const dateObj = window.dataAggregationService ?
                     window.dataAggregationService.parseDate(row['Date'] || row['date']) :
                     new Date(row['Date'] || row['date']);
-                if (dateObj && !isNaN(dateObj)) uniqueDates.add(dateObj.toISOString().split('T')[0]);
+                
+                if (dateObj && !isNaN(dateObj)) {
+                    dateObj.setHours(0, 0, 0, 0);
+                    // Si la date est entre lundi et samedi inclus
+                    if (dateObj >= monday && dateObj <= saturday) {
+                        const levees = this._getNumericField(row, [
+                            'Nombre de levées',
+                            'nombre de levees',
+                            'nombre de levées',
+                            'Nombre de levees'
+                        ]) || 0;
+                        weeklyYields += levees;
+                    }
+                }
             });
-            const avgCycleTime = uniqueDates.size > 0 ? Math.round(uniqueDates.size / 2) : 0;
 
-            // console.info(`[calculateEfficiencyKPIs] FTR: ${ftr}%, Cycle: ${avgCycleTime}j, WIP: ${wipOver48h}`);
+            // console.info(`[calculateEfficiencyKPIs] FTR: ${ftr}%, Weekly Yields (Lundi-Samedi): ${weeklyYields}, WIP: ${wipOver48h}`);
 
             // Update DOM
             const ftrEl = document.getElementById('ftrValue');
@@ -1723,7 +1751,7 @@ class ChartService {
             const wipEl = document.getElementById('wipAge');
             
             if (ftrEl) ftrEl.textContent = ftr + '%';
-            if (cycleEl) cycleEl.textContent = avgCycleTime + 'j';
+            if (cycleEl) cycleEl.textContent = weeklyYields.toLocaleString();
             if (wipEl) wipEl.textContent = wipOver48h.toLocaleString();
 
             // console.info('[calculateEfficiencyKPIs] Post-process KPIs updated');
