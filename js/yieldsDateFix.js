@@ -14,7 +14,7 @@
     
     // Fix date formats in yields data
     function fixYieldsDates() {
-        const rawData = window.dashboard.rawData;
+        const rawData = window.rawData;
         if (!rawData) return;
         
         const potentialKeys = [

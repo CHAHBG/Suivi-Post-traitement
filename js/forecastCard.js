@@ -6,15 +6,7 @@
     function findKPIs() {
         // SINGLE SOURCE OF TRUTH: only use window.kpis which is set by enhancedDashboard
         // This ensures the forecast card and the KPI card show the exact same date
-        if (window.kpis && window.kpis.monthly && window.kpis.monthly.forecast) {
-            return window.kpis;
-        }
-        // Fallback to last good KPIs if available
-        if (window.__lastGoodKPIs && window.__lastGoodKPIs.monthly && window.__lastGoodKPIs.monthly.forecast) {
-            return window.__lastGoodKPIs;
-        }
-        // Do NOT recalculate - this would cause date mismatch
-        return null;
+        return window.kpis || null;
     }
     
     // Update the KPI card "Fin Objectif" to ensure it matches

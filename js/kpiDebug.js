@@ -4,7 +4,7 @@
  */
 function debugKpiCalculation() {
     // Get raw data from dashboard
-    const rawData = window.dashboard?.rawData;
+    const rawData = window.rawData;
     if (!rawData) {
         console.error('No raw data found in dashboard');
         return;

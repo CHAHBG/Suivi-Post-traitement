@@ -239,13 +239,13 @@ class DebugPanel {
 
         // Raw Data info
         this.log('<strong>Raw Data Keys:</strong>');
-        if (window.dashboard && window.dashboard.rawData) {
-            const keys = Object.keys(window.dashboard.rawData);
+        if (window.rawData) {
+            const keys = Object.keys(window.rawData);
             this.log(`Found ${keys.length} sheets: ${keys.join(', ')}`);
             
             // Show row counts for important sheets
             for (const key of keys) {
-                const data = window.dashboard.rawData[key];
+                const data = window.rawData[key];
                 if (Array.isArray(data)) {
                     this.log(`Sheet "${key}": ${data.length} rows`);
                     
@@ -293,8 +293,8 @@ class DebugPanel {
         // KPI info
         this.log('<strong>Last Calculated KPIs:</strong>');
         try {
-            if (window.dashboard && window.dashboard.rawData && window.dataAggregationService) {
-                const kpis = window.dataAggregationService.calculateKPIs(window.dashboard.rawData, {});
+            if (window.kpis) {
+                const kpis = window.kpis;
                 const mainKpis = {
                     daily: {
                         current: kpis.daily.current,

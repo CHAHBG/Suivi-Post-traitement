@@ -1,5 +1,23 @@
 /**
  * Dashboard Controller for PROCASSEF Monitoring
+ * 
+ * IMPORTANT - SINGLE SOURCE OF TRUTH:
+ * =====================================
+ * This dashboard exports TWO global variables that serve as the ONLY sources:
+ * 
+ * 1. window.rawData - Contains all raw data from Google Sheets
+ * 2. window.kpis - Contains all calculated KPIs
+ * 
+ * DO NOT create alternative sources like:
+ * - window.__lastGoodKPIs (removed)
+ * - window.enhancedDashboard.kpis (removed)
+ * - window.dataAggregationService.getLastKPIs() (do not use)
+ * 
+ * Always access data through:
+ * - window.rawData for raw sheet data
+ * - window.kpis for calculated metrics
+ * 
+ * This ensures date calculations and all metrics remain synchronized.
  */
 class EnhancedDashboard {
     constructor() {
@@ -187,16 +205,13 @@ class EnhancedDashboard {
                 // console.warn('Error normalizing sheet keys:', e);
             }
 
+            // Expose rawData globally - SINGLE SOURCE FOR RAW DATA
+            window.rawData = this.rawData;
+
             // Calculate KPIs using aggregation service (use normalized this.rawData)
             const kpis = dataAggregationService.calculateKPIs(this.rawData, this.currentFilters);
-            // Expose KPIs and dashboard reference globally so other UI helpers (forecastCard) can access immediately
-            try {
-                window.__lastGoodKPIs = kpis;
-                window.kpis = kpis;
-                window.enhancedDashboard = window.enhancedDashboard || this;
-                // also attach to this instance for internal consumers
-                this.kpis = kpis;
-            } catch (e) { /* ignore */ }
+            // Expose KPIs globally - SINGLE SOURCE OF TRUTH
+            window.kpis = kpis;
             // console.log('KPIs calculated:', kpis);
 
             // Initialize tube progress indicators
