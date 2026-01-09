@@ -1,0 +1,460 @@
+/**
+ * Guided Tour Styles
+ * Styles for the onboarding tour system
+ */
+
+/* Overlay */
+.tour-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: 99990;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+    pointer-events: none;
+}
+
+.tour-overlay.visible {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+}
+
+/* Spotlight effect */
+.tour-spotlight {
+    position: absolute;
+    background: transparent;
+    border-radius: 8px;
+    box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.6);
+    transition: all 0.3s ease;
+    pointer-events: none;
+}
+
+/* Tooltip */
+.tour-tooltip {
+    position: fixed;
+    z-index: 99995;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(0, 0, 0, 0.05);
+    max-width: 380px;
+    min-width: 300px;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(10px);
+    transition: all 0.3s ease;
+}
+
+.tour-tooltip.visible {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+/* Tooltip Arrow */
+.tour-tooltip-arrow {
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    background: white;
+    transform: rotate(45deg);
+    box-shadow: -2px -2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.tour-tooltip-arrow.arrow-top {
+    top: -8px;
+    left: 50%;
+    margin-left: -8px;
+}
+
+.tour-tooltip-arrow.arrow-bottom {
+    bottom: -8px;
+    left: 50%;
+    margin-left: -8px;
+    box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.tour-tooltip-arrow.arrow-left {
+    left: -8px;
+    top: 50%;
+    margin-top: -8px;
+}
+
+.tour-tooltip-arrow.arrow-right {
+    right: -8px;
+    top: 50%;
+    margin-top: -8px;
+    box-shadow: 2px -2px 4px rgba(0, 0, 0, 0.05);
+}
+
+/* Tooltip Header */
+.tour-tooltip-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px 12px;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.tour-tooltip-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: #1e293b;
+}
+
+.tour-tooltip-close {
+    background: none;
+    border: none;
+    font-size: 24px;
+    color: #94a3b8;
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
+    transition: color 0.2s;
+}
+
+.tour-tooltip-close:hover {
+    color: #475569;
+}
+
+/* Tooltip Content */
+.tour-tooltip-content {
+    padding: 16px 20px;
+    font-size: 14px;
+    line-height: 1.6;
+    color: #475569;
+}
+
+/* Tooltip Footer */
+.tour-tooltip-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 20px;
+    border-top: 1px solid #f1f5f9;
+    background: #f8fafc;
+    border-radius: 0 0 12px 12px;
+}
+
+.tour-tooltip-progress {
+    font-size: 13px;
+    color: #64748b;
+}
+
+.tour-step-current {
+    font-weight: 700;
+    color: #2563eb;
+}
+
+.tour-tooltip-buttons {
+    display: flex;
+    gap: 8px;
+}
+
+/* Buttons */
+.tour-btn {
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 1px solid #e2e8f0;
+    background: white;
+    color: #475569;
+}
+
+.tour-btn:hover:not(:disabled) {
+    background: #f1f5f9;
+}
+
+.tour-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.tour-btn-primary {
+    background: #2563eb;
+    color: white;
+    border-color: #2563eb;
+}
+
+.tour-btn-primary:hover:not(:disabled) {
+    background: #1d4ed8;
+}
+
+.tour-btn-finish {
+    background: #10b981;
+    border-color: #10b981;
+}
+
+.tour-btn-finish:hover:not(:disabled) {
+    background: #059669;
+}
+
+.tour-btn-skip {
+    color: #94a3b8;
+    border-color: transparent;
+    background: transparent;
+}
+
+.tour-btn-skip:hover {
+    color: #64748b;
+    background: transparent !important;
+}
+
+/* Checkbox */
+.tour-tooltip-checkbox {
+    padding: 10px 20px;
+    border-top: 1px solid #f1f5f9;
+    font-size: 12px;
+    color: #94a3b8;
+}
+
+.tour-tooltip-checkbox label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+}
+
+.tour-tooltip-checkbox input[type="checkbox"] {
+    width: 14px;
+    height: 14px;
+    accent-color: #2563eb;
+}
+
+/* Welcome Modal */
+.tour-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 99998;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+}
+
+.tour-modal-overlay.visible {
+    opacity: 1;
+    visibility: visible;
+}
+
+.tour-modal {
+    background: white;
+    border-radius: 16px;
+    padding: 32px 40px;
+    max-width: 450px;
+    text-align: center;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    transform: scale(0.9) translateY(20px);
+    transition: transform 0.3s ease;
+}
+
+.tour-modal-overlay.visible .tour-modal {
+    transform: scale(1) translateY(0);
+}
+
+.tour-modal-icon {
+    width: 64px;
+    height: 64px;
+    background: linear-gradient(135deg, #2563eb, #7c3aed);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 20px;
+    font-size: 28px;
+    color: white;
+}
+
+.tour-modal h2 {
+    font-size: 24px;
+    font-weight: 700;
+    color: #1e293b;
+    margin: 0 0 12px;
+}
+
+.tour-modal p {
+    font-size: 15px;
+    color: #475569;
+    margin: 0 0 8px;
+    line-height: 1.5;
+}
+
+.tour-modal-subtitle {
+    font-size: 13px !important;
+    color: #94a3b8 !important;
+    margin-bottom: 24px !important;
+}
+
+.tour-modal-buttons {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    margin-bottom: 16px;
+}
+
+.tour-modal-btn {
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: none;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.tour-modal-btn-primary {
+    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    color: white;
+    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.3);
+}
+
+.tour-modal-btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(37, 99, 235, 0.4);
+}
+
+.tour-modal-btn-secondary {
+    background: #f1f5f9;
+    color: #64748b;
+}
+
+.tour-modal-btn-secondary:hover {
+    background: #e2e8f0;
+}
+
+.tour-modal-checkbox {
+    font-size: 12px;
+    color: #94a3b8;
+}
+
+.tour-modal-checkbox label {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    cursor: pointer;
+}
+
+/* Completion Toast */
+.tour-toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: white;
+    border-radius: 12px;
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+    z-index: 99999;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.3s ease;
+}
+
+.tour-toast.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.tour-toast-icon {
+    width: 40px;
+    height: 40px;
+    background: #10b981;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 20px;
+    font-weight: bold;
+}
+
+.tour-toast-content strong {
+    display: block;
+    color: #1e293b;
+    font-size: 14px;
+    margin-bottom: 2px;
+}
+
+.tour-toast-content p {
+    color: #64748b;
+    font-size: 12px;
+    margin: 0;
+}
+
+/* Help Button (optional - can be added to header) */
+.tour-help-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    font-size: 13px;
+    color: #475569;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.tour-help-btn:hover {
+    background: #e2e8f0;
+    color: #1e293b;
+}
+
+.tour-help-btn i {
+    font-size: 14px;
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+    .tour-tooltip {
+        max-width: calc(100vw - 32px);
+        min-width: auto;
+    }
+
+    .tour-modal {
+        margin: 16px;
+        padding: 24px;
+    }
+
+    .tour-modal-buttons {
+        flex-direction: column;
+    }
+
+    .tour-tooltip-buttons {
+        flex-wrap: wrap;
+    }
+}
+
+/* Animation for pulsing highlight */
+@keyframes tour-pulse {
+    0%, 100% {
+        box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.6), 0 0 0 4px rgba(37, 99, 235, 0.3);
+    }
+    50% {
+        box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.6), 0 0 0 8px rgba(37, 99, 235, 0.2);
+    }
+}
+
+.tour-spotlight {
+    animation: tour-pulse 2s ease-in-out infinite;
+}

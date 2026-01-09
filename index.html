@@ -45,6 +45,7 @@
     <link rel="stylesheet" href="styles.css?v=3.0">
     <link rel="stylesheet" href="css/tubeProgress.css">
     <link rel="stylesheet" href="css/charts.css">
+    <link rel="stylesheet" href="css/guidedTour.css">
     <!-- Data refresher: periodically fetch configured sheet endpoints -->
     <script src="js/analytics.js" defer></script>
     <script src="js/dataRefresher.js" defer></script>
@@ -74,6 +75,11 @@
                         <span class="stat-value text-sm font-bold text-warning">0</span>
                     </div>
                 </div>
+
+                <button id="helpTourBtn" class="tour-help-btn" title="Visite guidée">
+                    <i class="fas fa-question-circle"></i>
+                    <span class="hidden md:inline">Aide</span>
+                </button>
 
                 <button id="themeToggle" class="p-2 text-secondary hover:text-primary transition-colors">
                     <i id="themeIcon" class="fas fa-moon"></i>
@@ -909,6 +915,21 @@
     <script src="js/chronogramContent.js"></script>
     <script src="js/chronogramData.js"></script>
     <script src="js/chronogramIntegration.js"></script>
+    <script src="js/guidedTour.js"></script>
+
+    <script>
+        // Help button to restart tour
+        document.addEventListener('DOMContentLoaded', function() {
+            const helpBtn = document.getElementById('helpTourBtn');
+            if (helpBtn) {
+                helpBtn.addEventListener('click', function() {
+                    if (window.guidedTour) {
+                        window.guidedTour.start();
+                    }
+                });
+            }
+        });
+    </script>
 
     <script>
         // wire the "View All Communes" button to the new communes page

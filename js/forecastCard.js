@@ -1,23 +1,28 @@
 (function () {
-    // Small forecast card renderer: looks for KPIs in common global locations and renders the monthly forecast
+    // Small forecast card renderer: uses the SINGLE source of truth for KPIs
     const containerId = 'forecastContent';
     const STORAGE_KEY = 'monthlyForecastCard_v1';
 
     function findKPIs() {
-        // Try common places where KPIs might live
-        if (window.kpis) return window.kpis;
-        if (window.__lastGoodKPIs) return window.__lastGoodKPIs;
-        if (window.enhancedDashboard && window.enhancedDashboard.kpis) return window.enhancedDashboard.kpis;
-        if (window.dataAggregationService && typeof window.dataAggregationService.getLastKPIs === 'function') {
-            try { return window.dataAggregationService.getLastKPIs(); } catch (e) { }
+        // SINGLE SOURCE OF TRUTH: only use window.kpis which is set by enhancedDashboard
+        // This ensures the forecast card and the KPI card show the exact same date
+        if (window.kpis && window.kpis.monthly && window.kpis.monthly.forecast) {
+            return window.kpis;
         }
-        // If dashboard rawData is available, try deriving KPIs synchronously
-        try {
-            if (window.dashboard && window.dashboard.rawData && window.dataAggregationService && typeof window.dataAggregationService.calculateKPIs === 'function') {
-                return window.dataAggregationService.calculateKPIs(window.dashboard.rawData, {});
-            }
-        } catch (e) { }
+        // Fallback to last good KPIs if available
+        if (window.__lastGoodKPIs && window.__lastGoodKPIs.monthly && window.__lastGoodKPIs.monthly.forecast) {
+            return window.__lastGoodKPIs;
+        }
+        // Do NOT recalculate - this would cause date mismatch
         return null;
+    }
+    
+    // Update the KPI card "Fin Objectif" to ensure it matches
+    function updateKPICard(fc) {
+        const ccEl = document.getElementById('completionConfidence');
+        if (ccEl && fc && fc.estimatedCompletionDateShort) {
+            ccEl.textContent = fc.estimatedCompletionDateShort;
+        }
     }
 
     function formatNumber(v) {
@@ -27,6 +32,10 @@
     function renderForecast(fc) {
         const el = document.getElementById(containerId);
         if (!el) return;
+        
+        // ALWAYS update the KPI card too to ensure sync
+        updateKPICard(fc);
+        
         if (!fc) {
             el.innerHTML = '<div class="text-xs text-slate-500">Aucune prévision disponible</div>';
             return;
