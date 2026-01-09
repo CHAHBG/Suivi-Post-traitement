@@ -38,17 +38,22 @@
             const reqRate = formatNumber(fc.requiredDailyRate || 0);
             const curRate = formatNumber(fc.currentDailyAvg || 0);
 
-            // Calculate estimated completion date
+            // Use the pre-calculated estimated completion date
             let estimateHtml = '';
-            if ((fc.currentDailyAvg || 0) > 0) {
-                const daysNeeded = Math.ceil((fc.remainingToGoal > 0 ? fc.remainingToGoal : 0) / fc.currentDailyAvg);
-                const estDate = new Date();
-                estDate.setDate(estDate.getDate() + daysNeeded);
-                const dateStr = estDate.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' });
-                const isLate = estDate.getMonth() > 0 && estDate.getFullYear() >= 2026; // Late if after Jan
+            if (fc.estimatedCompletionDateStr && !fc.estimatedCompletionDateStr.includes('--')) {
+                const dateStr = fc.estimatedCompletionDateStr;
+                
+                // Check if late (after January)
+                let isLate = false;
+                if (fc.estimatedCompletionDate) {
+                    const estDate = fc.estimatedCompletionDate instanceof Date 
+                        ? fc.estimatedCompletionDate 
+                        : new Date(fc.estimatedCompletionDate);
+                    isLate = estDate.getMonth() > 0 && estDate.getFullYear() >= 2026;
+                }
 
                 estimateHtml = `<div class="mt-2 text-xs border-t border-slate-100 pt-2 flex justify-between">
-                    <span class="text-slate-500">Fin estimée:</span>
+                    <span class="text-slate-500">Objectif atteint le:</span>
                     <span class="font-bold ${!isLate ? 'text-emerald-600' : 'text-red-500'}">${dateStr}</span>
                 </div>`;
             }
@@ -164,15 +169,20 @@
             // New January Logic Popover
             const achievable = fc.achievable;
 
-            // Calculate date again for popover
-            let dateText = 'Inconnue';
+            // Use the pre-calculated date from forecast
+            let dateText = fc.estimatedCompletionDateStr || 'Inconnue';
             let isLate = false;
-            if ((fc.currentDailyAvg || 0) > 0) {
-                const daysNeeded = Math.ceil((fc.remainingToGoal > 0 ? fc.remainingToGoal : 0) / fc.currentDailyAvg);
-                const estDate = new Date();
-                estDate.setDate(estDate.getDate() + daysNeeded);
-                dateText = estDate.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+            
+            // Check if late (after January)
+            if (fc.estimatedCompletionDate) {
+                const estDate = fc.estimatedCompletionDate instanceof Date 
+                    ? fc.estimatedCompletionDate 
+                    : new Date(fc.estimatedCompletionDate);
                 isLate = estDate.getMonth() > 0 && estDate.getFullYear() >= 2026;
+                // Format with weekday for popover
+                if (!dateText.includes('Atteint') && !dateText.includes('Inconnue')) {
+                    dateText = estDate.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+                }
             }
 
             content.innerHTML = `
@@ -190,7 +200,7 @@
                     </div>
                 </div>
                 <div class="mt-3 bg-blue-50 p-2 rounded border border-blue-100">
-                    <span class="block text-xs text-blue-600">Estimation de fin:</span>
+                    <span class="block text-xs text-blue-600">Objectif atteint le:</span>
                     <span class="font-bold ${!isLate ? 'text-blue-700' : 'text-red-600'}">${dateText}</span>
                 </div>
              `;

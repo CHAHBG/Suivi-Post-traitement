@@ -643,6 +643,29 @@ class DataAggregationService {
                 // Usable days: dayOfMonth (since Jan 1st). 
                 const currentDailyAvg = dayOfMonth > 0 ? (janCurrent / dayOfMonth) : 0;
 
+                // 6.5. Calculate Estimated Completion Date (date when goal will be reached)
+                let estimatedCompletionDate = null;
+                let estimatedCompletionDateStr = '--';
+                let estimatedCompletionDateShort = '--';
+                
+                if (remainingToGoal > 0 && currentDailyAvg > 0) {
+                    // More accurate: use current daily average to project
+                    const daysNeeded = Math.ceil(remainingToGoal / currentDailyAvg);
+                    estimatedCompletionDate = new Date(today);
+                    estimatedCompletionDate.setDate(estimatedCompletionDate.getDate() + daysNeeded);
+                    
+                    // Format: "13 février" or "13/02"
+                    estimatedCompletionDateStr = estimatedCompletionDate.toLocaleDateString('fr-FR', { 
+                        day: 'numeric', 
+                        month: 'long' 
+                    });
+                    estimatedCompletionDateShort = `${String(estimatedCompletionDate.getDate()).padStart(2, '0')}/${String(estimatedCompletionDate.getMonth() + 1).padStart(2, '0')}`;
+                } else if (remainingToGoal <= 0) {
+                    // Goal already achieved
+                    estimatedCompletionDateStr = 'Objectif Atteint';
+                    estimatedCompletionDateShort = 'Atteint';
+                }
+
                 // 7. Store in 'monthly' KPI
                 monthly.current = janCurrent;
                 monthly.target = janGoal;
@@ -659,7 +682,11 @@ class DataAggregationService {
                     requiredDailyRate: Math.round(requiredDailyRate),
                     currentDailyAvg: Math.round(currentDailyAvg),
                     achievable: currentDailyAvg >= requiredDailyRate,
-                    alert: currentDailyAvg >= requiredDailyRate ? 'Objectif Atteignable' : 'Attention: Rythme Insuffisant'
+                    alert: currentDailyAvg >= requiredDailyRate ? 'Objectif Atteignable' : 'Attention: Rythme Insuffisant',
+                    // Add the estimated completion date
+                    estimatedCompletionDate: estimatedCompletionDate,
+                    estimatedCompletionDateStr: estimatedCompletionDateStr,
+                    estimatedCompletionDateShort: estimatedCompletionDateShort
                 };
 
                 // console.log('January 2026 Logic Applied:', monthly.forecast);

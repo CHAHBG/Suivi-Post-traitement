@@ -1790,13 +1790,21 @@ class ChartService {
             const expectedCumulative = dailyTarget * daysWorked;
             const scheduleVariance = totalLevees - expectedCumulative;
 
-            // Completion Confidence (projected finish date)
-            const daysToComplete = remaining > 0 ? Math.ceil(remaining / avgVelocity) : 0;
-            const projectedDate = new Date(now);
-            projectedDate.setDate(projectedDate.getDate() + daysToComplete);
-            const projectedDateStr = daysToComplete > 0 
-                ? `${String(projectedDate.getDate()).padStart(2, '0')}/${String(projectedDate.getMonth() + 1).padStart(2, '0')}`
-                : 'Atteint';
+            // Completion Confidence - Use the date from KPIs forecast if available
+            let projectedDateStr = '--';
+            
+            // Try to get the estimated completion date from KPIs
+            if (window.kpis && window.kpis.monthly && window.kpis.monthly.forecast && window.kpis.monthly.forecast.estimatedCompletionDateShort) {
+                projectedDateStr = window.kpis.monthly.forecast.estimatedCompletionDateShort;
+            } else {
+                // Fallback to local calculation
+                const daysToComplete = remaining > 0 ? Math.ceil(remaining / avgVelocity) : 0;
+                const projectedDate = new Date(now);
+                projectedDate.setDate(projectedDate.getDate() + daysToComplete);
+                projectedDateStr = daysToComplete > 0 
+                    ? `${String(projectedDate.getDate()).padStart(2, '0')}/${String(projectedDate.getMonth() + 1).padStart(2, '0')}`
+                    : 'Atteint';
+            }
 
             // console.info(`[calculateEfficiencyKPIs] RRR: ${rrr}, Variance: ${scheduleVariance}, Projected: ${projectedDateStr}`);
 
