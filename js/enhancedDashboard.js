@@ -558,7 +558,7 @@ class EnhancedDashboard {
             // Also notify forecast card to update if API exists
             if (window.forecastCard && typeof window.forecastCard.update === 'function') {
                 // Wait briefly for KPIs to be fully ready if needed
-                setTimeout(() => window.forecastCard.update(this.kpis), 500);
+                setTimeout(() => window.forecastCard.update(window.kpis), 500);
             }
 
         } catch (e) { console.warn('Error updating commune stats:', e); }

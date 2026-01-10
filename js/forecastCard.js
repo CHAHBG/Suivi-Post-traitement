@@ -39,10 +39,10 @@
             const reqRate = formatNumber(fc.requiredDailyRate || 0);
             const curRate = formatNumber(fc.currentDailyAvg || 0);
 
-            // Use the pre-calculated estimated completion date
+            // Use the pre-calculated estimated completion date (same display format as KPI: DD/MM)
             let estimateHtml = '';
-            if (fc.estimatedCompletionDateStr && !fc.estimatedCompletionDateStr.includes('--')) {
-                const dateStr = fc.estimatedCompletionDateStr;
+            if (fc.estimatedCompletionDateShort && !fc.estimatedCompletionDateShort.includes('--')) {
+                const dateStr = fc.estimatedCompletionDateShort;
                 
                 // Check if late (after January)
                 let isLate = false;

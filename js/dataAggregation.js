@@ -576,9 +576,34 @@ class DataAggregationService {
             // ==== January 2026 Specific Logic (Goals: 12k Jan, 75k Total) ====
             try {
                 // 1. Establish Timeframe
-                const today = new Date(); // Should be Jan 2026 per system time
-                const janStart = new Date(today.getFullYear(), 0, 1); // Jan 1st
-                const janEnd = new Date(today.getFullYear(), 0, 31); // Jan 31st
+                // Use a data-driven reference date to avoid off-by-one issues when the latest sheet data is "yesterday".
+                // Also anchor calculations at noon to avoid DST/timezone edge cases.
+                const now = new Date();
+                const janStart = new Date(now.getFullYear(), 0, 1, 12, 0, 0, 0); // Jan 1st @ noon
+                const janEnd = new Date(now.getFullYear(), 0, 31, 12, 0, 0, 0); // Jan 31st @ noon
+
+                let referenceDate = null;
+                try {
+                    // Prefer the latest available yields date within January
+                    if (Array.isArray(yieldsSheet) && yieldsSheet.length) {
+                        for (const r of yieldsSheet) {
+                            const pd = this.parseDate(r['Date'] || r['date']);
+                            if (!pd || isNaN(pd)) continue;
+                            const pNoon = new Date(pd.getFullYear(), pd.getMonth(), pd.getDate(), 12, 0, 0, 0);
+                            if (pNoon < janStart || pNoon > janEnd) continue;
+                            if (!referenceDate || pNoon > referenceDate) referenceDate = pNoon;
+                        }
+                    }
+                } catch (e) {
+                    // ignore; fall back below
+                }
+
+                // Fallback to system date (clamped to January)
+                if (!referenceDate) {
+                    referenceDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 12, 0, 0, 0);
+                    if (referenceDate < janStart) referenceDate = janStart;
+                    if (referenceDate > janEnd) referenceDate = janEnd;
+                }
 
                 // 2. Determine January Current Total (SSOT: 'Total-Moyenne' sheet, fallback to calculation)
                 let janCurrent = 0;
@@ -601,7 +626,9 @@ class DataAggregationService {
                 if (janCurrent === 0) {
                     const janData = yieldsSheet.filter(r => {
                         const pd = this.parseDate(r['Date'] || r['date']);
-                        return pd && pd >= janStart && pd <= today; // Data up to today
+                        if (!pd || isNaN(pd)) return false;
+                        const pNoon = new Date(pd.getFullYear(), pd.getMonth(), pd.getDate(), 12, 0, 0, 0);
+                        return pNoon >= janStart && pNoon <= referenceDate; // Data up to the reference date
                     });
 
                     janCurrent = janData.reduce((sum, row) => {
@@ -633,7 +660,7 @@ class DataAggregationService {
 
                 // 5. Calculate Required Rate
                 const daysInJan = 31;
-                const dayOfMonth = today.getDate();
+                const dayOfMonth = referenceDate.getDate();
                 const daysRemaining = Math.max(0, daysInJan - dayOfMonth);
 
                 const remainingToGoal = Math.max(0, janGoal - janCurrent);
@@ -651,8 +678,10 @@ class DataAggregationService {
                 if (remainingToGoal > 0 && currentDailyAvg > 0) {
                     // More accurate: use current daily average to project
                     const daysNeeded = Math.ceil(remainingToGoal / currentDailyAvg);
-                    estimatedCompletionDate = new Date(today);
+                    estimatedCompletionDate = new Date(referenceDate);
                     estimatedCompletionDate.setDate(estimatedCompletionDate.getDate() + daysNeeded);
+                    // keep at noon
+                    estimatedCompletionDate.setHours(12, 0, 0, 0);
                     
                     // Format: "13 février" or "13/02"
                     estimatedCompletionDateStr = estimatedCompletionDate.toLocaleDateString('fr-FR', { 
