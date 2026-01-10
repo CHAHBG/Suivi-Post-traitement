@@ -860,7 +860,8 @@ class EnhancedDashboard {
                 googleService.clearCache(config.spreadsheetId);
             }
 
-            await this.refreshDashboard(false);
+            // Force a full reload from the source (Sheets) so the user gets the latest data
+            await this.loadData();
             this.showSuccess('Données actualisées');
 
         } catch (error) {
