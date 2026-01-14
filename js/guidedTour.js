@@ -75,7 +75,7 @@
         },
         // Analyse Performance tab
         {
-            target: '[data-panel="performance"]',
+            target: '[data-tab="performance"]',
             title: 'Analyse Performance',
             content: 'Cet onglet offre une vue détaillée des performances avec des graphiques Burn-Up, vélocité et analyse des tendances.',
             position: 'bottom',
@@ -84,7 +84,7 @@
         },
         // Analyse Régionale tab
         {
-            target: '[data-panel="regional"]',
+            target: '[data-tab="regional"]',
             title: 'Analyse Régionale',
             content: 'Comparez les performances par commune et région. Accédez au chronogramme détaillé pour chaque zone.',
             position: 'bottom',
@@ -93,7 +93,7 @@
         },
         // Suivi Temporel tab
         {
-            target: '[data-panel="temporal"]',
+            target: '[data-tab="temporal"]',
             title: 'Suivi Temporel',
             content: 'Analysez les données sur différentes périodes : journalier, hebdomadaire et mensuel avec des tableaux détaillés.',
             position: 'bottom',
@@ -201,6 +201,8 @@
 
         const rect = targetEl.getBoundingClientRect();
         const tooltipRect = tooltip.getBoundingClientRect();
+        const tooltipWidth = tooltipRect.width || tooltip.offsetWidth || 0;
+        const tooltipHeight = tooltipRect.height || tooltip.offsetHeight || 0;
         const padding = 20;
         const arrowSize = 12;
 
@@ -212,22 +214,22 @@
 
         switch (position) {
             case 'top':
-                top = rect.top - tooltipRect.height - padding - arrowSize;
-                left = rect.left + (rect.width / 2) - (tooltipRect.width / 2);
+                top = rect.top - tooltipHeight - padding - arrowSize;
+                left = rect.left + (rect.width / 2) - (tooltipWidth / 2);
                 arrow.classList.add('arrow-bottom');
                 break;
             case 'bottom':
                 top = rect.bottom + padding + arrowSize;
-                left = rect.left + (rect.width / 2) - (tooltipRect.width / 2);
+                left = rect.left + (rect.width / 2) - (tooltipWidth / 2);
                 arrow.classList.add('arrow-top');
                 break;
             case 'left':
-                top = rect.top + (rect.height / 2) - (tooltipRect.height / 2);
-                left = rect.left - tooltipRect.width - padding - arrowSize;
+                top = rect.top + (rect.height / 2) - (tooltipHeight / 2);
+                left = rect.left - tooltipWidth - padding - arrowSize;
                 arrow.classList.add('arrow-right');
                 break;
             case 'right':
-                top = rect.top + (rect.height / 2) - (tooltipRect.height / 2);
+                top = rect.top + (rect.height / 2) - (tooltipHeight / 2);
                 left = rect.right + padding + arrowSize;
                 arrow.classList.add('arrow-left');
                 break;
@@ -241,8 +243,8 @@
         const viewportHeight = window.innerHeight;
 
         if (left < padding) left = padding;
-        if (left + tooltipRect.width > viewportWidth - padding) {
-            left = viewportWidth - tooltipRect.width - padding;
+        if (left + tooltipWidth > viewportWidth - padding) {
+            left = viewportWidth - tooltipWidth - padding;
         }
         if (top < padding) {
             // If tooltip doesn't fit on top, try bottom
@@ -253,13 +255,13 @@
                 top = padding;
             }
         }
-        if (top + tooltipRect.height > viewportHeight - padding) {
+        if (top + tooltipHeight > viewportHeight - padding) {
             // If tooltip doesn't fit on bottom, try top
             if (position === 'bottom') {
-                top = rect.top - tooltipRect.height - padding - arrowSize;
+                top = rect.top - tooltipHeight - padding - arrowSize;
                 arrow.className = 'tour-tooltip-arrow arrow-bottom';
             } else {
-                top = viewportHeight - tooltipRect.height - padding;
+                top = viewportHeight - tooltipHeight - padding;
             }
         }
 
@@ -278,25 +280,24 @@
             inline: 'center' 
         });
 
-        // Wait for scroll to complete before positioning spotlight
-        setTimeout(() => {
-            const rect = targetEl.getBoundingClientRect();
-            const spotlight = overlay.querySelector('.tour-spotlight');
-            const padding = 10;
+        // Position spotlight after layout settles
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                const rect = targetEl.getBoundingClientRect();
+                const spotlight = overlay.querySelector('.tour-spotlight');
+                const padding = 10;
 
-            // Add scroll offsets for accurate positioning
-            const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-            const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
+                // Spotlight is inside a fixed overlay, so we use viewport coords (no scroll offsets)
+                spotlight.style.top = `${rect.top - padding}px`;
+                spotlight.style.left = `${rect.left - padding}px`;
+                spotlight.style.width = `${rect.width + padding * 2}px`;
+                spotlight.style.height = `${rect.height + padding * 2}px`;
 
-            spotlight.style.top = `${rect.top + scrollTop - padding}px`;
-            spotlight.style.left = `${rect.left + scrollLeft - padding}px`;
-            spotlight.style.width = `${rect.width + padding * 2}px`;
-            spotlight.style.height = `${rect.height + padding * 2}px`;
-
-            // Ensure element is visible and not covered
-            targetEl.style.position = 'relative';
-            targetEl.style.zIndex = '99992';
-        }, 100);
+                // Ensure element is visible and not covered
+                targetEl.style.position = 'relative';
+                targetEl.style.zIndex = '99992';
+            });
+        });
     }
 
     // Show a specific step
@@ -316,21 +317,16 @@
             const tabBtn = document.querySelector(`[data-tab="${step.tab}"]`);
             if (tabBtn) {
                 tabBtn.click();
-                // Wait longer for tab switch animation and content rendering
+                // Wait for tab switch animation and content rendering
                 setTimeout(() => {
-                    // Wait for the element to be available
-                    waitForElement(step.target, () => {
-                        showStepContent(step);
-                    });
-                }, 500);
+                    window.dispatchEvent(new Event('resize'));
+                    waitForElement(step.target, () => showStepContent(step));
+                }, 600);
                 return;
             }
         }
 
-        // Wait for element to be available
-        waitForElement(step.target, () => {
-            showStepContent(step);
-        });
+        waitForElement(step.target, () => showStepContent(step));
     }
 
     // Wait for element to be available in DOM
