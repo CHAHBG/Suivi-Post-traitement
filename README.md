@@ -7,6 +7,7 @@ Dashboard moderne et performant pour le suivi des opérations cadastrales au Sé
 - 📊 **Visualisation en temps réel** des KPI (levées, affichage, CTASF, post-traitement)
 - 📈 **Graphiques interactifs** avec Chart.js (séries temporelles, barres, heatmap, radar)
 - 🗂️ **Tableaux détaillés** avec filtres dynamiques (région, commune, date)
+- 🎯 **Visite guidée interactive** - Découverte des fonctionnalités pour nouveaux utilisateurs
 - 📱 **Progressive Web App** - Installable sur mobile et desktop
 - 🎨 **Interface moderne** avec Tailwind CSS et animations fluides
 - ⚡ **Performance optimisée** - Service Worker v2.0 avec stratégie Network-First
@@ -33,6 +34,25 @@ npx http-server -p 8080
 open http://localhost:8080
 ```
 
+## 🎓 Documentation de la Visite Guidée
+
+La visite guidée offre une introduction interactive aux fonctionnalités du dashboard :
+
+- 📖 **[Tutoriel Complet](TUTORIEL_VISITE_GUIDEE.md)** - Guide détaillé avec explications de chaque étape
+- 🚀 **[Guide Rapide](GUIDE_RAPIDE_VISITE.md)** - Référence rapide et API complète
+- 📸 **[Captures Visuelles](CAPTURES_VISUELLES_VISITE.md)** - Diagrammes ASCII et visualisations
+- 🔧 **[Guide de Dépannage](DEBUG_FOCUS_VISITE.md)** - Résolution des problèmes de focus
+
+### Lancement de la visite
+
+```javascript
+// Depuis la console du navigateur (F12)
+window.guidedTour.start();
+
+// Réinitialiser les préférences
+window.guidedTour.reset();
+```
+
 ## 📁 Structure du projet
 
 ```
@@ -42,10 +62,15 @@ Suivi-Post-traitement/
 ├── styles.css             # Styles personnalisés
 ├── manifest.webmanifest   # Configuration PWA avec SVG icons
 ├── sw.js                  # Service Worker v2.0
+├── TUTORIEL_VISITE_GUIDEE.md      # Documentation visite guidée
+├── GUIDE_RAPIDE_VISITE.md         # Référence rapide visite
+├── CAPTURES_VISUELLES_VISITE.md   # Captures visuelles
+├── DEBUG_FOCUS_VISITE.md          # Guide dépannage focus
 ├── js/
 │   ├── config.js                      # Configuration Google Sheets (2 spreadsheets)
 │   ├── enhancedDashboard.js          # Logique principale du dashboard
 │   ├── enhancedGoogleSheetsService.js # Service récupération données (multi-spreadsheet)
+│   ├── guidedTour.js                  # Système de visite guidée interactive
 │   ├── chartService.js                # Gestion des graphiques Chart.js
 │   ├── dataAggregation.js             # Calculs KPI et agrégation
 │   ├── statCardService.js             # Cartes statistiques

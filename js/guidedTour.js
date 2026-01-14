@@ -201,8 +201,8 @@
 
         const rect = targetEl.getBoundingClientRect();
         const tooltipRect = tooltip.getBoundingClientRect();
-        const padding = 15;
-        const arrowSize = 10;
+        const padding = 20;
+        const arrowSize = 12;
 
         let top, left;
         const arrow = tooltip.querySelector('.tour-tooltip-arrow');
@@ -244,9 +244,23 @@
         if (left + tooltipRect.width > viewportWidth - padding) {
             left = viewportWidth - tooltipRect.width - padding;
         }
-        if (top < padding) top = padding;
+        if (top < padding) {
+            // If tooltip doesn't fit on top, try bottom
+            if (position === 'top') {
+                top = rect.bottom + padding + arrowSize;
+                arrow.className = 'tour-tooltip-arrow arrow-top';
+            } else {
+                top = padding;
+            }
+        }
         if (top + tooltipRect.height > viewportHeight - padding) {
-            top = viewportHeight - tooltipRect.height - padding;
+            // If tooltip doesn't fit on bottom, try top
+            if (position === 'bottom') {
+                top = rect.top - tooltipRect.height - padding - arrowSize;
+                arrow.className = 'tour-tooltip-arrow arrow-bottom';
+            } else {
+                top = viewportHeight - tooltipRect.height - padding;
+            }
         }
 
         tooltip.style.top = `${top}px`;
@@ -257,17 +271,32 @@
     function highlightElement(targetEl) {
         if (!targetEl || !overlay) return;
 
-        const rect = targetEl.getBoundingClientRect();
-        const spotlight = overlay.querySelector('.tour-spotlight');
-        const padding = 8;
+        // First scroll element into view with proper centering
+        targetEl.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'center',
+            inline: 'center' 
+        });
 
-        spotlight.style.top = `${rect.top - padding}px`;
-        spotlight.style.left = `${rect.left - padding}px`;
-        spotlight.style.width = `${rect.width + padding * 2}px`;
-        spotlight.style.height = `${rect.height + padding * 2}px`;
+        // Wait for scroll to complete before positioning spotlight
+        setTimeout(() => {
+            const rect = targetEl.getBoundingClientRect();
+            const spotlight = overlay.querySelector('.tour-spotlight');
+            const padding = 10;
 
-        // Scroll element into view if needed
-        targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            // Add scroll offsets for accurate positioning
+            const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+            const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
+
+            spotlight.style.top = `${rect.top + scrollTop - padding}px`;
+            spotlight.style.left = `${rect.left + scrollLeft - padding}px`;
+            spotlight.style.width = `${rect.width + padding * 2}px`;
+            spotlight.style.height = `${rect.height + padding * 2}px`;
+
+            // Ensure element is visible and not covered
+            targetEl.style.position = 'relative';
+            targetEl.style.zIndex = '99992';
+        }, 100);
     }
 
     // Show a specific step
@@ -277,18 +306,54 @@
         const step = tourSteps[stepIndex];
         currentStep = stepIndex;
 
+        // Hide tooltip during transition
+        if (tooltip) {
+            tooltip.classList.remove('visible');
+        }
+
         // Switch tab if needed
         if (step.clickTab && step.tab) {
             const tabBtn = document.querySelector(`[data-tab="${step.tab}"]`);
             if (tabBtn) {
                 tabBtn.click();
-                // Wait for tab switch animation
-                setTimeout(() => showStepContent(step), 300);
+                // Wait longer for tab switch animation and content rendering
+                setTimeout(() => {
+                    // Wait for the element to be available
+                    waitForElement(step.target, () => {
+                        showStepContent(step);
+                    });
+                }, 500);
                 return;
             }
         }
 
-        showStepContent(step);
+        // Wait for element to be available
+        waitForElement(step.target, () => {
+            showStepContent(step);
+        });
+    }
+
+    // Wait for element to be available in DOM
+    function waitForElement(selector, callback, timeout = 3000) {
+        const startTime = Date.now();
+        const checkInterval = setInterval(() => {
+            const element = document.querySelector(selector);
+            if (element && element.offsetParent !== null) {
+                // Element exists and is visible
+                clearInterval(checkInterval);
+                callback();
+            } else if (Date.now() - startTime > timeout) {
+                // Timeout reached
+                clearInterval(checkInterval);
+                console.warn(`Tour element not found after ${timeout}ms: ${selector}`);
+                // Skip to next step
+                if (currentStep < tourSteps.length - 1) {
+                    showStep(currentStep + 1);
+                } else {
+                    endTour();
+                }
+            }
+        }, 100);
     }
 
     function showStepContent(step) {
@@ -324,14 +389,20 @@
             nextBtn.classList.remove('tour-btn-finish');
         }
 
+        // Clean up previous element styling
+        document.querySelectorAll('[style*="z-index: 99992"]').forEach(el => {
+            el.style.position = '';
+            el.style.zIndex = '';
+        });
+
         // Position elements
         highlightElement(targetEl);
         
-        // Small delay to ensure spotlight is positioned before tooltip
+        // Wait for scroll and spotlight positioning before showing tooltip
         setTimeout(() => {
             positionTooltip(targetEl, step.position);
             tooltip.classList.add('visible');
-        }, 100);
+        }, 250);
     }
 
     // Navigation functions
@@ -425,6 +496,12 @@
     // End the tour
     function endTour() {
         isActive = false;
+
+        // Clean up any element styling
+        document.querySelectorAll('[style*="z-index: 99992"]').forEach(el => {
+            el.style.position = '';
+            el.style.zIndex = '';
+        });
 
         if (overlay) {
             overlay.classList.remove('visible');

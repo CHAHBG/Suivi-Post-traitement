@@ -30,8 +30,9 @@
     background: transparent;
     border-radius: 8px;
     box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.6);
-    transition: all 0.3s ease;
+    transition: all 0.4s ease;
     pointer-events: none;
+    z-index: 99991;
 }
 
 /* Tooltip */
