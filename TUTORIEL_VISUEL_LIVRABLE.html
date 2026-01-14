@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Tutoriel Visuel - PROCASSEF Dashboard</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px;
+            background-color: #f5f5f5;
+        }
+
+        .page {
+            background: white;
+            padding: 50px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+        }
+
+        h1 {
+            color: #2563eb;
+            border-bottom: 2px solid #2563eb;
+            padding-bottom: 10px;
+            text-align: center;
+        }
+
+        h2 {
+            color: #1e293b;
+            margin-top: 30px;
+            border-left: 4px solid #2563eb;
+            padding-left: 15px;
+        }
+
+        .step {
+            margin-bottom: 50px;
+            page-break-inside: avoid;
+            break-inside: avoid;
+            border-bottom: 1px solid #f0f0f0;
+            padding-bottom: 30px;
+        }
+
+        .step-title {
+            font-weight: bold;
+            font-size: 1.3em;
+            color: #2563eb;
+            margin-bottom: 12px;
+            display: block;
+        }
+
+        img {
+            max-width: 100%;
+            height: auto;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            margin: 15px 0;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .info {
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            padding: 15px;
+            border-radius: 6px;
+            font-size: 0.9em;
+            margin-bottom: 20px;
+        }
+
+        .footer {
+            text-align: center;
+            font-size: 0.8em;
+            color: #666;
+            margin-top: 50px;
+            border-top: 1px solid #eee;
+            padding-top: 20px;
+        }
+
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+                font-size: 11pt;
+            }
+
+            .page {
+                box-shadow: none;
+                padding: 0;
+                width: 100%;
+            }
+
+            .no-print {
+                display: none;
+            }
+
+            .step {
+                page-break-inside: avoid !important;
+                break-inside: avoid-page !important;
+                margin-bottom: 40px;
+            }
+
+            h1,
+            h2,
+            .step-title {
+                page-break-after: avoid;
+            }
+
+            img {
+                max-height: 550px;
+                /* Force image to fit on most pages with text */
+                width: auto;
+                display: block;
+                margin-left: auto;
+                margin-right: auto;
+                page-break-inside: avoid;
+            }
+
+            .intro-page {
+                page-break-after: always;
+            }
+        }
+
+        .no-print-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #2563eb;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+        }
+    </style>
+</head>
+
+<body>
+    <button class="no-print-btn no-print" onclick="window.print()">Imprimer en PDF</button>
+
+    <div class="page">
+        <h1>📚 Guide d'utilisation<br><small>PROCASSEF Suivi OF - BETPLUSAUDETAG</small></h1>
+
+        <div class="info">
+            <strong>Note :</strong> Ce document a été optimisé pour être sauvegardé en PDF ou ouvert avec Microsoft
+            Word.
+            Cliquez sur le bouton "Imprimer en PDF" ci-dessus ou faites <code>Ctrl+P</code> pour sauvegarder une version
+            PDF propre.
+        </div>
+
+        <div class="step intro-page">
+            <h2>🏠 1. Fenêtre de Bienvenue</h2>
+            <p>Lors de votre première connexion, cette fenêtre s'affiche pour vous proposer une visite guidée
+                interactive de <strong>l'outil de Suivi Evaluation de BETPLUSAUDETAG</strong>. Elle est conçue pour
+                orienter les nouveaux utilisateurs et peut être désactivée une fois
+                que vous maîtrisez l'outil.</p>
+            <img src="assets/tutorial_images/01_welcome_modal_png_1768398962839.png" alt="Bienvenue">
+            <div class="info">
+                <strong>Conseil :</strong> Vous pouvez relancer cette visite à tout moment via le bouton d'aide dans la
+                barre d'outils.
+            </div>
+        </div>
+
+        <div class="step">
+            <div class="step-title">Étape 2 : Navigation Principale</div>
+            <p>Le tableau de bord est structuré en quatre sections stratégiques :</p>
+            <ul>
+                <li><strong>Vue d'ensemble :</strong> Résumé global des performances et indicateurs clés.</li>
+                <li><strong>Analyse Performance :</strong> Graphiques avancés (Burn-up) et tendances de productivité.
+                </li>
+                <li><strong>Analyse Régionale :</strong> Comparaison des performances par commune et région.</li>
+                <li><strong>Suivi Temporel :</strong> Historique détaillé et tableaux de données exportables.</li>
+            </ul>
+            <img src="assets/tutorial_images/02_step_1_navigation_png_1768399263616.png" alt="Navigation">
+        </div>
+
+        <div class="step">
+            <div class="step-title">Étape 3 : Filtres Dynamiques</div>
+            <p>Ces sélecteurs permettent d'isoler des données spécifiques sans recharger la page :</p>
+            <ul>
+                <li><strong>Filtre Région :</strong> Pour analyser une zone géographique précise.</li>
+                <li><strong>Filtre Période :</strong> Pour basculer entre une vue quotidienne, hebdomadaire ou
+                    mensuelle.</li>
+            </ul>
+            <img src="assets/tutorial_images/03_step_2_filters_png_1768399300719.png" alt="Filtres">
+        </div>
+
+        <div class="step">
+            <div class="step-title">Étape 4 : Les 6 Indicateurs Clés (KPI)</div>
+            <p>Chaque carte représente une métrique vitale pour l'opération :</p>
+            <ul>
+                <li><strong>Taux Réussite :</strong> Pourcentage de dossiers validées dès le premier passage.</li>
+                <li><strong>Prochain Lot :</strong> Identification du lot en cours de traitement.</li>
+                <li><strong>Pertes :</strong> Nombre de parcelles rejetées ou perdues techniquement.</li>
+                <li><strong>Cadence Requise :</strong> Le nombre de levées à réaliser quotidiennement pour finir à
+                    temps.</li>
+            </ul>
+            <img src="assets/tutorial_images/04_step_3_kpi_png_1768399354244.png" alt="KPI">
+        </div>
+
+        <div class="step">
+            <div class="step-title">Étape 5 : Date Fin Objectif & Confiance</div>
+            <p>Ce module utilise une intelligence prédictive pour calculer la date de fin de projet basée sur votre
+                vitesse actuelle. Le code couleur (Vert/Jaune/Rouge) indique instantanément si vous êtes en avance ou en
+                retard sur le planning contractuel.</p>
+            <img src="assets/tutorial_images/05_step_4_date_fin_png_1768399421669.png" alt="Prévisions">
+        </div>
+
+        <div class="step">
+            <div class="step-title">Étape 6 : Performance Journalière</div>
+            <p>Affiche le nombre de parcelles levées sur la journée en cours. La barre de progression compare ce chiffre
+                à l'objectif quotidien (ex: 387 parcelles/jour) pour motiver les équipes terrain.</p>
+            <img src="assets/tutorial_images/06_step_5_perf_journaliere_png_1768399513664.png"
+                alt="Performance Journalière">
+        </div>
+
+        <div class="step">
+            <div class="step-title">Étape 7 : Objectif Mensuel & Tendance</div>
+            <p>Une vue macro de la progression du mois. Le graphique miniature (sparkline) montre l'évolution sur les 7
+                derniers jours, permettant de détecter une baisse ou une hausse de régime brutale.</p>
+            <img src="assets/tutorial_images/07_step_6_objectif_mensuel_png_1768399605819.png" alt="Objectif Mensuel">
+        </div>
+
+        <div class="step">
+            <div class="step-title">Étape 8 : Graphique d'Évolution Quotidienne</div>
+            <p>Visualisation historique des 30 derniers jours. Les barres représentent les levées réelles et la ligne
+                rouge pointillée symbolise l'objectif à atteindre chaque jour pour rester sur la trajectoire de succès.
+            </p>
+            <img src="assets/tutorial_images/08_step_7_evolution_quotidienne_png_1768399691893.png"
+                alt="Évolution Quotidienne">
+        </div>
+
+        <div class="step">
+            <div class="step-title">Étape 9 : Projection Fin de Mois</div>
+            <p>Détail arithmétique de la performance. Ce panneau compare votre <strong>Taux Actuel</strong> au
+                <strong>Taux Requis</strong>. Il affiche l'écart exact (en nombre de parcelles) qui vous sépare de
+                l'objectif final.
+            </p>
+            <img src="assets/tutorial_images/09_step_8_projection_fin_mois_png_1768399784004.png" alt="Projection">
+        </div>
+
+        <div class="step">
+            <div class="step-title">Étape 10 : Statut du Pipeline de Traitement</div>
+            <p>Suit le flux de travail depuis la collecte de données jusqu'à la délibération finale. Cela permet
+                d'identifier les goulets d'étranglement (ex: dossiers bloqués à l'étape CTASF).</p>
+            <img src="assets/tutorial_images/10_step_9_pipeline_png_1768399895097.png" alt="Pipeline">
+        </div>
+
+        <div class="step">
+            <div class="step-title">Étape 11 : Analyse de Performance Avancée</div>
+            <p>En cliquant sur cet onglet, vous accédez à des outils de pilotage stratégique plus complexes, notamment
+                le Burn-Up chart qui montre l'écart cumulé entre le travail réalisé et l'objectif théorique.</p>
+            <img src="assets/tutorial_images/12_step_11_analyse_performance_png_1768400063510.png"
+                alt="Performance Avancée">
+        </div>
+
+        <div class="step">
+            <div class="step-title">Étape 12 : Actualisation des Données</div>
+            <p>Le système récupère les données depuis Google Sheets automatiquement toutes les 5 minutes. Cependant, ce
+                bouton vous permet de forcer une mise à jour immédiate pour voir les derniers rapports saisis sur le
+                terrain.</p>
+            <img src="assets/tutorial_images/15_step_14_actualisation_png_1768400324589.png" alt="Actualisation">
+        </div>
+
+        <div class="footer">
+            PROCASSEF Suivi OF - BETPLUSAUDETAG - Guide d'utilisation Documentation Officiel<br>
+            Généré le 14 janvier 2026 par Bamba GNINGUE
+        </div>
+    </div>
+</body>
+
+</html>

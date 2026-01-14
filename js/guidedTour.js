@@ -274,10 +274,10 @@
         if (!targetEl || !overlay) return;
 
         // First scroll element into view with proper centering
-        targetEl.scrollIntoView({ 
-            behavior: 'smooth', 
+        targetEl.scrollIntoView({
+            behavior: 'smooth',
             block: 'center',
-            inline: 'center' 
+            inline: 'center'
         });
 
         // Position spotlight after layout settles
@@ -393,7 +393,7 @@
 
         // Position elements
         highlightElement(targetEl);
-        
+
         // Wait for scroll and spotlight positioning before showing tooltip
         setTimeout(() => {
             positionTooltip(targetEl, step.position);
@@ -434,7 +434,7 @@
         prefs.lastShown = new Date().toISOString();
         savePreferences(prefs);
         endTour();
-        
+
         // Show completion message
         showCompletionMessage();
     }
@@ -484,7 +484,7 @@
 
         // Handle resize
         window.addEventListener('resize', handleResize);
-        
+
         // Handle escape key
         document.addEventListener('keydown', handleKeydown);
     }
@@ -550,7 +550,7 @@
                 <div class="tour-modal-icon">
                     <i class="fas fa-compass"></i>
                 </div>
-                <h2>Bienvenue sur PROCASSEF !</h2>
+                <h2>Bienvenue sur l'outil de Suivi Evaluation de BETPLUSAUDETAG</h2>
                 <p>Souhaitez-vous faire une visite guidée du tableau de bord ?</p>
                 <p class="tour-modal-subtitle">Cette visite vous présentera les principales fonctionnalités en quelques minutes.</p>
                 <div class="tour-modal-buttons">
@@ -626,7 +626,7 @@
         const checkReady = setInterval(() => {
             if (document.getElementById('forecastContent') && window.kpis) {
                 clearInterval(checkReady);
-                
+
                 if (shouldShowTour()) {
                     // Small delay to let the dashboard fully render
                     setTimeout(() => {

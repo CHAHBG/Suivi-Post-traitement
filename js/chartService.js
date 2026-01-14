@@ -7,7 +7,7 @@ class ChartService {
         this.charts = new Map();
         this.gauges = new Map();
         this._resizeObserverInitialized = false;
-        
+
         // Current timeframe for chart aggregation (daily, weekly, monthly)
         this.currentTimeframe = 'daily';
 
@@ -68,18 +68,29 @@ class ChartService {
         if (typeof Chart === 'undefined') return;
 
         try {
-            // Typography & Colors
+            const isDark = document.body.dataset.theme === 'dark';
+
+            // Slate colors from Tailwind/our variables
+            const slate50 = '#f8fafc';
+            const slate200 = '#e2e8f0';
+            const slate300 = '#cbd5e1';
+            const slate400 = '#94a3b8';
+            const slate600 = '#475569';
+            const slate700 = '#334155';
+            const slate800 = '#1e293b';
+
+            // Typography & Colors based on theme
             Chart.defaults.font.family = "'Inter', system-ui, -apple-system, sans-serif";
-            Chart.defaults.color = 'rgba(71, 85, 105, 1)'; // Slate 600
+            Chart.defaults.color = isDark ? slate300 : slate600;
             Chart.defaults.font.size = 11;
 
             // Tooltip
             if (Chart.defaults.plugins && Chart.defaults.plugins.tooltip) {
                 const tt = Chart.defaults.plugins.tooltip;
-                tt.backgroundColor = 'rgba(255, 255, 255, 0.95)';
-                tt.titleColor = 'rgba(30, 41, 59, 1)';
-                tt.bodyColor = 'rgba(71, 85, 105, 1)';
-                tt.borderColor = 'rgba(226, 232, 240, 1)';
+                tt.backgroundColor = isDark ? slate800 : 'rgba(255, 255, 255, 0.95)';
+                tt.titleColor = isDark ? slate50 : 'rgba(30, 41, 59, 1)';
+                tt.bodyColor = isDark ? slate300 : slate600;
+                tt.borderColor = isDark ? slate700 : slate200;
                 tt.borderWidth = 1;
                 tt.padding = 10;
                 tt.cornerRadius = 6;
@@ -96,16 +107,58 @@ class ChartService {
             Chart.defaults.elements.point.radius = 0;
             Chart.defaults.elements.point.hoverRadius = 4;
 
-            // Scales - Recursive check to be ultra safe
-            if (Chart.defaults.scales && Chart.defaults.scales.linear && Chart.defaults.scales.linear.grid) {
-                Chart.defaults.scales.linear.grid.color = 'rgba(0, 0, 0, 0.05)';
+            // Scales
+            const gridColor = isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)';
+
+            if (Chart.defaults.scales && Chart.defaults.scales.linear) {
+                if (!Chart.defaults.scales.linear.grid) Chart.defaults.scales.linear.grid = {};
+                Chart.defaults.scales.linear.grid.color = gridColor;
             }
-            if (Chart.defaults.scales && Chart.defaults.scales.category && Chart.defaults.scales.category.grid) {
+            if (Chart.defaults.scales && Chart.defaults.scales.category) {
+                if (!Chart.defaults.scales.category.grid) Chart.defaults.scales.category.grid = {};
                 Chart.defaults.scales.category.grid.display = false;
             }
         } catch (e) {
-            // console.warn('Chart Defaults initialization partially failed:', e);
+            console.warn('Chart Defaults initialization failed:', e);
         }
+    }
+
+    /**
+     * Update charts for theme change
+     */
+    updateTheme() {
+        this._initGlobalTheme();
+
+        // Redraw all charts
+        this.charts.forEach((chart, id) => {
+            try {
+                const isDark = document.body.dataset.theme === 'dark';
+                const gridColor = isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)';
+                const textColor = isDark ? '#cbd5e1' : '#475569';
+
+                // Update scales colors
+                if (chart.options.scales) {
+                    Object.values(chart.options.scales).forEach(scale => {
+                        if (scale.grid) scale.grid.color = gridColor;
+                        if (scale.ticks) scale.ticks.color = textColor;
+                        if (scale.title) scale.title.color = textColor;
+                    });
+                }
+
+                // Update plugins colors (tooltips)
+                if (chart.options.plugins && chart.options.plugins.tooltip) {
+                    const tt = chart.options.plugins.tooltip;
+                    tt.backgroundColor = isDark ? '#1e293b' : 'rgba(255, 255, 255, 0.95)';
+                    tt.titleColor = isDark ? '#f8fafc' : 'rgba(30, 41, 59, 1)';
+                    tt.bodyColor = isDark ? '#cbd5e1' : '#475569';
+                    tt.borderColor = isDark ? '#334155' : '#e2e8f0';
+                }
+
+                chart.update('none'); // Update without animation for theme switch
+            } catch (e) {
+                console.error(`Error updating theme for chart ${id}:`, e);
+            }
+        });
     }
 
     _debounce(fn, wait) {
@@ -134,7 +187,7 @@ class ChartService {
         const day = String(d.getDate()).padStart(2, '0');
         const month = d.getMonth();
         const year = d.getFullYear();
-        
+
         if (format === 'long') {
             return `${day} ${this.frenchMonths[month]} ${year}`;
         } else if (format === 'medium') {
@@ -167,7 +220,7 @@ class ChartService {
                 minRotation: 0,
                 autoSkip: true,
                 maxTicksLimit: maxTicks,
-                callback: function(value, index, ticks) {
+                callback: function (value, index, ticks) {
                     const date = new Date(value);
                     if (isNaN(date)) return value;
                     return self._formatDateLabel(date);
@@ -207,7 +260,7 @@ class ChartService {
     _getNumericField(row, candidates) {
         if (!row) return 0;
         const keys = Array.isArray(candidates) ? candidates : [candidates];
-        
+
         // First try exact matches
         for (const k of keys) {
             if (row[k] !== undefined && row[k] !== null && row[k] !== '') {
@@ -215,7 +268,7 @@ class ChartService {
                 if (!isNaN(val)) return val;
             }
         }
-        
+
         // Then try case-insensitive partial matches
         const rowKeys = Object.keys(row);
         for (const candidate of keys) {
@@ -235,13 +288,13 @@ class ChartService {
 
     findSheet(name, data) {
         if (!data || typeof data !== 'object') return null;
-        
+
         // Direct match
         if (data[name]) {
             // console.info(`[findSheet] Direct match for "${name}" with ${data[name].length} rows`);
             return data[name];
         }
-        
+
         // Normalized match
         const norm = (s) => String(s).toLowerCase().replace(/[^a-z0-9]/g, '');
         const target = norm(name);
@@ -251,7 +304,7 @@ class ChartService {
                 return data[k];
             }
         }
-        
+
         // Partial match (for cases like "CTASF Follow-up" matching "ctasfFollowup")
         for (const k of Object.keys(data)) {
             if (norm(k).includes(target) || target.includes(norm(k))) {
@@ -259,7 +312,7 @@ class ChartService {
                 return data[k];
             }
         }
-        
+
         // console.warn(`[findSheet] No match found for "${name}". Available keys:`, Object.keys(data));
         return null;
     }
@@ -437,19 +490,19 @@ class ChartService {
      */
     _aggregateByTimeframe(dailyMap, timeframe = 'daily') {
         const tf = timeframe || this.currentTimeframe || 'daily';
-        
+
         if (tf === 'daily') {
             // Return data as-is for daily
             return Array.from(dailyMap.values()).sort((a, b) => a.x - b.x);
         }
-        
+
         const aggregated = new Map();
-        
+
         dailyMap.forEach(entry => {
             const date = new Date(entry.x);
             let bucketKey;
             let bucketDate;
-            
+
             if (tf === 'weekly') {
                 // Get ISO week start (Monday)
                 const dayOfWeek = date.getDay();
@@ -462,20 +515,20 @@ class ChartService {
                 bucketDate = new Date(date.getFullYear(), date.getMonth(), 1);
                 bucketKey = bucketDate.toISOString().split('T')[0];
             }
-            
+
             if (aggregated.has(bucketKey)) {
                 const existing = aggregated.get(bucketKey);
                 existing.y += entry.y;
                 if (entry.count) existing.count = (existing.count || 1) + entry.count;
             } else {
-                aggregated.set(bucketKey, { 
-                    x: bucketDate, 
+                aggregated.set(bucketKey, {
+                    x: bucketDate,
                     y: entry.y,
                     count: entry.count || 1
                 });
             }
         });
-        
+
         return Array.from(aggregated.values()).sort((a, b) => a.x - b.x);
     }
 
@@ -498,11 +551,11 @@ class ChartService {
         if (!date || isNaN(date)) return '';
         const d = new Date(date);
         const tf = this.currentTimeframe || 'daily';
-        
+
         const day = String(d.getDate()).padStart(2, '0');
         const month = d.getMonth();
         const year = d.getFullYear();
-        
+
         if (tf === 'monthly') {
             return `${this.frenchMonthsShort[month]} ${year}`;
         } else if (tf === 'weekly') {
@@ -561,7 +614,7 @@ class ChartService {
         // Target line - adjust for timeframe
         let targetValue = (window.CONFIG && window.CONFIG.TARGETS && window.CONFIG.TARGETS.DAILY_PARCELS) ?
             window.CONFIG.TARGETS.DAILY_PARCELS : 387;
-        
+
         // Multiply target for weekly/monthly
         const tf = this.currentTimeframe || 'daily';
         if (tf === 'weekly') targetValue *= 5; // 5 working days
@@ -602,7 +655,7 @@ class ChartService {
                     tooltip: {
                         enabled: true,
                         callbacks: {
-                            title: function(context) {
+                            title: function (context) {
                                 const date = new Date(context[0].parsed.x);
                                 return self._formatDateLabel(date);
                             }
@@ -618,7 +671,7 @@ class ChartService {
                             minRotation: 0,
                             autoSkip: true,
                             maxTicksLimit: 15,
-                            callback: function(value) {
+                            callback: function (value) {
                                 const date = new Date(value);
                                 return self._formatDateLabel(date);
                             }
@@ -639,7 +692,7 @@ class ChartService {
         const projSheet = this.findSheet('Display Projections', rawData) || this.findSheet('projectionDisplay', rawData) || [];
 
         // console.info(`createQualityTrendChart: Found sheet with ${sheet ? sheet.length : 0} rows`);
-        
+
         // DEBUG: Log available keys and sample row
         if (sheet && sheet.length > 0) {
             // console.info(`[DEBUG qualityTrendChart] Available columns:`, Object.keys(sheet[0]));
@@ -735,7 +788,7 @@ class ChartService {
                     legend: { display: true },
                     tooltip: {
                         callbacks: {
-                            title: function(context) {
+                            title: function (context) {
                                 const date = new Date(context[0].parsed.x);
                                 return self._formatDateLabel(date);
                             },
@@ -816,7 +869,7 @@ class ChartService {
                             plugins: {
                                 tooltip: {
                                     callbacks: {
-                                        title: function(context) {
+                                        title: function (context) {
                                             const date = new Date(context[0].parsed.x);
                                             return self._formatDateLabel(date);
                                         }
@@ -832,7 +885,7 @@ class ChartService {
                                         minRotation: 0,
                                         autoSkip: true,
                                         maxTicksLimit: 15,
-                                        callback: function(value) {
+                                        callback: function (value) {
                                             const date = new Date(value);
                                             return self._formatDateLabel(date);
                                         }
@@ -905,7 +958,7 @@ class ChartService {
         const sheet = this.findSheet('Post Process Follow-up', rawData) || this.findSheet('Post-traitement', rawData) || this.findSheet('postProcessFollowup', rawData);
 
         // console.info(`createPostProcessingChart: Found sheet with ${sheet ? sheet.length : 0} rows`);
-        
+
         // DEBUG: Log available keys and sample row
         if (sheet && sheet.length > 0) {
             // console.info(`[DEBUG postProcessingChart] Available columns:`, Object.keys(sheet[0]));
@@ -926,7 +979,7 @@ class ChartService {
 
             if (dateObj && !isNaN(dateObj)) {
                 const dateKey = dateObj.toISOString().split('T')[0];
-                
+
                 // New simplified template columns
                 const recues = this._getNumericField(row, [
                     'Parcelles Brutes par topo',
@@ -940,7 +993,7 @@ class ChartService {
                     'parcelles_recues',
                     'Parcelles reçues'
                 ]) || 0;
-                
+
                 // New simplified template: validated parcels
                 const traitees = this._getNumericField(row, [
                     'Parcelles validees par Topo',
@@ -1001,7 +1054,7 @@ class ChartService {
                 plugins: {
                     tooltip: {
                         callbacks: {
-                            title: function(context) {
+                            title: function (context) {
                                 const date = new Date(context[0].parsed.x);
                                 return self._formatDateLabel(date);
                             }
@@ -1058,19 +1111,19 @@ class ChartService {
 
         // Use Yields Projections sheet to get total by Equipe
         const yieldsSheet = this.findSheet('Yields Projections', rawData) || this.findSheet('yieldsProjection', rawData) || [];
-        
+
         let labels = [], data = [];
 
         if (yieldsSheet && yieldsSheet.length > 0) {
             // console.info('createTeamProductivityChart: using Yields Projections sheet');
             // console.info(`[DEBUG] Sample row:`, yieldsSheet[0]);
-            
+
             const teamMap = {};
-            
+
             yieldsSheet.forEach(r => {
                 const team = r['Equipe'] || r['Équipe'] || r['Team'] || 'Inconnu';
                 if (!team || team === 'Inconnu' || team === '') return;
-                
+
                 const levees = this._getNumericField(r, ['Nombre de levées', 'Nombre de levee', 'levees', 'levée']) || 0;
                 // console.info(`[DEBUG] Team ${team}: levees = ${levees}`);
                 teamMap[team] = (teamMap[team] || 0) + levees;
@@ -1079,7 +1132,7 @@ class ChartService {
             const sorted = Object.entries(teamMap).sort((a, b) => b[1] - a[1]);
             labels = sorted.map(e => e[0]);
             data = sorted.map(e => e[1]);
-            
+
             // console.info(`[DEBUG] Final team data:`, { labels, data });
             // console.info(`createTeamProductivityChart: Found ${labels.length} teams with data`);
         } else {
@@ -1103,19 +1156,19 @@ class ChartService {
                 }]
             },
             options: {
-                plugins: { 
+                plugins: {
                     legend: { display: false },
                     tooltip: {
                         callbacks: {
-                            label: function(context) {
+                            label: function (context) {
                                 return 'Total: ' + context.parsed.x.toLocaleString() + ' levées';
                             }
                         }
                     }
                 },
                 indexAxis: 'y',
-                scales: { 
-                    x: { 
+                scales: {
+                    x: {
                         beginAtZero: true,
                         title: {
                             display: true,
@@ -1151,7 +1204,7 @@ class ChartService {
             const dateObj = window.dataAggregationService ?
                 window.dataAggregationService.parseDate(row['Date'] || row['date']) :
                 new Date(row['Date'] || row['date']);
-            
+
             if (dateObj && !isNaN(dateObj)) {
                 const dateKey = dateObj.toISOString().split('T')[0];
                 const levees = this._getNumericField(row, ['Nombre de levées', 'Nombre de levee']) || 0;
@@ -1165,7 +1218,7 @@ class ChartService {
             const dateObj = window.dataAggregationService ?
                 window.dataAggregationService.parseDate(row['Date'] || row['date']) :
                 new Date(row['Date'] || row['date']);
-            
+
             if (dateObj && !isNaN(dateObj)) {
                 const dateKey = dateObj.toISOString().split('T')[0];
                 const validated = this._getNumericField(row, ['Parcelles validees par Topo', 'Parcelles Total Validee Equipe A', 'Parcelles Total Validee Equipe B']) || 0;
@@ -1214,7 +1267,7 @@ class ChartService {
                     tooltip: {
                         enabled: true,
                         callbacks: {
-                            title: function(context) {
+                            title: function (context) {
                                 const date = new Date(context[0].parsed.x);
                                 return self._formatDateLabel(date);
                             }
@@ -1248,17 +1301,17 @@ class ChartService {
 
         // Calculate validation rate by date
         const rateByDate = new Map();
-        
+
         postProcessSheet.forEach(row => {
             const dateObj = window.dataAggregationService ?
                 window.dataAggregationService.parseDate(row['Date'] || row['date']) :
                 new Date(row['Date'] || row['date']);
-            
+
             if (dateObj && !isNaN(dateObj)) {
                 const dateKey = dateObj.toISOString().split('T')[0];
                 const brutes = this._getNumericField(row, ['Parcelles Brutes  par topo', 'Parcelles Brutes par topo']) || 0;
                 const validees = this._getNumericField(row, ['Parcelles validees par Topo', 'Parcelles Total Validee Equipe A', 'Parcelles Total Validee Equipe B']) || 0;
-                
+
                 if (!rateByDate.has(dateKey)) {
                     rateByDate.set(dateKey, { brutes: 0, validees: 0 });
                 }
@@ -1296,7 +1349,7 @@ class ChartService {
                     legend: { display: false },
                     tooltip: {
                         callbacks: {
-                            title: function(context) {
+                            title: function (context) {
                                 const date = new Date(context[0].parsed.x);
                                 return self._formatDateLabel(date);
                             },
@@ -1330,7 +1383,7 @@ class ChartService {
         if (!document.getElementById(id)) return;
 
         const yieldsSheet = this.findSheet('Yields Projections', rawData) || this.findSheet('Daily Levee Source', rawData) || [];
-        
+
         if (yieldsSheet.length === 0) {
             // console.warn(`No data for ${id}`);
             return;
@@ -1342,7 +1395,7 @@ class ChartService {
             const dateObj = window.dataAggregationService ?
                 window.dataAggregationService.parseDate(row['Date'] || row['date']) :
                 new Date(row['Date'] || row['date']);
-            
+
             if (dateObj && !isNaN(dateObj)) {
                 const dateKey = dateObj.toISOString().split('T')[0];
                 const levees = this._getNumericField(row, ['Nombre de levées', 'Nombre de levee']) || 0;
@@ -1372,7 +1425,7 @@ class ChartService {
         const avgVelocity = cumulative / sortedDates.length;
         const lastDate = new Date(sortedDates[sortedDates.length - 1]);
         const projectionData = [...cumulativeData];
-        
+
         // Project 14 days ahead
         for (let i = 1; i <= 14; i++) {
             const futureDate = new Date(lastDate);
@@ -1420,7 +1473,7 @@ class ChartService {
                     legend: { display: true, position: 'bottom' },
                     tooltip: {
                         callbacks: {
-                            title: function(context) {
+                            title: function (context) {
                                 const date = new Date(context[0].parsed.x);
                                 return self._formatDateLabel(date);
                             },
@@ -1444,7 +1497,7 @@ class ChartService {
         if (!document.getElementById(id)) return;
 
         const yieldsSheet = this.findSheet('Yields Projections', rawData) || this.findSheet('Daily Levee Source', rawData) || [];
-        
+
         if (yieldsSheet.length === 0) {
             // console.warn(`No data for ${id}`);
             return;
@@ -1452,7 +1505,7 @@ class ChartService {
 
         let dailyTarget = (window.CONFIG && window.CONFIG.TARGETS && window.CONFIG.TARGETS.DAILY_PARCELS) || 387;
         const tf = this.currentTimeframe || 'daily';
-        
+
         // Adjust target for timeframe
         if (tf === 'weekly') dailyTarget *= 5;
         if (tf === 'monthly') dailyTarget *= 22;
@@ -1463,7 +1516,7 @@ class ChartService {
             const dateObj = window.dataAggregationService ?
                 window.dataAggregationService.parseDate(row['Date'] || row['date']) :
                 new Date(row['Date'] || row['date']);
-            
+
             if (dateObj && !isNaN(dateObj)) {
                 const dateKey = dateObj.toISOString().split('T')[0];
                 const levees = this._getNumericField(row, ['Nombre de levées', 'Nombre de levee']) || 0;
@@ -1531,7 +1584,7 @@ class ChartService {
         if (!document.getElementById(id)) return;
 
         const postProcessSheet = this.findSheet('Post Process Follow-up', rawData) || [];
-        
+
         if (postProcessSheet.length === 0) {
             // console.warn(`No data for ${id}`);
             return;
@@ -1548,7 +1601,7 @@ class ChartService {
             const dateObj = window.dataAggregationService ?
                 window.dataAggregationService.parseDate(row['Date'] || row['date']) :
                 new Date(row['Date'] || row['date']);
-            
+
             if (!dateObj || isNaN(dateObj)) return;
 
             const daysDiff = Math.floor((now - dateObj) / (1000 * 60 * 60 * 24));
@@ -1557,7 +1610,7 @@ class ChartService {
             const pending = Math.max(0, brutes - validees);
 
             const bucket = daysDiff <= 1 ? 'lt1' : daysDiff <= 5 ? 'd2_5' : 'gt5';
-            
+
             ageBuckets['Brutes'][bucket] += brutes;
             ageBuckets['Validées'][bucket] += validees;
             ageBuckets['En attente'][bucket] += pending;
@@ -1607,7 +1660,7 @@ class ChartService {
         if (!container) return;
 
         const yieldsSheet = this.findSheet('Yields Projections', rawData) || this.findSheet('Daily Levee Source', rawData) || [];
-        
+
         if (yieldsSheet.length === 0) {
             container.innerHTML = '<div class="text-center text-slate-400 text-sm">Aucune donnée disponible</div>';
             return;
@@ -1618,7 +1671,7 @@ class ChartService {
         yieldsSheet.forEach(row => {
             const region = row['Région'] || row['Region'] || 'Inconnu';
             if (region === 'Inconnu') return;
-            
+
             const levees = this._getNumericField(row, ['Nombre de levées', 'Nombre de levee']) || 0;
             regionTotals.set(region, (regionTotals.get(region) || 0) + levees);
         });
@@ -1638,13 +1691,13 @@ class ChartService {
             const percentage = (actual / maxValue) * 100;
             const targetPercentage = (regionTarget / maxValue) * 100;
             const isAhead = actual >= regionTarget;
-            
+
             // Determine performance zone
             const poorThreshold = regionTarget * 0.6;
             const avgThreshold = regionTarget * 0.9;
             const poorWidth = (poorThreshold / maxValue) * 100;
             const avgWidth = (avgThreshold / maxValue) * 100;
-            
+
             html += `
                 <div class="bullet-chart">
                     <div class="flex justify-between items-center mb-1">
@@ -1673,7 +1726,7 @@ class ChartService {
      */
     calculateEfficiencyKPIs(rawData) {
         // console.info('[calculateEfficiencyKPIs] Starting calculation...');
-        
+
         try {
             const postProcessSheet = this.findSheet('Post Process Follow-up', rawData) || [];
             const yieldsSheet = this.findSheet('Yields Projections', rawData) || this.findSheet('Daily Levee Source', rawData) || [];
@@ -1693,7 +1746,7 @@ class ChartService {
                 const dateObj = window.dataAggregationService ?
                     window.dataAggregationService.parseDate(row['Date'] || row['date']) :
                     new Date(row['Date'] || row['date']);
-                
+
                 if (dateObj && !isNaN(dateObj)) {
                     const hoursDiff = (now - dateObj) / (1000 * 60 * 60);
                     if (hoursDiff > 48 && brutes > validees) {
@@ -1704,30 +1757,30 @@ class ChartService {
 
             // FTR: First Time Right (% validated without rework)
             const ftr = totalBrutes > 0 ? Math.round((totalValidees / totalBrutes) * 100) : 0;
-            
+
             // Calcul du nombre de parcelles à transmettre pour le prochain lot
             // Somme des levées du lundi au samedi de la semaine en cours
             let weeklyYields = 0;
             const today = new Date();
             today.setHours(0, 0, 0, 0);
-            
+
             // Trouver le lundi de la semaine en cours
             const dayOfWeek = today.getDay(); // 0 = dimanche, 1 = lundi, etc.
             const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Si dimanche, remonter de 6 jours
             const monday = new Date(today);
             monday.setDate(today.getDate() - daysFromMonday);
             monday.setHours(0, 0, 0, 0);
-            
+
             // Samedi de la semaine en cours
             const saturday = new Date(monday);
             saturday.setDate(monday.getDate() + 5); // Lundi + 5 jours = Samedi
             saturday.setHours(23, 59, 59, 999);
-            
+
             yieldsSheet.forEach(row => {
                 const dateObj = window.dataAggregationService ?
                     window.dataAggregationService.parseDate(row['Date'] || row['date']) :
                     new Date(row['Date'] || row['date']);
-                
+
                 if (dateObj && !isNaN(dateObj)) {
                     dateObj.setHours(0, 0, 0, 0);
                     // Si la date est entre lundi et samedi inclus
@@ -1749,7 +1802,7 @@ class ChartService {
             const ftrEl = document.getElementById('ftrValue');
             const cycleEl = document.getElementById('avgCycleTime');
             const wipEl = document.getElementById('wipAge');
-            
+
             if (ftrEl) ftrEl.textContent = ftr + '%';
             if (cycleEl) cycleEl.textContent = weeklyYields.toLocaleString();
             if (wipEl) wipEl.textContent = wipOver48h.toLocaleString();
@@ -1765,7 +1818,7 @@ class ChartService {
             yieldsSheet.forEach(row => {
                 const levees = this._getNumericField(row, ['Nombre de levées', 'Nombre de levee']) || 0;
                 totalLevees += levees;
-                
+
                 const dateObj = window.dataAggregationService ?
                     window.dataAggregationService.parseDate(row['Date'] || row['date']) :
                     new Date(row['Date'] || row['date']);
@@ -1777,11 +1830,11 @@ class ChartService {
 
             const daysWorked = dailyTotals.size || 1;
             const avgVelocity = totalLevees / daysWorked;
-            
+
             // Days remaining in month
             const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
             const daysRemaining = Math.max(1, Math.ceil((endOfMonth - now) / (1000 * 60 * 60 * 24)));
-            
+
             // Required Run Rate to hit monthly target
             const remaining = monthlyTarget - totalLevees;
             const rrr = Math.max(0, Math.ceil(remaining / daysRemaining));
@@ -1792,7 +1845,7 @@ class ChartService {
 
             // Completion Confidence - ALWAYS use the date from KPIs forecast (single source of truth)
             let projectedDateStr = '--';
-            
+
             // Get the estimated completion date from KPIs (no fallback to avoid inconsistency)
             if (window.kpis && window.kpis.monthly && window.kpis.monthly.forecast && window.kpis.monthly.forecast.estimatedCompletionDateShort) {
                 projectedDateStr = window.kpis.monthly.forecast.estimatedCompletionDateShort;
@@ -1804,7 +1857,7 @@ class ChartService {
             const rrrEl = document.getElementById('rrrValue');
             const svEl = document.getElementById('scheduleVariance');
             const ccEl = document.getElementById('completionConfidence');
-            
+
             if (rrrEl) rrrEl.textContent = rrr.toLocaleString();
             if (svEl) {
                 svEl.textContent = (scheduleVariance >= 0 ? '+' : '') + scheduleVariance.toLocaleString();
