@@ -182,16 +182,16 @@
                                 <div class="text-[11px] text-slate-600 font-semibold mt-1">Pertes</div>
                                 <div class="text-[9px] text-slate-400">Parcelles Perdues</div>
                             </div>
-                            <!-- Cadence Requise -->
+                            <!-- Fin Objectif Mensuel (Replacing Cadence Requise) -->
                             <div class="kpi-card text-center p-4 bg-gradient-to-br from-indigo-50 to-white rounded-xl border border-indigo-100 cursor-help"
-                                data-tooltip="CALCUL: (Objectif Mensuel - Total Réalisé) / Jours Restants dans le mois&#10;&#10;Nombre de parcelles à traiter chaque jour à partir d'aujourd'hui pour atteindre l'objectif mensuel. Plus ce nombre est élevé, plus il faut accélérer.">
+                                data-tooltip="CALCUL: Date Actuelle + (Parcelles Mensuelles Restantes / Rythme Quotidien Moyen du Mois)&#10;&#10;Date estimée à laquelle l'objectif mensuel sera atteint si le rythme actuel est maintenu.">
                                 <div
                                     class="w-10 h-10 mx-auto mb-3 bg-indigo-100 rounded-full flex items-center justify-center">
-                                    <i class="fas fa-tachometer-alt text-indigo-600"></i>
+                                    <i class="fas fa-calendar-check text-indigo-600"></i>
                                 </div>
-                                <div id="rrrValue" class="text-2xl font-bold text-indigo-600">--</div>
-                                <div class="text-[11px] text-slate-600 font-semibold mt-1">Cadence Requise</div>
-                                <div class="text-[9px] text-slate-400">Parcelles/jour</div>
+                                <div id="rrrValue" class="text-xl font-bold text-indigo-600">--</div>
+                                <div class="text-[11px] text-slate-600 font-semibold mt-1">Fin Objectif</div>
+                                <div class="text-[9px] text-slate-400">Rythme Actuel</div>
                             </div>
                             <!-- Écart vs Objectif -->
                             <div class="kpi-card text-center p-4 bg-gradient-to-br from-purple-50 to-white rounded-xl border border-purple-100 cursor-help"
@@ -204,16 +204,16 @@
                                 <div class="text-[11px] text-slate-600 font-semibold mt-1">Écart Cumulé</div>
                                 <div class="text-[9px] text-slate-400">vs Objectif</div>
                             </div>
-                            <!-- Date Fin Objectif Mensuel -->
+                            <!-- Objectif 70k (Replacing Fin Objectif) -->
                             <div class="kpi-card text-center p-4 bg-gradient-to-br from-emerald-50 to-white rounded-xl border border-emerald-100 cursor-help"
-                                data-tooltip="CALCUL: Date Actuelle + (Parcelles Restantes / Rythme Quotidien Moyen du Mois)&#10;&#10;Date estimée à laquelle l'objectif mensuel sera atteint si le rythme quotidien moyen du mois en cours est maintenu.&#10;&#10;Formule: Parcelles Restantes / (Total Réalisé / Jours Écoulés dans le Mois)">
+                                data-tooltip="CALCUL: Date Actuelle + (70,000 - Total Post-traité) / (Prochaine Lot hebdomadaire / 6)&#10;&#10;Date estimée pour atteindre 70,000 parcelles post-traitées basées sur le rythme hebdomadaire actuel.">
                                 <div
                                     class="w-10 h-10 mx-auto mb-3 bg-emerald-100 rounded-full flex items-center justify-center">
-                                    <i class="fas fa-calendar-check text-emerald-600"></i>
+                                    <i class="fas fa-flag-checkered text-emerald-600"></i>
                                 </div>
                                 <div id="completionConfidence" class="text-xl font-bold text-emerald-600">--</div>
-                                <div class="text-[11px] text-slate-600 font-semibold mt-1">Fin Objectif</div>
-                                <div class="text-[9px] text-slate-400">Rythme Actuel</div>
+                                <div class="text-[11px] text-slate-600 font-semibold mt-1">Objectif 70k</div>
+                                <div class="text-[9px] text-slate-400">Parcelles Post-traitées</div>
                             </div>
                         </div>
                     </div>
@@ -945,27 +945,27 @@
     </script>
 
     <!-- Core Libraries -->
-    <script src="js/localization.js"></script>
-    <script src="js/config.js"></script>
+    <script src="js/localization.js?v=3.1"></script>
+    <script src="js/config.js?v=3.1"></script>
 
     <!-- Services -->
-    <script src="js/dataService.js"></script>
-    <script src="js/chartService.js"></script>
-    <script src="js/enhancedGoogleSheetsService.js"></script>
+    <script src="js/dataService.js?v=3.1"></script>
+    <script src="js/chartService.js?v=3.1"></script>
+    <script src="js/enhancedGoogleSheetsService.js?v=3.1"></script>
 
     <!-- Dashboard Components -->
-    <script src="js/dataAggregation.js"></script>
-    <script src="js/dateParsingLoader.js"></script>
-    <script src="js/statCardService.js"></script>
-    <script src="js/forecastCard.js"></script>
-    <script src="js/debugPanel.js"></script>
-    <script src="js/enhancedDashboard.js?v=3.0"></script>
-    <script src="js/streamingUpdates.js"></script>
-    <script src="js/yieldsDateFix.js"></script>
-    <script src="js/chronogramContent.js"></script>
-    <script src="js/chronogramData.js"></script>
-    <script src="js/chronogramIntegration.js"></script>
-    <script src="js/guidedTour.js"></script>
+    <script src="js/dataAggregation.js?v=3.1"></script>
+    <script src="js/dateParsingLoader.js?v=3.1"></script>
+    <script src="js/statCardService.js?v=3.1"></script>
+    <script src="js/forecastCard.js?v=3.1"></script>
+    <script src="js/debugPanel.js?v=3.1"></script>
+    <script src="js/enhancedDashboard.js?v=3.1"></script>
+    <script src="js/streamingUpdates.js?v=3.1"></script>
+    <script src="js/yieldsDateFix.js?v=3.1"></script>
+    <script src="js/chronogramContent.js?v=3.1"></script>
+    <script src="js/chronogramData.js?v=3.1"></script>
+    <script src="js/chronogramIntegration.js?v=3.1"></script>
+    <script src="js/guidedTour.js?v=3.1"></script>
 
     <script>
         // Help button to restart tour

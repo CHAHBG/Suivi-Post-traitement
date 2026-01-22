@@ -13,8 +13,28 @@ class DataAggregationService {
             weeklyGoal: 5829, // Rounded from 5829.39
             monthlyGoal: 60830, // Rounded target
             qualityThreshold: 95,
-            ctasfConversionThreshold: 90
+            ctasfConversionThreshold: 90,
+            goal70k: 70000
         };
+        this.postProcessTotal = 0;
+    }
+
+    /**
+     * Fetch the number of post-processed parcels from the JSON file
+     */
+    async fetchPostProcessTotal() {
+        try {
+            const response = await fetch('parcelles_Post_traitees.json');
+            if (!response.ok) throw new Error('Failed to fetch post-processed parcels');
+            const data = await response.json();
+            if (Array.isArray(data)) {
+                this.postProcessTotal = data.reduce((sum, item) => sum + (parseInt(item.parcel_count) || 0), 0);
+            }
+            return this.postProcessTotal;
+        } catch (error) {
+            console.error('Error fetching post-processed parcels:', error);
+            return 0;
+        }
     }
 
     // Normalize header keys (accent/space/separator insensitive)
@@ -411,9 +431,12 @@ class DataAggregationService {
     }
 
     // Master aggregator
-    calculateKPIs(rawData) {
+    async calculateKPIs(rawData) {
         try {
             if (!rawData || typeof rawData !== 'object') return this.getDefaultKPIs();
+
+            // Fetch post-processed total from JSON
+            await this.fetchPostProcessTotal();
 
             const yieldsSheet = this._findSheet(rawData, ['dailyLeveeSource', 'Daily Levee Source', 'Yields Projections', 'Yields', 'Suivi_Parcelles_journaliers']);
             const qualitySheet = this._findSheet(rawData, ['Public Display Follow-up', 'Public Display', 'Affichage']);
@@ -674,7 +697,7 @@ class DataAggregationService {
                 let estimatedCompletionDate = null;
                 let estimatedCompletionDateStr = '--';
                 let estimatedCompletionDateShort = '--';
-                
+
                 if (remainingToGoal > 0 && currentDailyAvg > 0) {
                     // More accurate: use current daily average to project
                     const daysNeeded = Math.ceil(remainingToGoal / currentDailyAvg);
@@ -682,11 +705,11 @@ class DataAggregationService {
                     estimatedCompletionDate.setDate(estimatedCompletionDate.getDate() + daysNeeded);
                     // keep at noon
                     estimatedCompletionDate.setHours(12, 0, 0, 0);
-                    
+
                     // Format: "13 février" or "13/02"
-                    estimatedCompletionDateStr = estimatedCompletionDate.toLocaleDateString('fr-FR', { 
-                        day: 'numeric', 
-                        month: 'long' 
+                    estimatedCompletionDateStr = estimatedCompletionDate.toLocaleDateString('fr-FR', {
+                        day: 'numeric',
+                        month: 'long'
                     });
                     estimatedCompletionDateShort = `${String(estimatedCompletionDate.getDate()).padStart(2, '0')}/${String(estimatedCompletionDate.getMonth() + 1).padStart(2, '0')}`;
                 } else if (remainingToGoal <= 0) {
@@ -718,10 +741,33 @@ class DataAggregationService {
                     estimatedCompletionDateShort: estimatedCompletionDateShort
                 };
 
-                // console.log('January 2026 Logic Applied:', monthly.forecast);
+                // 8. 70k Goal Projection
+                const currentPostProcessed = this.postProcessTotal || 0;
+                const goal70k = this.config.goal70k;
+                const remainingTo70k = Math.max(0, goal70k - currentPostProcessed);
+
+                // Weekly yields (Prochain Lot) - based on current week's performance
+                const weeklyCurrent = weekly.current || 0;
+                // dailyRate based on current week (6 days worked per week as per context)
+                const currentDailyRateFor70k = weeklyCurrent > 0 ? (weeklyCurrent / 6) : (currentDailyAvg > 0 ? currentDailyAvg : 1);
+
+                let projection70kDateShort = '--';
+                if (remainingTo70k > 0 && currentDailyRateFor70k > 0) {
+                    const daysNeeded70k = Math.ceil(remainingTo70k / currentDailyRateFor70k);
+                    const projectionDate = new Date(referenceDate);
+                    projectionDate.setDate(projectionDate.getDate() + daysNeeded70k);
+                    projection70kDateShort = `${String(projectionDate.getDate()).padStart(2, '0')}/${String(projectionDate.getMonth() + 1).padStart(2, '0')}`;
+                } else if (remainingTo70k <= 0) {
+                    projection70kDateShort = 'Atteint';
+                }
+
+                monthly.forecast.projection70kDateShort = projection70kDateShort;
+                monthly.forecast.totalPostProcessed = currentPostProcessed;
+
+                // console.log('January 2026 & 70k Logic Applied:', monthly.forecast);
 
             } catch (janErr) {
-                // console.warn('January logic failed:', janErr);
+                console.warn('Special logic failed:', janErr);
             }
 
             return { daily, weekly, monthly, quality, ctasf, processing };

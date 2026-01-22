@@ -1837,33 +1837,39 @@ class ChartService {
 
             // Required Run Rate to hit monthly target
             const remaining = monthlyTarget - totalLevees;
-            const rrr = Math.max(0, Math.ceil(remaining / daysRemaining));
 
-            // Schedule Variance (cumulative actual vs expected)
-            const expectedCumulative = dailyTarget * daysWorked;
-            const scheduleVariance = totalLevees - expectedCumulative;
+            // Completion Confidence - Monthly
+            let projectedMonthlyDateStr = '--';
+            // Completion Confidence - 70k
+            let projected70kDateStr = '--';
 
-            // Completion Confidence - ALWAYS use the date from KPIs forecast (single source of truth)
-            let projectedDateStr = '--';
-
-            // Get the estimated completion date from KPIs (no fallback to avoid inconsistency)
-            if (window.kpis && window.kpis.monthly && window.kpis.monthly.forecast && window.kpis.monthly.forecast.estimatedCompletionDateShort) {
-                projectedDateStr = window.kpis.monthly.forecast.estimatedCompletionDateShort;
+            // Get the estimated completion dates from KPIs (no fallback to avoid inconsistency)
+            if (window.kpis && window.kpis.monthly && window.kpis.monthly.forecast) {
+                if (window.kpis.monthly.forecast.estimatedCompletionDateShort) {
+                    projectedMonthlyDateStr = window.kpis.monthly.forecast.estimatedCompletionDateShort;
+                }
+                if (window.kpis.monthly.forecast.projection70kDateShort) {
+                    projected70kDateStr = window.kpis.monthly.forecast.projection70kDateShort;
+                }
             }
 
-            // console.info(`[calculateEfficiencyKPIs] RRR: ${rrr}, Variance: ${scheduleVariance}, Projected: ${projectedDateStr}`);
+            // console.info(`[calculateEfficiencyKPIs] Monthly Projected: ${projectedMonthlyDateStr}, 70k Projected: ${projected70kDateStr}`);
 
             // Update DOM
             const rrrEl = document.getElementById('rrrValue');
             const svEl = document.getElementById('scheduleVariance');
             const ccEl = document.getElementById('completionConfidence');
 
-            if (rrrEl) rrrEl.textContent = rrr.toLocaleString();
+            // Schedule Variance (cumulative actual vs expected)
+            const expectedCumulative = dailyTarget * daysWorked;
+            const scheduleVariance = totalLevees - expectedCumulative;
+
+            if (rrrEl) rrrEl.textContent = projectedMonthlyDateStr;
             if (svEl) {
                 svEl.textContent = (scheduleVariance >= 0 ? '+' : '') + scheduleVariance.toLocaleString();
                 svEl.className = svEl.className.replace(/text-(purple|red|green)-\d+/, scheduleVariance >= 0 ? 'text-purple-600' : 'text-red-600');
             }
-            if (ccEl) ccEl.textContent = projectedDateStr;
+            if (ccEl) ccEl.textContent = projected70kDateStr;
 
             // console.info('[calculateEfficiencyKPIs] All KPIs updated successfully');
         } catch (error) {

@@ -209,7 +209,7 @@ class EnhancedDashboard {
             window.rawData = this.rawData;
 
             // Calculate KPIs using aggregation service (use normalized this.rawData)
-            const kpis = dataAggregationService.calculateKPIs(this.rawData, this.currentFilters);
+            const kpis = await dataAggregationService.calculateKPIs(this.rawData, this.currentFilters);
             // Expose KPIs globally - SINGLE SOURCE OF TRUTH
             window.kpis = kpis;
             // console.log('KPIs calculated:', kpis);
@@ -1203,7 +1203,7 @@ class EnhancedDashboard {
                     // console.info(`[filterData] Skipping filter for table: ${key}`);
                     return;
                 }
-                
+
                 const beforeLen = arr.length;
                 const after = dataAggregationService.applyFilters(arr, this.currentFilters, key);
                 // Avoid completely wiping dataset for charts: if after filtering it's empty but before had data, keep original

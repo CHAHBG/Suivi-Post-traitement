@@ -8,12 +8,18 @@
         // This ensures the forecast card and the KPI card show the exact same date
         return window.kpis || null;
     }
-    
-    // Update the KPI card "Fin Objectif" to ensure it matches
+
+    // Update the KPI card "Fin Objectif" and "Objectif 70k" to ensure they match
     function updateKPICard(fc) {
+        // rrrValue is now the "Fin Objectif" card
+        const rrrEl = document.getElementById('rrrValue');
+        if (rrrEl && fc && fc.estimatedCompletionDateShort) {
+            rrrEl.textContent = fc.estimatedCompletionDateShort;
+        }
+        // completionConfidence is now the "Objectif 70k" card
         const ccEl = document.getElementById('completionConfidence');
-        if (ccEl && fc && fc.estimatedCompletionDateShort) {
-            ccEl.textContent = fc.estimatedCompletionDateShort;
+        if (ccEl && fc && fc.projection70kDateShort) {
+            ccEl.textContent = fc.projection70kDateShort;
         }
     }
 
@@ -24,10 +30,10 @@
     function renderForecast(fc) {
         const el = document.getElementById(containerId);
         if (!el) return;
-        
+
         // ALWAYS update the KPI card too to ensure sync
         updateKPICard(fc);
-        
+
         if (!fc) {
             el.innerHTML = '<div class="text-xs text-slate-500">Aucune prévision disponible</div>';
             return;
@@ -43,12 +49,12 @@
             let estimateHtml = '';
             if (fc.estimatedCompletionDateShort && !fc.estimatedCompletionDateShort.includes('--')) {
                 const dateStr = fc.estimatedCompletionDateShort;
-                
+
                 // Check if late (after January)
                 let isLate = false;
                 if (fc.estimatedCompletionDate) {
-                    const estDate = fc.estimatedCompletionDate instanceof Date 
-                        ? fc.estimatedCompletionDate 
+                    const estDate = fc.estimatedCompletionDate instanceof Date
+                        ? fc.estimatedCompletionDate
                         : new Date(fc.estimatedCompletionDate);
                     isLate = estDate.getMonth() > 0 && estDate.getFullYear() >= 2026;
                 }
@@ -173,11 +179,11 @@
             // Use the pre-calculated date from forecast
             let dateText = fc.estimatedCompletionDateStr || 'Inconnue';
             let isLate = false;
-            
+
             // Check if late (after January)
             if (fc.estimatedCompletionDate) {
-                const estDate = fc.estimatedCompletionDate instanceof Date 
-                    ? fc.estimatedCompletionDate 
+                const estDate = fc.estimatedCompletionDate instanceof Date
+                    ? fc.estimatedCompletionDate
                     : new Date(fc.estimatedCompletionDate);
                 isLate = estDate.getMonth() > 0 && estDate.getFullYear() >= 2026;
                 // Format with weekday for popover
