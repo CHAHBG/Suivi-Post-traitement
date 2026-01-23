@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Test French Date Parsing</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+
+        .test {
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid #ddd;
+        }
+
+        .pass {
+            background: #d4edda;
+        }
+
+        .fail {
+            background: #f8d7da;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Test French Date Parsing</h1>
+    <div id="results"></div>
+
+    <script src="js/config.js?v=3.2"></script>
+    <script>
+        const testCases = [
+            { input: '02 Novembre 2024', expected: '02/11/2024' },
+            { input: '02 novembre 2024', expected: '02/11/2024' },
+            { input: '02 février 2025', expected: '02/02/2025' },
+            { input: '02 mai 2025', expected: '02/05/2025' },
+            { input: '02 août 2025', expected: '02/08/2025' },
+            { input: 'sept.-25', expected: '01/09/2025' },
+            { input: 'nov.-25', expected: '01/11/2025' },
+            { input: 'févr.-26', expected: '01/02/2026' },
+            { input: 'mai-26', expected: '01/05/2026' },
+            { input: '23/05/2024', expected: '23/05/2024' },
+            { input: '15-12-2025', expected: '15/12/2025' }
+        ];
+
+        const results = document.getElementById('results');
+        let passCount = 0;
+        let failCount = 0;
+
+        testCases.forEach(test => {
+            const parsed = window.UTILS.parseDateDMY(test.input);
+            const formatted = parsed ? parsed.toLocaleDateString('fr-FR') : 'null';
+            const pass = formatted === test.expected;
+
+            if (pass) passCount++;
+            else failCount++;
+
+            const div = document.createElement('div');
+            div.className = `test ${pass ? 'pass' : 'fail'}`;
+            div.innerHTML = `
+                <strong>Input:</strong> "${test.input}"<br>
+                <strong>Expected:</strong> ${test.expected}<br>
+                <strong>Got:</strong> ${formatted}<br>
+                <strong>Status:</strong> ${pass ? '✅ PASS' : '❌ FAIL'}
+            `;
+            results.appendChild(div);
+        });
+
+        const summary = document.createElement('div');
+        summary.style.cssText = 'margin-top: 20px; padding: 15px; background: #e7f3ff; border: 2px solid #0066cc;';
+        summary.innerHTML = `<h2>Summary: ${passCount} passed, ${failCount} failed</h2>`;
+        results.insertBefore(summary, results.firstChild);
+    </script>
+</body>
+
+</html>

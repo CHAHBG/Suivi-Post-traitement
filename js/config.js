@@ -173,6 +173,29 @@ const GOOGLE_SHEETS = {
         name: 'Documentation',
         columns: ['Section', 'Description'],
         url: 'https://docs.google.com/spreadsheets/d/1CbDBJtoWWPRjEH4DOSlv4jjnJ2G-1MvW/export?format=csv&gid=1203072335'
+    },
+
+    deliverables: {
+        gid: '998947441',
+        name: 'Livrables',
+        columns: [
+            'N°',
+            'Index',
+            'Livrable',
+            'NATURE LIVRABLES',
+            '% SUR LE MONTANT HT',
+            'DUREE',
+            'DATE',
+            'Date ajustée',
+            'Experts Princip',
+            'STATUT AU JUILLET A OCTOBRE 2025',
+            'Nbre Base',
+            'Validé',
+            'En Examen',
+            'En retard',
+            'A venir'
+        ],
+        url: 'https://docs.google.com/spreadsheets/d/1CbDBJtoWWPRjEH4DOSlv4jjnJ2G-1MvW/export?format=csv&gid=998947441'
     }
 };
 
@@ -347,6 +370,54 @@ const UTILS = {
         // If it's already a Date
         if (val instanceof Date && !isNaN(val)) return val;
         const str = String(val).trim();
+
+        // French month names mapping (full and abbreviated)
+        const frenchMonths = {
+            'janvier': 1, 'janv': 1, 'jan': 1,
+            'février': 2, 'fevrier': 2, 'févr': 2, 'fev': 2, 'fév': 2,
+            'mars': 3, 'mar': 3,
+            'avril': 4, 'avr': 4,
+            'mai': 5,
+            'juin': 6,
+            'juillet': 7, 'juil': 7,
+            'août': 8, 'aout': 8, 'aoû': 8,
+            'septembre': 9, 'sept': 9, 'sep': 9,
+            'octobre': 10, 'oct': 10,
+            'novembre': 11, 'nov': 11,
+            'décembre': 12, 'decembre': 12, 'déc': 12, 'dec': 12
+        };
+
+        // Try to parse French date formats
+        // Format 1: "02 Novembre 2024" or "02 novembre 2024"
+        const frenchFullMatch = str.match(/^(\d{1,2})\s+([a-zéèêàâûôîç]+)\s+(\d{4})$/i);
+        if (frenchFullMatch) {
+            const day = parseInt(frenchFullMatch[1], 10);
+            const monthName = frenchFullMatch[2].toLowerCase().replace(/[.\s-]/g, '');
+            const year = parseInt(frenchFullMatch[3], 10);
+            const month = frenchMonths[monthName];
+
+            if (month) {
+                const dt = new Date(year, month - 1, day);
+                if (!isNaN(dt)) return dt;
+            }
+        }
+
+        // Format 2: "sept.-25" or "nov.-25" or "févr.-26"
+        const frenchAbbrevMatch = str.match(/^([a-zéèêàâûôîç]+)[.\s-]+(\d{2})$/i);
+        if (frenchAbbrevMatch) {
+            const monthName = frenchAbbrevMatch[1].toLowerCase().replace(/[.\s-]/g, '');
+            let year = parseInt(frenchAbbrevMatch[2], 10);
+            const month = frenchMonths[monthName];
+
+            if (month) {
+                // Assume 2-digit year is 20xx
+                year = 2000 + year;
+                // Default to day 1 if not specified
+                const dt = new Date(year, month - 1, 1);
+                if (!isNaN(dt)) return dt;
+            }
+        }
+
         // Handle ISO quickly
         const iso = new Date(str);
         if (!isNaN(iso)) {
@@ -372,7 +443,7 @@ const UTILS = {
         return date.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
     },
 
-    // Parse CSV data
+    // Parse CSV data correctly handling quotes
     parseCSV: (csvText) => {
         try {
             if (!csvText || typeof csvText !== 'string') return [];
@@ -380,23 +451,62 @@ const UTILS = {
             // Remove BOM if present
             csvText = csvText.replace(/^\uFEFF/, '');
 
-            // Normalize line endings and split
+            // Normalize line endings and split into lines
             const lines = csvText.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n').filter(l => l.trim() !== '');
             if (lines.length === 0) return [];
 
             // Detect delimiter (comma or semicolon)
-            const delimiter = lines[0].includes(';') && !lines[0].includes(',') ? ';' : ',';
+            const firstLine = lines[0];
+            const delimiter = firstLine.includes(';') && !firstLine.includes(',') ? ';' : ',';
 
-            const headers = lines[0].split(delimiter).map(h => h.trim().replace(/"/g, '').replace(/\u00A0/g, ' '));
+            // Helper to parse a single line respecting quotes
+            const parseLine = (text) => {
+                const result = [];
+                let curVal = '';
+                let inQuote = false;
+
+                for (let i = 0; i < text.length; i++) {
+                    const char = text[i];
+
+                    if (inQuote) {
+                        if (char === '"') {
+                            // Check for double quote (escaped quote)
+                            if (i + 1 < text.length && text[i + 1] === '"') {
+                                curVal += '"';
+                                i++; // Skip next quote
+                            } else {
+                                inQuote = false;
+                            }
+                        } else {
+                            curVal += char;
+                        }
+                    } else {
+                        if (char === '"') {
+                            inQuote = true;
+                        } else if (char === delimiter) {
+                            result.push(curVal);
+                            curVal = '';
+                        } else {
+                            curVal += char;
+                        }
+                    }
+                }
+                result.push(curVal);
+                return result;
+            };
+
+            const headers = parseLine(lines[0]).map(h => h.trim().replace(/^\uFEFF/, '').replace(/\u00A0/g, ' '));
             const data = [];
 
             for (let i = 1; i < lines.length; i++) {
-                const values = lines[i].split(delimiter);
+                const values = parseLine(lines[i]);
+
                 // Allow rows shorter than headers but skip empty lines
                 if (values.every(v => v === undefined || v.trim() === '')) continue;
+
                 const row = {};
                 headers.forEach((header, index) => {
-                    const raw = values[index] !== undefined ? values[index].trim().replace(/"/g, '') : '';
+                    const raw = values[index] !== undefined ? values[index].trim() : '';
                     row[header] = raw;
                 });
                 data.push(row);
@@ -404,7 +514,7 @@ const UTILS = {
 
             return data;
         } catch (err) {
-            // Suppressed parseCSV error log
+            console.error('Error parsing CSV:', err);
             return [];
         }
     },

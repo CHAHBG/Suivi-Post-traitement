@@ -405,6 +405,82 @@ class DataAggregationService {
             return parsed;
         }
 
+        // Handle French Date Format (e.g., "23 mai 2024" or "02 Aout 2024")
+        // Clean string and look for Day Month Year pattern
+        const cleanStr = String(d).trim().toLowerCase()
+            .replace(/\u00A0/g, ' ')  // NBSP to space
+            .replace(/\s+/g, ' ');    // Normalize spaces
+
+        const frenchMatch = /^(\d{1,2})\s+([a-z\u00C0-\u00FF]+)\s+(\d{2,4})$/.exec(cleanStr);
+        if (frenchMatch) {
+            const day = parseInt(frenchMatch[1], 10);
+            const monthStr = frenchMatch[2];
+            let year = parseInt(frenchMatch[3], 10);
+
+            // Mapping French months to 0-11
+            const months = {
+                'janvier': 0, 'janv': 0, 'jan': 0,
+                'fevrier': 1, 'février': 1, 'fev': 1, 'fév': 1,
+                'mars': 2, 'mar': 2,
+                'avril': 3, 'avr': 3,
+                'mai': 4,
+                'juin': 5,
+                'juillet': 6, 'juil': 6,
+                'aout': 7, 'août': 7,
+                'septembre': 8, 'sept': 8,
+                'octobre': 9, 'oct': 9,
+                'novembre': 10, 'nov': 10,
+                'decembre': 11, 'décembre': 11, 'dec': 11, 'déc': 11
+            };
+
+            if (months.hasOwnProperty(monthStr)) {
+                const month = months[monthStr];
+
+                // Handle 2-digit years
+                if (year < 100) { year = 2000 + year; }
+
+                if (day >= 1 && day <= 31 && year >= 1900 && year <= 2100) {
+                    const parsed = new Date(year, month, day);
+                    if (!isNaN(parsed)) return parsed;
+                }
+            }
+        }
+
+        // Handle abbreviated French date format (e.g., "sept.-25", "nov.-25", "févr.-26")
+        // Format: month-year without day
+        const frenchAbbrevMatch = /^([a-z\u00C0-\u00FF]+)[.\s-]+(\d{2})$/.exec(cleanStr);
+        if (frenchAbbrevMatch) {
+            const monthStr = frenchAbbrevMatch[1].replace(/[.\s-]/g, '');
+            let year = parseInt(frenchAbbrevMatch[2], 10);
+
+            // Mapping French months to 0-11
+            const months = {
+                'janvier': 0, 'janv': 0, 'jan': 0,
+                'fevrier': 1, 'février': 1, 'fevr': 1, 'fev': 1, 'fév': 1,
+                'mars': 2, 'mar': 2,
+                'avril': 3, 'avr': 3,
+                'mai': 4,
+                'juin': 5,
+                'juillet': 6, 'juil': 6,
+                'aout': 7, 'août': 7, 'aou': 7, 'aoû': 7,
+                'septembre': 8, 'sept': 8, 'sep': 8,
+                'octobre': 9, 'oct': 9,
+                'novembre': 10, 'nov': 10,
+                'decembre': 11, 'décembre': 11, 'dec': 11, 'déc': 11
+            };
+
+            if (months.hasOwnProperty(monthStr)) {
+                const month = months[monthStr];
+
+                // Assume 2-digit year is 20xx
+                year = 2000 + year;
+
+                // Default to day 1 if not specified
+                const parsed = new Date(year, month, 1);
+                if (!isNaN(parsed)) return parsed;
+            }
+        }
+
         // Suppressed
         return null;
     }

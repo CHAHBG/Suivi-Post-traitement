@@ -216,6 +216,56 @@
                                 <div class="text-[9px] text-slate-400">Parcelles Post-traitées</div>
                             </div>
                         </div>
+
+                        <!-- Deliverables KPIs Row 2 -->
+                        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-4 mt-4">
+                            <!-- Livrables Validés -->
+                            <div class="kpi-card text-center p-4 bg-gradient-to-br from-green-50 to-white rounded-xl border border-green-100 cursor-help"
+                                data-tooltip="Nombre total de livrables validés par rapport au total de 68 livrables du projet.">
+                                <div
+                                    class="w-10 h-10 mx-auto mb-3 bg-green-100 rounded-full flex items-center justify-center">
+                                    <i class="fas fa-check-circle text-green-600"></i>
+                                </div>
+                                <div id="livrablesValides" class="text-2xl font-bold text-green-600">--</div>
+                                <div class="text-[11px] text-slate-600 font-semibold mt-1">Livrables Validés</div>
+                                <div class="text-[9px] text-slate-400">Sur 68 livrables</div>
+                            </div>
+                            <!-- En Examen -->
+                            <div class="kpi-card text-center p-4 bg-gradient-to-br from-blue-50 to-white rounded-xl border border-blue-100 cursor-help"
+                                data-tooltip="Nombre de livrables actuellement en cours de validation.">
+                                <div
+                                    class="w-10 h-10 mx-auto mb-3 bg-blue-100 rounded-full flex items-center justify-center">
+                                    <i class="fas fa-clipboard-list text-blue-600"></i>
+                                </div>
+                                <div id="livrablesEnExamen" class="text-2xl font-bold text-blue-600">--</div>
+                                <div class="text-[11px] text-slate-600 font-semibold mt-1">En Examen</div>
+                                <div class="text-[9px] text-slate-400">En cours de validation</div>
+                            </div>
+                            <!-- En Retard (with pulse animation) -->
+                            <div class="kpi-card text-center p-4 bg-gradient-to-br from-red-50 to-white rounded-xl border border-red-100 cursor-help relative"
+                                data-tooltip="Nombre de livrables en retard nécessitant une attention immédiate.">
+                                <div class="absolute top-2 right-2 w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
+                                <div
+                                    class="w-10 h-10 mx-auto mb-3 bg-red-100 rounded-full flex items-center justify-center">
+                                    <i class="fas fa-exclamation-triangle text-red-600"></i>
+                                </div>
+                                <div id="livrablesEnRetard" class="text-2xl font-bold text-red-600">--</div>
+                                <div class="text-[11px] text-slate-600 font-semibold mt-1">En Retard</div>
+                                <div class="text-[9px] text-slate-400">Nécessite attention</div>
+                            </div>
+                            <!-- À Venir -->
+                            <div class="kpi-card text-center p-4 bg-gradient-to-br from-gray-50 to-white rounded-xl border border-gray-100 cursor-help"
+                                data-tooltip="Nombre de livrables avec échéances futures.">
+                                <div
+                                    class="w-10 h-10 mx-auto mb-3 bg-gray-100 rounded-full flex items-center justify-center">
+                                    <i class="fas fa-calendar-alt text-gray-600"></i>
+                                </div>
+                                <div id="livrablesAVenir" class="text-2xl font-bold text-gray-600">--</div>
+                                <div class="text-[11px] text-slate-600 font-semibold mt-1">À Venir</div>
+                                <div class="text-[9px] text-slate-400">Échéances futures</div>
+                            </div>
+
+                        </div>
                     </div>
 
                     <!-- KPI Stat Cards (formerly Tubes) -->
@@ -490,6 +540,114 @@
                         <!-- Injected by JS -->
                     </div>
                 </div>
+
+                <!-- Deliverables Tracking Panel -->
+                <div class="col-span-12 bento-card">
+                    <div class="flex justify-between items-center mb-6">
+                        <div>
+                            <h3 class="text-sm font-bold">Suivi des Livrables</h3>
+                            <p class="text-[11px] text-tertiary">Tableau de bord des 68 livrables du projet</p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <!-- Search -->
+                            <input type="text" id="delivrablesSearch" placeholder="Rechercher..."
+                                class="text-xs px-3 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <!-- Filter buttons -->
+                            <button
+                                class="deliverables-filter-btn active text-xs px-3 py-1.5 rounded-lg font-semibold transition-colors"
+                                data-status="all">
+                                Tous (<span id="filter-count-all">68</span>)
+                            </button>
+                            <button
+                                class="deliverables-filter-btn text-xs px-3 py-1.5 rounded-lg font-semibold transition-colors bg-green-50 text-green-700 hover:bg-green-100"
+                                data-status="validé">
+                                Validés (<span id="filter-count-valide">29</span>)
+                            </button>
+                            <button
+                                class="deliverables-filter-btn text-xs px-3 py-1.5 rounded-lg font-semibold transition-colors bg-blue-50 text-blue-700 hover:bg-blue-100"
+                                data-status="en-examen">
+                                En Examen (<span id="filter-count-examen">5</span>)
+                            </button>
+                            <button
+                                class="deliverables-filter-btn text-xs px-3 py-1.5 rounded-lg font-semibold transition-colors bg-red-50 text-red-700 hover:bg-red-100"
+                                data-status="retard">
+                                En Retard (<span id="filter-count-retard">7</span>)
+                            </button>
+                            <button
+                                class="deliverables-filter-btn text-xs px-3 py-1.5 rounded-lg font-semibold transition-colors bg-gray-50 text-gray-700 hover:bg-gray-100"
+                                data-status="a-venir">
+                                À Venir (<span id="filter-count-avenir">20</span>)
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Statistics Dashboard -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                        <!-- By Expert/Pool -->
+                        <div class="bg-slate-50 rounded-lg p-4">
+                            <h4 class="text-xs font-bold text-slate-700 mb-3">Répartition par Expert</h4>
+                            <div id="expertBreakdown" class="space-y-2 text-xs">
+                                <!-- Injected by JS -->
+                            </div>
+                        </div>
+
+                        <!-- Timeline Metrics -->
+                        <div class="bg-slate-50 rounded-lg p-4">
+                            <h4 class="text-xs font-bold text-slate-700 mb-3">Métriques Temporelles</h4>
+                            <div class="space-y-2 text-xs">
+                                <div class="flex justify-between">
+                                    <span class="text-slate-600">Validés à temps:</span>
+                                    <span id="stat-valides-temps" class="font-semibold text-green-600">--</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-slate-600">Validés en retard:</span>
+                                    <span id="stat-valides-retard" class="font-semibold text-orange-600">--</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-slate-600">Retard moyen:</span>
+                                    <span id="stat-retard-moyen" class="font-semibold text-slate-700">--</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-slate-600">Plus grand retard:</span>
+                                    <span id="stat-plus-grand-retard" class="font-semibold text-red-600">--</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Deliverables Table -->
+                    <div class="overflow-x-auto">
+                        <table id="deliverablesTable" class="w-full text-xs">
+                            <thead class="bg-slate-100 sticky top-0">
+                                <tr>
+                                    <th class="px-3 py-2 text-left font-semibold text-slate-700 cursor-pointer hover:bg-slate-200"
+                                        data-sort="index">
+                                        Index <i class="fas fa-sort ml-1 text-slate-400"></i>
+                                    </th>
+                                    <th class="px-3 py-2 text-left font-semibold text-slate-700">Livrable</th>
+                                    <th class="px-3 py-2 text-left font-semibold text-slate-700 cursor-pointer hover:bg-slate-200"
+                                        data-sort="expert">
+                                        Expert <i class="fas fa-sort ml-1 text-slate-400"></i>
+                                    </th>
+                                    <th class="px-3 py-2 text-left font-semibold text-slate-700 cursor-pointer hover:bg-slate-200"
+                                        data-sort="date">
+                                        Échéance <i class="fas fa-sort ml-1 text-slate-400"></i>
+                                    </th>
+                                    <th class="px-3 py-2 text-left font-semibold text-slate-700">Statut</th>
+                                    <th class="px-3 py-2 text-center font-semibold text-slate-700">Alerte</th>
+                                </tr>
+                            </thead>
+                            <tbody id="deliverablesTableBody">
+                                <!-- Injected by JS -->
+                                <tr>
+                                    <td colspan="6" class="px-3 py-8 text-center text-slate-500">
+                                        <i class="fas fa-spinner fa-spin mr-2"></i>Chargement des livrables...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -545,32 +703,6 @@
                     </div>
                 </div>
 
-                <!-- Chronogram / Timeline -->
-                <div class="col-span-12 bento-card">
-                    <div class="flex justify-between items-center mb-6">
-                        <div>
-                            <h3 class="text-sm font-bold">Chronologie du Projet</h3>
-                            <p class="text-[11px] text-tertiary">Suivi temporel des phases par lot</p>
-                        </div>
-                        <div class="flex items-center space-x-4">
-                            <div class="flex items-center space-x-2 text-[10px] font-bold">
-                                <span class="w-1.5 h-1.5 rounded-full bg-slate-200"></span><span
-                                    class="text-tertiary">Prévu</span>
-                                <span class="w-1.5 h-1.5 rounded-full bg-primary"></span><span class="text-primary">En
-                                    cours</span>
-                                <span class="w-1.5 h-1.5 rounded-full bg-success"></span><span
-                                    class="text-success">Fait</span>
-                            </div>
-                            <button id="chronogram-toggle-labels"
-                                class="text-[10px] font-bold border border-subtle px-2 py-1 rounded hover:bg-slate-50">Libellés</button>
-                        </div>
-                    </div>
-                    <div id="projectTimelineHeader" class="chronogram-header" aria-hidden="true"></div>
-                    <div id="projectTimelineGantt" class="chronogram-gantt">
-                        <!-- Injected by JS -->
-                    </div>
-                    <canvas id="projectTimelineChart" class="hidden"></canvas>
-                </div>
             </div>
         </div>
 
@@ -666,9 +798,10 @@
         <section class="tables-section mt-16">
             <div class="section-intro mb-8">
                 <h2 class="section-title">Données détaillées</h2>
-                <div class="flex justify-between items-end">
+                <div class="flex justify-between items-center gap-4">
                     <p class="section-description">Accès aux données brutes et historiques</p>
-                    <button class="action-button text-sm download-btn" title="Télécharger les données affichées">
+                    <button class="action-button text-sm download-btn flex-shrink-0"
+                        title="Télécharger les données affichées">
                         <i class="fas fa-download mr-1"></i> XLSX
                     </button>
                 </div>
@@ -946,7 +1079,7 @@
 
     <!-- Core Libraries -->
     <script src="js/localization.js?v=3.1"></script>
-    <script src="js/config.js?v=3.1"></script>
+    <script src="js/config.js?v=3.2"></script>
 
     <!-- Services -->
     <script src="js/dataService.js?v=3.1"></script>
@@ -954,7 +1087,7 @@
     <script src="js/enhancedGoogleSheetsService.js?v=3.1"></script>
 
     <!-- Dashboard Components -->
-    <script src="js/dataAggregation.js?v=3.1"></script>
+    <script src="js/dataAggregation.js?v=3.2"></script>
     <script src="js/dateParsingLoader.js?v=3.1"></script>
     <script src="js/statCardService.js?v=3.1"></script>
     <script src="js/forecastCard.js?v=3.1"></script>
@@ -966,6 +1099,8 @@
     <script src="js/chronogramData.js?v=3.1"></script>
     <script src="js/chronogramIntegration.js?v=3.1"></script>
     <script src="js/guidedTour.js?v=3.1"></script>
+    <script src="js/deliverablesService.js?v=3.9"></script>
+    <script src="js/deliverablesPanel.js?v=3.3"></script>
 
     <script>
         // Help button to restart tour

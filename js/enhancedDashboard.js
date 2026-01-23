@@ -243,6 +243,11 @@ class EnhancedDashboard {
                 window.projectTimelineService.initialize();
             }
 
+            // Initialize Deliverables Panel (Async)
+            if (window.deliverablesPanel) {
+                await window.deliverablesPanel.initialize();
+            }
+
         } catch (error) {
             console.error('Error loading dashboard data:', error);
             throw error;
