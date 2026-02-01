@@ -10,12 +10,12 @@ const CONFIG = {
 
     // Performance targets
     TARGETS: {
-        // January 2026 Goal: 12,000
-        // Daily: 12000 / 31 = 387.096
-        // Weekly: 387.096 * 7 = 2709.67
-        JANUARY_2026_GOAL: 12000,
-        DAILY_PARCELS: 387.1,
-        WEEKLY_PARCELS: 2710,
+        // January 2026 Goal: 18,000 (levee)
+        // Daily: 18000 / 31 = 580.65
+        // Weekly: 580.65 * 7 = 4064.52
+        JANUARY_2026_GOAL: 18000,
+        DAILY_PARCELS: 580.6,
+        WEEKLY_PARCELS: 4065,
         TOTAL_GOAL: 75000,
 
         // Legacy / Fallback

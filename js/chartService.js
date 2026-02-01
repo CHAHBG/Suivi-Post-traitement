@@ -1838,22 +1838,23 @@ class ChartService {
             // Required Run Rate to hit monthly target
             const remaining = monthlyTarget - totalLevees;
 
-            // Completion Confidence - Monthly
+            // Completion Confidence - Monthly (Levee)
             let projectedMonthlyDateStr = '--';
-            // Completion Confidence - 70k
-            let projected70kDateStr = '--';
+            // Completion Confidence - 75k (Post-process)
+            let projected75kDateStr = '--';
 
             // Get the estimated completion dates from KPIs (no fallback to avoid inconsistency)
+            // Formula: Time to Goal = Remaining Work ÷ Current Pace
             if (window.kpis && window.kpis.monthly && window.kpis.monthly.forecast) {
                 if (window.kpis.monthly.forecast.estimatedCompletionDateShort) {
                     projectedMonthlyDateStr = window.kpis.monthly.forecast.estimatedCompletionDateShort;
                 }
                 if (window.kpis.monthly.forecast.projection70kDateShort) {
-                    projected70kDateStr = window.kpis.monthly.forecast.projection70kDateShort;
+                    projected75kDateStr = window.kpis.monthly.forecast.projection70kDateShort;
                 }
             }
 
-            // console.info(`[calculateEfficiencyKPIs] Monthly Projected: ${projectedMonthlyDateStr}, 70k Projected: ${projected70kDateStr}`);
+            // console.info(`[calculateEfficiencyKPIs] Monthly Projected: ${projectedMonthlyDateStr}, 75k Projected: ${projected75kDateStr}`);
 
             // Update DOM
             const rrrEl = document.getElementById('rrrValue');
@@ -1869,7 +1870,7 @@ class ChartService {
                 svEl.textContent = (scheduleVariance >= 0 ? '+' : '') + scheduleVariance.toLocaleString();
                 svEl.className = svEl.className.replace(/text-(purple|red|green)-\d+/, scheduleVariance >= 0 ? 'text-purple-600' : 'text-red-600');
             }
-            if (ccEl) ccEl.textContent = projected70kDateStr;
+            if (ccEl) ccEl.textContent = projected75kDateStr;
 
             // console.info('[calculateEfficiencyKPIs] All KPIs updated successfully');
         } catch (error) {

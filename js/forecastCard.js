@@ -9,14 +9,14 @@
         return window.kpis || null;
     }
 
-    // Update the KPI card "Fin Objectif" and "Objectif 70k" to ensure they match
+    // Update the KPI card "Fin Objectif" and "Objectif 75k" to ensure they match
     function updateKPICard(fc) {
         // rrrValue is now the "Fin Objectif" card
         const rrrEl = document.getElementById('rrrValue');
         if (rrrEl && fc && fc.estimatedCompletionDateShort) {
             rrrEl.textContent = fc.estimatedCompletionDateShort;
         }
-        // completionConfidence is now the "Objectif 70k" card
+        // completionConfidence is now the "Objectif 75k" card (post-process goal)
         const ccEl = document.getElementById('completionConfidence');
         if (ccEl && fc && fc.projection70kDateShort) {
             ccEl.textContent = fc.projection70kDateShort;

@@ -9,12 +9,12 @@
 class DataAggregationService {
     constructor() {
         this.config = {
-            dailyGoal: 833, // Rounded from 832.777777777778
-            weeklyGoal: 5829, // Rounded from 5829.39
-            monthlyGoal: 60830, // Rounded target
+            dailyGoal: 581, // 18000 / 31 days (levee)
+            weeklyGoal: 4065, // 581 * 7 (levee)
+            monthlyGoal: 18000, // Levee goal for January 2026
             qualityThreshold: 95,
             ctasfConversionThreshold: 90,
-            goal70k: 70000
+            goal75k: 75000 // Post-process goal
         };
         this.postProcessTotal = 0;
     }
@@ -817,28 +817,29 @@ class DataAggregationService {
                     estimatedCompletionDateShort: estimatedCompletionDateShort
                 };
 
-                // 8. 70k Goal Projection
+                // 8. 75k Goal Projection (Post-process)
                 const currentPostProcessed = this.postProcessTotal || 0;
-                const goal70k = this.config.goal70k;
-                const remainingTo70k = Math.max(0, goal70k - currentPostProcessed);
+                const goal75k = this.config.goal75k;
+                const remainingTo75k = Math.max(0, goal75k - currentPostProcessed);
 
                 // Weekly yields (Prochain Lot) - based on current week's performance
                 const weeklyCurrent = weekly.current || 0;
                 // dailyRate based on current week (6 days worked per week as per context)
-                const currentDailyRateFor70k = weeklyCurrent > 0 ? (weeklyCurrent / 6) : (currentDailyAvg > 0 ? currentDailyAvg : 1);
+                const currentDailyRateFor75k = weeklyCurrent > 0 ? (weeklyCurrent / 6) : (currentDailyAvg > 0 ? currentDailyAvg : 1);
 
-                let projection70kDateShort = '--';
-                if (remainingTo70k > 0 && currentDailyRateFor70k > 0) {
-                    const daysNeeded70k = Math.ceil(remainingTo70k / currentDailyRateFor70k);
+                let projection75kDateShort = '--';
+                if (remainingTo75k > 0 && currentDailyRateFor75k > 0) {
+                    const daysNeeded75k = Math.ceil(remainingTo75k / currentDailyRateFor75k);
                     const projectionDate = new Date(referenceDate);
-                    projectionDate.setDate(projectionDate.getDate() + daysNeeded70k);
-                    projection70kDateShort = `${String(projectionDate.getDate()).padStart(2, '0')}/${String(projectionDate.getMonth() + 1).padStart(2, '0')}`;
-                } else if (remainingTo70k <= 0) {
-                    projection70kDateShort = 'Atteint';
+                    projectionDate.setDate(projectionDate.getDate() + daysNeeded75k);
+                    projection75kDateShort = `${String(projectionDate.getDate()).padStart(2, '0')}/${String(projectionDate.getMonth() + 1).padStart(2, '0')}`;
+                } else if (remainingTo75k <= 0) {
+                    projection75kDateShort = 'Atteint';
                 }
 
-                monthly.forecast.projection70kDateShort = projection70kDateShort;
+                monthly.forecast.projection70kDateShort = projection75kDateShort; // Keep property name for UI compatibility
                 monthly.forecast.totalPostProcessed = currentPostProcessed;
+                monthly.forecast.goal75k = goal75k;
 
                 // console.log('January 2026 & 70k Logic Applied:', monthly.forecast);
 
