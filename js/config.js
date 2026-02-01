@@ -10,12 +10,13 @@ const CONFIG = {
 
     // Performance targets
     TARGETS: {
-        // January 2026 Goal: 18,000 (levee)
-        // Daily: 18000 / 31 = 580.65
-        // Weekly: 580.65 * 7 = 4064.52
+        // Levee Goal: 18,000 - Deadline: February 17, 2026
+        // Days from Feb 1 to Feb 17 = 17 days
+        // Daily: 18000 / 17 = 1058.82 (if starting from 0)
         JANUARY_2026_GOAL: 18000,
-        DAILY_PARCELS: 580.6,
-        WEEKLY_PARCELS: 4065,
+        DEADLINE_DATE: '2026-02-17', // February 17, 2026
+        DAILY_PARCELS: 1059,
+        WEEKLY_PARCELS: 7413,
         TOTAL_GOAL: 75000,
 
         // Legacy / Fallback

@@ -39,24 +39,28 @@
             return;
         }
 
-        // New January 2026 Logic
+        // Levee Goal Logic (18k by Feb 17)
         if (fc.janCurrent !== undefined) {
             const achievable = fc.achievable;
             const reqRate = formatNumber(fc.requiredDailyRate || 0);
             const curRate = formatNumber(fc.currentDailyAvg || 0);
+            const deadlineStr = fc.deadlineDateShort || '17/02';
 
             // Use the pre-calculated estimated completion date (same display format as KPI: DD/MM)
             let estimateHtml = '';
             if (fc.estimatedCompletionDateShort && !fc.estimatedCompletionDateShort.includes('--')) {
                 const dateStr = fc.estimatedCompletionDateShort;
 
-                // Check if late (after January)
+                // Check if late (after deadline Feb 17)
                 let isLate = false;
-                if (fc.estimatedCompletionDate) {
+                if (fc.estimatedCompletionDate && fc.deadlineDate) {
                     const estDate = fc.estimatedCompletionDate instanceof Date
                         ? fc.estimatedCompletionDate
                         : new Date(fc.estimatedCompletionDate);
-                    isLate = estDate.getMonth() > 0 && estDate.getFullYear() >= 2026;
+                    const deadline = fc.deadlineDate instanceof Date
+                        ? fc.deadlineDate
+                        : new Date(fc.deadlineDate);
+                    isLate = estDate > deadline;
                 }
 
                 estimateHtml = `<div class="mt-2 text-xs border-t border-slate-100 pt-2 flex justify-between">
@@ -67,8 +71,8 @@
 
             el.innerHTML = `
                 <div class="flex items-center justify-between mb-2">
-                    <div class="text-sm font-medium">Objectif Janvier: <span class="font-bold">${formatNumber(fc.janGoal)}</span></div>
-                    <div class="text-xs text-slate-500">${fc.daysRemaining}j restants</div>
+                    <div class="text-sm font-medium">Objectif Levée: <span class="font-bold">${formatNumber(fc.janGoal)}</span></div>
+                    <div class="text-xs text-slate-500">${fc.daysRemaining}j restants (avant ${deadlineStr})</div>
                 </div>
                 <div class="space-y-2">
                     <div class="flex justify-between items-center bg-slate-50 p-2 rounded">
@@ -82,7 +86,7 @@
                 </div>
                 ${estimateHtml}
                 <div class="mt-2 text-center text-xs font-semibold ${achievable ? 'text-emerald-600' : 'text-red-500'}">
-                    ${fc.alert || (achievable ? 'Objectif Atteignable' : 'Rythme Insuffisant')}
+                    ${fc.alert || (achievable ? 'Objectif Atteignable avant le 17/02' : 'Rythme Insuffisant')}
                 </div>
             `;
             return;

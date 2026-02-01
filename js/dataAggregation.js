@@ -9,9 +9,9 @@
 class DataAggregationService {
     constructor() {
         this.config = {
-            dailyGoal: 581, // 18000 / 31 days (levee)
-            weeklyGoal: 4065, // 581 * 7 (levee)
-            monthlyGoal: 18000, // Levee goal for January 2026
+            dailyGoal: 1059, // 18000 / 17 days until Feb 17 (levee)
+            weeklyGoal: 7413, // 1059 * 7 (levee)
+            monthlyGoal: 18000, // Levee goal - deadline Feb 17, 2026
             qualityThreshold: 95,
             ctasfConversionThreshold: 90,
             goal75k: 75000 // Post-process goal
@@ -672,24 +672,31 @@ class DataAggregationService {
                 }
             } catch (trendErr) { /* silent trend failure */ }
 
-            // ==== January 2026 Specific Logic (Goals: 12k Jan, 75k Total) ====
+            // ==== Levee Goal Logic (18k by Feb 17, 75k post-process) ====
             try {
-                // 1. Establish Timeframe
+                // 1. Establish Timeframe - Deadline is February 17, 2026
                 // Use a data-driven reference date to avoid off-by-one issues when the latest sheet data is "yesterday".
                 // Also anchor calculations at noon to avoid DST/timezone edge cases.
                 const now = new Date();
-                const janStart = new Date(now.getFullYear(), 0, 1, 12, 0, 0, 0); // Jan 1st @ noon
-                const janEnd = new Date(now.getFullYear(), 0, 31, 12, 0, 0, 0); // Jan 31st @ noon
+                const projectStart = new Date(2026, 0, 1, 12, 0, 0, 0); // Jan 1st 2026 @ noon
+                
+                // Get deadline from config or default to Feb 17, 2026
+                let deadlineDate;
+                if (window.CONFIG && window.CONFIG.TARGETS && window.CONFIG.TARGETS.DEADLINE_DATE) {
+                    deadlineDate = new Date(window.CONFIG.TARGETS.DEADLINE_DATE + 'T12:00:00');
+                } else {
+                    deadlineDate = new Date(2026, 1, 17, 12, 0, 0, 0); // Feb 17, 2026 @ noon
+                }
 
                 let referenceDate = null;
                 try {
-                    // Prefer the latest available yields date within January
+                    // Prefer the latest available yields date
                     if (Array.isArray(yieldsSheet) && yieldsSheet.length) {
                         for (const r of yieldsSheet) {
                             const pd = this.parseDate(r['Date'] || r['date']);
                             if (!pd || isNaN(pd)) continue;
                             const pNoon = new Date(pd.getFullYear(), pd.getMonth(), pd.getDate(), 12, 0, 0, 0);
-                            if (pNoon < janStart || pNoon > janEnd) continue;
+                            if (pNoon < projectStart || pNoon > deadlineDate) continue;
                             if (!referenceDate || pNoon > referenceDate) referenceDate = pNoon;
                         }
                     }
@@ -697,15 +704,15 @@ class DataAggregationService {
                     // ignore; fall back below
                 }
 
-                // Fallback to system date (clamped to January)
+                // Fallback to system date (clamped to deadline)
                 if (!referenceDate) {
                     referenceDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 12, 0, 0, 0);
-                    if (referenceDate < janStart) referenceDate = janStart;
-                    if (referenceDate > janEnd) referenceDate = janEnd;
+                    if (referenceDate < projectStart) referenceDate = projectStart;
+                    if (referenceDate > deadlineDate) referenceDate = deadlineDate;
                 }
 
-                // 2. Determine January Current Total (SSOT: 'Total-Moyenne' sheet, fallback to calculation)
-                let janCurrent = 0;
+                // 2. Determine Current Total (SSOT: 'Total-Moyenne' sheet, fallback to calculation)
+                let currentTotal = 0;
                 let dataStart = null;
 
                 // Try using the robustly found tmSheet
@@ -715,59 +722,57 @@ class DataAggregationService {
                     const lastRow = tmSheet[tmSheet.length - 1];
                     const val = this._getNumericField(lastRow, ['Total', 'total', 'Valeur', 'Value']);
                     if (val > 0) {
-                        janCurrent = val;
+                        currentTotal = val;
                         // Try to get date from sheet to check freshness, but default to 'now'
-                        // console.log('Using Total-Moyenne sheet for Jan Total:', janCurrent);
+                        // console.log('Using Total-Moyenne sheet for Total:', currentTotal);
                     }
                 }
 
                 // Fallback: calculate from yields if Total-Moyenne failed
-                if (janCurrent === 0) {
-                    const janData = yieldsSheet.filter(r => {
+                if (currentTotal === 0) {
+                    const relevantData = yieldsSheet.filter(r => {
                         const pd = this.parseDate(r['Date'] || r['date']);
                         if (!pd || isNaN(pd)) return false;
                         const pNoon = new Date(pd.getFullYear(), pd.getMonth(), pd.getDate(), 12, 0, 0, 0);
-                        return pNoon >= janStart && pNoon <= referenceDate; // Data up to the reference date
+                        return pNoon >= projectStart && pNoon <= referenceDate; // Data up to the reference date
                     });
 
-                    janCurrent = janData.reduce((sum, row) => {
+                    currentTotal = relevantData.reduce((sum, row) => {
                         const val = this._getNumericField(row, ['Nombre de levées', 'Nombre de Levées', 'nombre de levées', 'nombre de levees', 'levées', 'levees']);
                         return sum + val;
                     }, 0);
-                    // console.log('Calculated Jan Total from Yields:', janCurrent);
+                    // console.log('Calculated Total from Yields:', currentTotal);
                 }
 
                 // ---- Monthly target override ----
                 try {
                     // Use configured targets if available, else default
-                    const cfgDaily = (window.CONFIG && window.CONFIG.TARGETS && window.CONFIG.TARGETS.DAILY_PARCELS) ? window.CONFIG.TARGETS.DAILY_PARCELS : 387.1;
-                    const cfgWeekly = (window.CONFIG && window.CONFIG.TARGETS && window.CONFIG.TARGETS.WEEKLY_PARCELS) ? window.CONFIG.TARGETS.WEEKLY_PARCELS : 2710;
+                    const cfgDaily = (window.CONFIG && window.CONFIG.TARGETS && window.CONFIG.TARGETS.DAILY_PARCELS) ? window.CONFIG.TARGETS.DAILY_PARCELS : 1059;
+                    const cfgWeekly = (window.CONFIG && window.CONFIG.TARGETS && window.CONFIG.TARGETS.WEEKLY_PARCELS) ? window.CONFIG.TARGETS.WEEKLY_PARCELS : 7413;
 
                     // Override calculated targets with fixed goals unless dynamic logic is needed
-                    // But for tube visualization, we want the specific January goals
                     daily.target = Math.round(cfgDaily);
                     weekly.target = Math.round(cfgWeekly);
 
                     const dailyGoalBase = Math.floor(Number(cfgDaily) || this.config.dailyGoal);
-                    // Monthly target is handled by specific January logic below, but we set a default here
-                    monthly.target = 12000;
+                    // Monthly target is handled by specific logic below
+                    monthly.target = 18000;
 
                 } catch (ex) { console.warn('Goal target override failed:', ex); }
 
                 // 4. Goals from Config
-                const janGoal = (window.CONFIG && window.CONFIG.TARGETS && window.CONFIG.TARGETS.JANUARY_2026_GOAL) ? window.CONFIG.TARGETS.JANUARY_2026_GOAL : 12000;
+                const leveeGoal = (window.CONFIG && window.CONFIG.TARGETS && window.CONFIG.TARGETS.JANUARY_2026_GOAL) ? window.CONFIG.TARGETS.JANUARY_2026_GOAL : 18000;
 
-                // 5. Calculate Required Rate
-                const daysInJan = 31;
-                const dayOfMonth = referenceDate.getDate();
-                const daysRemaining = Math.max(0, daysInJan - dayOfMonth);
+                // 5. Calculate Days Remaining until deadline (Feb 17)
+                const msPerDay = 24 * 60 * 60 * 1000;
+                const daysElapsed = Math.max(1, Math.ceil((referenceDate - projectStart) / msPerDay));
+                const daysRemaining = Math.max(0, Math.ceil((deadlineDate - referenceDate) / msPerDay));
 
-                const remainingToGoal = Math.max(0, janGoal - janCurrent);
+                const remainingToGoal = Math.max(0, leveeGoal - currentTotal);
                 const requiredDailyRate = daysRemaining > 0 ? (remainingToGoal / daysRemaining) : (remainingToGoal > 0 ? remainingToGoal : 0);
 
-                // 6. Calculate Current Daily Average (Jan only)
-                // Usable days: dayOfMonth (since Jan 1st). 
-                const currentDailyAvg = dayOfMonth > 0 ? (janCurrent / dayOfMonth) : 0;
+                // 6. Calculate Current Daily Average
+                const currentDailyAvg = daysElapsed > 0 ? (currentTotal / daysElapsed) : 0;
 
                 // 6.5. Calculate Estimated Completion Date (date when goal will be reached)
                 let estimatedCompletionDate = null;
@@ -795,26 +800,31 @@ class DataAggregationService {
                 }
 
                 // 7. Store in 'monthly' KPI
-                monthly.current = janCurrent;
-                monthly.target = janGoal;
-                monthly.percentage = janGoal > 0 ? Math.min(Math.round((janCurrent / janGoal) * 100), 100) : 0;
-                monthly.gap = janCurrent - janGoal;
+                monthly.current = currentTotal;
+                monthly.target = leveeGoal;
+                monthly.percentage = leveeGoal > 0 ? Math.min(Math.round((currentTotal / leveeGoal) * 100), 100) : 0;
+                monthly.gap = currentTotal - leveeGoal;
                 monthly.status = this.getStatusFromPercentage(monthly.percentage);
+
+                // Check if estimated completion is after deadline
+                const isLate = estimatedCompletionDate && estimatedCompletionDate > deadlineDate;
 
                 // Attach forecast data for UI
                 monthly.forecast = {
-                    janCurrent: Math.round(janCurrent),
-                    janGoal: janGoal,
+                    janCurrent: Math.round(currentTotal),
+                    janGoal: leveeGoal,
                     daysRemaining: daysRemaining,
                     remainingToGoal: Math.round(remainingToGoal),
                     requiredDailyRate: Math.round(requiredDailyRate),
                     currentDailyAvg: Math.round(currentDailyAvg),
-                    achievable: currentDailyAvg >= requiredDailyRate,
-                    alert: currentDailyAvg >= requiredDailyRate ? 'Objectif Atteignable' : 'Attention: Rythme Insuffisant',
+                    achievable: !isLate && currentDailyAvg >= requiredDailyRate,
+                    alert: (!isLate && currentDailyAvg >= requiredDailyRate) ? 'Objectif Atteignable avant le 17/02' : 'Attention: Rythme Insuffisant',
                     // Add the estimated completion date
                     estimatedCompletionDate: estimatedCompletionDate,
                     estimatedCompletionDateStr: estimatedCompletionDateStr,
-                    estimatedCompletionDateShort: estimatedCompletionDateShort
+                    estimatedCompletionDateShort: estimatedCompletionDateShort,
+                    deadlineDate: deadlineDate,
+                    deadlineDateShort: '17/02'
                 };
 
                 // 8. 75k Goal Projection (Post-process)
