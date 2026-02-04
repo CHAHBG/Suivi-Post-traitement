@@ -35,12 +35,12 @@
     <meta http-equiv="Content-Security-Policy"
         content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://cdn.sheetjs.com https://www.googletagmanager.com 'unsafe-inline'; style-src 'self' https://cdnjs.cloudflare.com https://fonts.googleapis.com 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://docs.google.com https://sheets.googleapis.com https://*.google.com https://*.googleusercontent.com https://www.google-analytics.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://cdn.sheetjs.com https://fonts.googleapis.com https://fonts.gstatic.com; font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com https://fonts.googleapis.com data:; base-uri 'self'; form-action 'self';">
 
-    <!-- JavaScript Libraries -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-moment@1.0.1/dist/chartjs-adapter-moment.min.js"></script>
+    <!-- JavaScript Libraries (defer to avoid blocking HTML parsing; order is preserved) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-moment@1.0.1/dist/chartjs-adapter-moment.min.js" defer></script>
     <!-- SheetJS for XLSX export -->
-    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js" defer></script>
 
     <!-- Custom Styles -->
     <link rel="stylesheet" href="styles.css?v=3.0">
@@ -51,6 +51,29 @@
     <script src="js/analytics.js" defer></script>
     <script src="js/dataRefresher.js" defer></script>
     <script src="js/accessibilityHelpers.js" defer></script>
+
+    <!-- Core app scripts (start downloading early; execute after parse in order) -->
+    <script src="js/securityUtils.js?v=1.0" defer></script>
+    <script src="js/performanceOptimizer.js?v=1.0" defer></script>
+    <script src="js/localization.js?v=3.1" defer></script>
+    <script src="js/config.js?v=3.2" defer></script>
+    <script src="js/dataService.js?v=3.1" defer></script>
+    <script src="js/chartService.js?v=3.2" defer></script>
+    <script src="js/enhancedGoogleSheetsService.js?v=3.2" defer></script>
+    <script src="js/dataAggregation.js?v=3.2" defer></script>
+    <script src="js/dateParsingLoader.js?v=3.1" defer></script>
+    <script src="js/statCardService.js?v=3.1" defer></script>
+    <script src="js/forecastCard.js?v=3.1" defer></script>
+    <script src="js/debugPanel.js?v=3.1" defer></script>
+    <script src="js/enhancedDashboard.js?v=3.1" defer></script>
+    <script src="js/streamingUpdates.js?v=3.1" defer></script>
+    <script src="js/yieldsDateFix.js?v=3.1" defer></script>
+    <script src="js/chronogramContent.js?v=3.1" defer></script>
+    <script src="js/chronogramData.js?v=3.1" defer></script>
+    <script src="js/chronogramIntegration.js?v=3.1" defer></script>
+    <script src="js/guidedTour.js?v=3.1" defer></script>
+    <script src="js/deliverablesService.js?v=3.9" defer></script>
+    <script src="js/deliverablesPanel.js?v=3.3" defer></script>
 </head>
 
 <body class="font-inter antialiased" data-theme="light">
@@ -1076,37 +1099,6 @@
             document.getElementById('themeIcon').className = 'fas fa-sun';
         }
     </script>
-
-    <!-- Security Utilities (load first) -->
-    <script src="js/securityUtils.js?v=1.0"></script>
-    
-    <!-- Performance Optimization Utilities -->
-    <script src="js/performanceOptimizer.js?v=1.0"></script>
-    
-    <!-- Core Libraries -->
-    <script src="js/localization.js?v=3.1"></script>
-    <script src="js/config.js?v=3.2"></script>
-
-    <!-- Services -->
-    <script src="js/dataService.js?v=3.1"></script>
-    <script src="js/chartService.js?v=3.2"></script>
-    <script src="js/enhancedGoogleSheetsService.js?v=3.2"></script>
-
-    <!-- Dashboard Components -->
-    <script src="js/dataAggregation.js?v=3.2"></script>
-    <script src="js/dateParsingLoader.js?v=3.1"></script>
-    <script src="js/statCardService.js?v=3.1"></script>
-    <script src="js/forecastCard.js?v=3.1"></script>
-    <script src="js/debugPanel.js?v=3.1"></script>
-    <script src="js/enhancedDashboard.js?v=3.1"></script>
-    <script src="js/streamingUpdates.js?v=3.1"></script>
-    <script src="js/yieldsDateFix.js?v=3.1"></script>
-    <script src="js/chronogramContent.js?v=3.1"></script>
-    <script src="js/chronogramData.js?v=3.1"></script>
-    <script src="js/chronogramIntegration.js?v=3.1"></script>
-    <script src="js/guidedTour.js?v=3.1"></script>
-    <script src="js/deliverablesService.js?v=3.9"></script>
-    <script src="js/deliverablesPanel.js?v=3.3"></script>
 
     <script>
         // Help button to restart tour
