@@ -504,9 +504,8 @@ class EnhancedGoogleSheetsService {
 
             while (retries <= options.maxRetries) {
                 try {
-                    // Add cache-busting parameter for fresh data
-                    const bustUrl = `${url}&_t=${Date.now()}`;
-                    response = await fetch(bustUrl, {
+                    // Avoid adding extra query params: some Google export redirects can reject them.
+                    response = await fetch(url, {
                         cache: 'no-store' // Bypass browser cache
                     });
 
@@ -576,13 +575,11 @@ class EnhancedGoogleSheetsService {
 
             while (retries <= options.maxRetries) {
                 try {
-                    // Add cache-busting parameter
-                    const separator = url.includes('?') ? '&' : '?';
-                    const bustUrl = `${url}${separator}_t=${Date.now()}`;
+                    // Avoid adding extra query params: some Google export redirects can reject them.
                     if (debug) {
                         console.log(`[GoogleSheets] Fetching: ${options.sheetName || 'unknown'} from ${url.substring(0, 80)}...`);
                     }
-                    response = await fetch(bustUrl, { cache: 'no-store' });
+                    response = await fetch(url, { cache: 'no-store' });
 
                     if (response.ok) break;
                     throw new Error(`HTTP ${response.status}`);
@@ -724,7 +721,9 @@ class EnhancedGoogleSheetsService {
                 return rowObject;
             });
 
-            console.debug(`parseCSV parsed ${data.length} rows with headers:`, headers.filter(h => h && h.trim()));
+            if (typeof window !== 'undefined' && window.DEBUG_SHEETS) {
+                console.debug(`parseCSV parsed ${data.length} rows with headers:`, headers.filter(h => h && h.trim()));
+            }
             return data;
 
         } catch (error) {

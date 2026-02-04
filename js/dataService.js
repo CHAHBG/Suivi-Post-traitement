@@ -42,11 +42,7 @@ class DataService {
                 const timeoutId = setTimeout(() => controller.abort(), 8000);
                 
                 try {
-                    // Add cache-busting parameter for fresh data
-                    const separator = url.includes('?') ? '&' : '?';
-                    const bustUrl = `${url}${separator}_t=${Date.now()}`;
-                    
-                    const response = await fetch(bustUrl, { 
+                    const response = await fetch(url, { 
                         signal: controller.signal,
                         cache: 'no-store' // Bypass browser cache for fresh data
                     });
@@ -90,11 +86,8 @@ class DataService {
         try {
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 8000);
-            
-            const separator = url.includes('?') ? '&' : '?';
-            const bustUrl = `${url}${separator}_t=${Date.now()}`;
-            
-            const response = await fetch(bustUrl, { 
+
+            const response = await fetch(url, { 
                 signal: controller.signal,
                 cache: 'no-store'
             });

@@ -176,8 +176,48 @@ class EnhancedDashboard {
                             throw new Error('Missing spreadsheetId or sheets list');
                         }
 
-                        const fetched = await googleService.fetchMultipleSheets(spreadsheetId, sheetsToFetch, options);
-                        data = fetched || {};
+                        // Fetch only the core sheets first for faster first paint,
+                        // then fetch the remaining sheets in the background.
+                        const coreSheetNames = new Set([
+                            'Daily Levee Source',
+                            'Overview Metrics',
+                            'Total-Moyenne',
+                            'Processing Phase 1',
+                            'Processing Phase 2',
+                            'Commune Analysis',
+                            'Collection Projections',
+                            'Display Projections',
+                            'CTASF Projections',
+                            'Public Display Follow-up',
+                            'CTASF Follow-up',
+                            'Post Process Follow-up'
+                        ]);
+
+                        const coreSheets = sheetsToFetch.filter(s => s && coreSheetNames.has(s.name));
+                        const backgroundSheets = sheetsToFetch.filter(s => s && !coreSheetNames.has(s.name));
+
+                        const fetchedCore = await googleService.fetchMultipleSheets(spreadsheetId, coreSheets, options);
+                        data = fetchedCore || {};
+
+                        if (backgroundSheets.length) {
+                            // Background fetch for non-critical sheets (do not block rendering)
+                            Promise.resolve().then(async () => {
+                                try {
+                                    const bg = await googleService.fetchMultipleSheets(
+                                        spreadsheetId,
+                                        backgroundSheets,
+                                        { ...options, useCaching: true, forceRefresh: false }
+                                    );
+
+                                    if (bg && typeof bg === 'object') {
+                                        this.rawData = { ...(this.rawData || {}), ...bg };
+                                        window.rawData = this.rawData;
+                                    }
+                                } catch (_) {
+                                    // ignore background fetch failures
+                                }
+                            });
+                        }
                         // console.info('Data loaded via enhancedGoogleSheetsService', Object.keys(data));
                     } catch (svcErr) {
                         // console.warn('enhancedGoogleSheetsService failed, falling back to dataService:', svcErr);
@@ -208,14 +248,16 @@ class EnhancedDashboard {
             this.rawData = data;
 
             // DEBUG: Inspect loaded data keys and sizes
-            console.group('Dashboard Data Debug');
-            console.log('Raw Data Keys:', Object.keys(this.rawData));
-            Object.keys(this.rawData).forEach(k => {
-                const len = Array.isArray(this.rawData[k]) ? this.rawData[k].length : 0;
-                console.log(`Sheet "${k}": ${len} rows`);
-                if (len > 0) console.log(`  Sample row:`, this.rawData[k][0]);
-            });
-            console.groupEnd();
+            if (window.DEBUG_DASHBOARD) {
+                console.group('Dashboard Data Debug');
+                console.log('Raw Data Keys:', Object.keys(this.rawData));
+                Object.keys(this.rawData).forEach(k => {
+                    const len = Array.isArray(this.rawData[k]) ? this.rawData[k].length : 0;
+                    console.log(`Sheet "${k}": ${len} rows`);
+                    if (len > 0) console.log(`  Sample row:`, this.rawData[k][0]);
+                });
+                console.groupEnd();
+            }
 
             // Normalize keys: ensure canonical names from config are present
             try {
