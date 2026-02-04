@@ -209,10 +209,10 @@ class EnhancedDashboard {
 
             // DEBUG: Inspect loaded data keys and sizes
             console.group('Dashboard Data Debug');
-            // console.log('Raw Data Keys:', Object.keys(this.rawData));
+            console.log('Raw Data Keys:', Object.keys(this.rawData));
             Object.keys(this.rawData).forEach(k => {
                 const len = Array.isArray(this.rawData[k]) ? this.rawData[k].length : 0;
-                // console.log(`Sheet "${k}": ${len} rows`);
+                console.log(`Sheet "${k}": ${len} rows`);
                 if (len > 0) console.log(`  Sample row:`, this.rawData[k][0]);
             });
             console.groupEnd();
