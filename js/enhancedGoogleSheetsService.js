@@ -455,7 +455,7 @@ class EnhancedGoogleSheetsService {
                         }
                         resolve({ name: sheet.name, data: sheetData });
                     } catch (error) {
-                        // Suppressed
+                        console.error(`[GoogleSheets] Failed to fetch "${sheet.name}":`, error.message);
                         resolve({ name: sheet.name, data: [] });
                     }
                 });
@@ -576,11 +576,13 @@ class EnhancedGoogleSheetsService {
                     // Add cache-busting parameter
                     const separator = url.includes('?') ? '&' : '?';
                     const bustUrl = `${url}${separator}_t=${Date.now()}`;
+                    console.log(`[GoogleSheets] Fetching: ${options.sheetName || 'unknown'} from ${url.substring(0, 80)}...`);
                     response = await fetch(bustUrl, { cache: 'no-store' });
 
                     if (response.ok) break;
                     throw new Error(`HTTP ${response.status}`);
                 } catch (error) {
+                    console.warn(`[GoogleSheets] Retry ${retries + 1}/${options.maxRetries} for ${options.sheetName}:`, error.message);
                     if (retries >= options.maxRetries) throw error;
                     await new Promise(r => setTimeout(r, options.retryDelay));
                     retries++;
@@ -592,7 +594,10 @@ class EnhancedGoogleSheetsService {
             }
 
             const csvText = await response.text();
-            return this.parseCSV(csvText);
+            const parsed = this.parseCSV(csvText);
+            console.log(`[GoogleSheets] Parsed ${options.sheetName || 'unknown'}: ${parsed.length} rows`);
+            return parsed;
+        };
         };
 
         // Check cache with stale-while-revalidate
