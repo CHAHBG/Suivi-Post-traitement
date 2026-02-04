@@ -369,107 +369,65 @@ class ChartService {
 
         const dataToUse = window.__fullRawData || rawData;
 
-        // Sequence chart creations with individual error isolation
-        const chartPrompts = [
-            {
-                id: 'overviewDailyYieldsChart', fn: () => {
-                    // console.info('Initializing overviewDailyYieldsChart...');
-                    this.createDailyYieldsChartForCanvas('overviewDailyYieldsChart', rawData);
-                }
-            },
-            {
-                id: 'dailyYieldsChart', fn: () => {
-                    // console.info('Initializing dailyYieldsChart...');
-                    this.createDailyYieldsChartForCanvas('dailyYieldsChart', rawData);
-                }
-            },
-            {
-                id: 'qualityTrendChart', fn: () => {
-                    // console.info('Initializing qualityTrendChart...');
-                    this.createQualityTrendChart(rawData);
-                }
-            },
-            {
-                id: 'regionalTrendChart', fn: () => {
-                    // console.info('Initializing regionalTrendChart...');
-                    this.createRegionalAnalysisCharts(rawData);
-                }
-            },
-            // CTASF Pipeline chart removed
-            {
-                id: 'postProcessingChart', fn: () => {
-                    // console.info('Initializing postProcessingChart...');
-                    this.createPostProcessingChart(rawData);
-                }
-            },
-            {
-                id: 'parcelTypeDistributionChart', fn: () => {
-                    // console.info('Initializing parcelTypeDistributionChart...');
-                    this.createParcelTypeDistributionChart(rawData);
-                }
-            },
-            {
-                id: 'teamProductivityChart', fn: () => {
-                    // console.info('Initializing teamProductivityChart...');
-                    this.createTeamProductivityChart(rawData);
-                }
-            },
-            {
-                id: 'yieldsVsValidationChart', fn: () => {
-                    // console.info('Initializing yieldsVsValidationChart...');
-                    this.createYieldsVsValidationChart(rawData);
-                }
-            },
-            {
-                id: 'validationRateChart', fn: () => {
-                    // console.info('Initializing validationRateChart...');
-                    this.createValidationRateChart(rawData);
-                }
-            },
-            {
-                id: 'burnUpChart', fn: () => {
-                    // console.info('Initializing burnUpChart...');
-                    this.createBurnUpChart(rawData);
-                }
-            },
-            {
-                id: 'velocityDeviationChart', fn: () => {
-                    // console.info('Initializing velocityDeviationChart...');
-                    this.createVelocityDeviationChart(rawData);
-                }
-            },
-            {
-                id: 'statusAgingChart', fn: () => {
-                    // console.info('Initializing statusAgingChart...');
-                    this.createStatusAgingChart(rawData);
-                }
-            },
-            {
-                id: 'bulletCharts', fn: () => {
-                    // console.info('Initializing bulletCharts...');
-                    this.createBulletCharts(rawData);
-                }
-            },
-            {
-                id: 'efficiencyKPIs', fn: () => {
-                    // console.info('Calculating efficiency KPIs...');
-                    this.calculateEfficiencyKPIs(rawData);
-                }
-            },
-            {
-                id: 'gauge-charts', fn: () => {
-                    // console.info('Initializing gauge charts...');
-                    this.createGaugeCharts();
-                }
-            }
+        // Performance: Check for visible charts only (lazy initialization)
+        const isVisible = (id) => {
+            const el = document.getElementById(id);
+            if (!el) return false;
+            // Check if element or parent is hidden
+            const rect = el.getBoundingClientRect();
+            return rect.width > 0 && rect.height > 0;
+        };
+
+        // Priority charts (visible on load) - initialize immediately
+        const priorityCharts = [
+            { id: 'overviewDailyYieldsChart', fn: () => this.createDailyYieldsChartForCanvas('overviewDailyYieldsChart', rawData) },
+            { id: 'dailyYieldsChart', fn: () => this.createDailyYieldsChartForCanvas('dailyYieldsChart', rawData) }
         ];
 
-        for (const task of chartPrompts) {
+        // Secondary charts - defer initialization
+        const secondaryCharts = [
+            { id: 'qualityTrendChart', fn: () => this.createQualityTrendChart(rawData) },
+            { id: 'regionalTrendChart', fn: () => this.createRegionalAnalysisCharts(rawData) },
+            { id: 'postProcessingChart', fn: () => this.createPostProcessingChart(rawData) },
+            { id: 'parcelTypeDistributionChart', fn: () => this.createParcelTypeDistributionChart(rawData) },
+            { id: 'teamProductivityChart', fn: () => this.createTeamProductivityChart(rawData) },
+            { id: 'yieldsVsValidationChart', fn: () => this.createYieldsVsValidationChart(rawData) },
+            { id: 'validationRateChart', fn: () => this.createValidationRateChart(rawData) },
+            { id: 'burnUpChart', fn: () => this.createBurnUpChart(rawData) },
+            { id: 'velocityDeviationChart', fn: () => this.createVelocityDeviationChart(rawData) },
+            { id: 'statusAgingChart', fn: () => this.createStatusAgingChart(rawData) },
+            { id: 'bulletCharts', fn: () => this.createBulletCharts(rawData) },
+            { id: 'efficiencyKPIs', fn: () => this.calculateEfficiencyKPIs(rawData) },
+            { id: 'gauge-charts', fn: () => this.createGaugeCharts() }
+        ];
+
+        // Initialize priority charts synchronously for fast initial render
+        for (const task of priorityCharts) {
             try {
-                task.fn();
+                if (isVisible(task.id)) {
+                    task.fn();
+                }
             } catch (err) {
-                console.error(`[ChartService] Task ${task.id} failed:`, err);
+                console.error(`[ChartService] Priority task ${task.id} failed:`, err);
             }
+        }
+
+        // Use requestIdleCallback for secondary charts (non-blocking)
+        const initSecondary = () => {
+            for (const task of secondaryCharts) {
+                try {
+                    task.fn();
+                } catch (err) {
+                    console.error(`[ChartService] Task ${task.id} failed:`, err);
+                }
+            }
+        };
+
+        if (typeof requestIdleCallback !== 'undefined') {
+            requestIdleCallback(initSecondary, { timeout: 1000 });
+        } else {
+            // Fallback: use setTimeout to yield to browser
+            setTimeout(initSecondary, 50);
         }
 
         // console.log(`[ChartService] Initialized ${this.charts.size} charts.`);
@@ -479,7 +437,18 @@ class ChartService {
     async updateCharts(rawData, precomputedKPIs = null, fullRawData = null, options = {}) {
         // Store timeframe for chart methods to use
         this.currentTimeframe = options.timeframe || 'daily';
-        return this.initializeCharts(rawData, precomputedKPIs, fullRawData);
+        
+        // Performance: Use 'none' animation mode for filter updates
+        if (options.skipAnimation) {
+            Chart.defaults.animation = false;
+        }
+        
+        const result = await this.initializeCharts(rawData, precomputedKPIs, fullRawData);
+        
+        // Restore animation
+        Chart.defaults.animation = true;
+        
+        return result;
     }
 
     /**

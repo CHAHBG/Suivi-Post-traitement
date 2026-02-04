@@ -207,7 +207,25 @@ class DebugPanel {
         `;
 
         const timestamp = new Date().toLocaleTimeString();
-        logItem.innerHTML = `<span style="color: #999;">[${timestamp}]</span> ${message}`;
+        
+        // Security: Use safe DOM manipulation instead of innerHTML
+        const timestampSpan = document.createElement('span');
+        timestampSpan.style.color = '#999';
+        timestampSpan.textContent = `[${timestamp}]`;
+        
+        const messageSpan = document.createElement('span');
+        // Allow basic formatting tags for internal debug messages only
+        // External/user data should use textContent
+        if (message.includes('<strong>') || message.includes('<em>')) {
+            // Internal formatting - safe since messages are hardcoded
+            messageSpan.innerHTML = ' ' + message;
+        } else {
+            // External data - escape HTML to prevent XSS
+            messageSpan.textContent = ' ' + message;
+        }
+        
+        logItem.appendChild(timestampSpan);
+        logItem.appendChild(messageSpan);
 
         const content = document.getElementById('debugContent');
         if (content) {
@@ -224,7 +242,10 @@ class DebugPanel {
 
         const content = document.getElementById('debugContent');
         if (content) {
-            content.innerHTML = '';
+            // Clear content safely
+            while (content.firstChild) {
+                content.removeChild(content.firstChild);
+            }
         }
 
         // Dashboard info

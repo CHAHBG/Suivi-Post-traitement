@@ -88,27 +88,48 @@ class DeliverablesPanel {
 
     /**
      * Render expert breakdown
+     * Security: Uses safe DOM manipulation to prevent XSS
      */
     renderExpertBreakdown() {
         const container = document.getElementById('expertBreakdown');
         if (!container || !this.statistics) return;
 
-        const experts = this.statistics.byExpert;
-        let html = '';
+        // Clear container safely
+        while (container.firstChild) {
+            container.removeChild(container.firstChild);
+        }
 
-        Object.keys(experts).forEach(expert => {
+        const experts = this.statistics.byExpert;
+        const expertKeys = Object.keys(experts);
+
+        if (expertKeys.length === 0) {
+            const noData = document.createElement('div');
+            noData.className = 'text-slate-500';
+            noData.textContent = 'Aucune donnée';
+            container.appendChild(noData);
+            return;
+        }
+
+        expertKeys.forEach(expert => {
             const data = experts[expert];
             const percentage = data.total > 0 ? Math.round((data.valides / data.total) * 100) : 0;
 
-            html += `
-                <div class="flex justify-between items-center">
-                    <span class="text-slate-600">${expert}:</span>
-                    <span class="font-semibold text-slate-700">${data.valides}/${data.total} (${percentage}%)</span>
-                </div>
-            `;
-        });
+            const row = document.createElement('div');
+            row.className = 'flex justify-between items-center';
 
-        container.innerHTML = html || '<div class="text-slate-500">Aucune donnée</div>';
+            const expertSpan = document.createElement('span');
+            expertSpan.className = 'text-slate-600';
+            // Security: Use textContent to prevent XSS from expert names
+            expertSpan.textContent = expert + ':';
+
+            const valueSpan = document.createElement('span');
+            valueSpan.className = 'font-semibold text-slate-700';
+            valueSpan.textContent = `${data.valides}/${data.total} (${percentage}%)`;
+
+            row.appendChild(expertSpan);
+            row.appendChild(valueSpan);
+            container.appendChild(row);
+        });
     }
 
     /**

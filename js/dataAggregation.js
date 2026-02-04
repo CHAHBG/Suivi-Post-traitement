@@ -149,35 +149,80 @@ class DataAggregationService {
         return { current, target: roundedTarget, percentage, gap, status: this.getStatusFromPercentage(percentage) };
     }
 
+    /**
+     * Calculate quality KPI from display follow-up data
+     * @param {Array} data - Raw data array
+     * @returns {Object} Quality KPI metrics
+     */
     calculateQualityKPI(data) {
         let sansErreur = 0, avecErreur = 0;
-        if (Array.isArray(data) && data.length) {
+        
+        // Input validation
+        if (!Array.isArray(data)) {
+            return { sansErreur: 0, avecErreur: 0, total: 0, rate: 0, status: 'danger' };
+        }
+        
+        if (data.length) {
             sansErreur = data.reduce((s, i) => s + this._getNumericField(i, ['Nombre de parcelles affichées sans erreurs', 'parcelles affichées sans erreurs']), 0);
             avecErreur = data.reduce((s, i) => s + this._getNumericField(i, ['Nombre Parcelles avec erreur', 'parcelles avec erreur']), 0);
         }
+        
+        // Ensure non-negative values
+        sansErreur = Math.max(0, sansErreur);
+        avecErreur = Math.max(0, avecErreur);
+        
         const total = sansErreur + avecErreur;
         const rate = total > 0 ? Math.round((sansErreur / total) * 100) : 0;
         const status = rate >= this.config.qualityThreshold ? 'success' : (rate >= this.config.qualityThreshold * 0.8 ? 'warning' : 'danger');
         return { sansErreur, avecErreur, total, rate, status };
     }
 
+    /**
+     * Calculate CTASF KPI from follow-up data
+     * @param {Array} data - Raw data array
+     * @returns {Object} CTASF KPI metrics
+     */
     calculateCTASFKPI(data) {
         let total = 0, retained = 0, toDeliberate = 0, deliberated = 0;
-        if (Array.isArray(data) && data.length) {
+        
+        // Input validation
+        if (!Array.isArray(data)) {
+            return { total: 0, retained: 0, toDeliberate: 0, deliberated: 0, rate: 0, deliberationRate: 0, status: 'danger' };
+        }
+        
+        if (data.length) {
             total = data.reduce((s, i) => s + this._getNumericField(i, ['Nombre parcelles emmenées au CTASF', 'nombre parcelles emmenées au CTASF', 'nombre parcelles emmenées']), 0);
             retained = data.reduce((s, i) => s + this._getNumericField(i, ['Nombre parcelles retenues CTASF', 'nombre parcelles retenues', 'parcelles retenues']), 0);
             toDeliberate = data.reduce((s, i) => s + this._getNumericField(i, ['Nombre parcelles à délibérer', 'nombre parcelles a deliberer', 'parcelles à délibérer']), 0);
             deliberated = data.reduce((s, i) => s + this._getNumericField(i, ['Nombre parcelles délibérées', 'nombre parcelles deliberees', 'parcelles délibérées']), 0);
         }
+        
+        // Ensure non-negative values
+        total = Math.max(0, total);
+        retained = Math.max(0, retained);
+        toDeliberate = Math.max(0, toDeliberate);
+        deliberated = Math.max(0, deliberated);
+        
         const rate = total > 0 ? Math.round((retained / total) * 100) : 0;
         const deliberationRate = toDeliberate > 0 ? Math.round((deliberated / toDeliberate) * 100) : 0;
         const status = rate >= this.config.ctasfConversionThreshold ? 'success' : (rate >= this.config.ctasfConversionThreshold * 0.8 ? 'warning' : 'danger');
         return { total, retained, toDeliberate, deliberated, rate, deliberationRate, status };
     }
 
+    /**
+     * Calculate processing KPI from processing data
+     * @param {Array} data - Raw data array
+     * @returns {Object} Processing KPI metrics
+     */
     calculateProcessingKPI(data) {
         let received = 0, processed = 0, individualJoined = 0, collectiveJoined = 0, noJoin = 0, returned = 0;
-        if (Array.isArray(data) && data.length) {
+        
+        // Input validation
+        if (!Array.isArray(data)) {
+            return { received: 0, processed: 0, individualJoined: 0, collectiveJoined: 0, noJoin: 0, returned: 0, rate: 0, joinRate: 0, status: 'danger' };
+        }
+        
+        if (data.length) {
             received = data.reduce((s, i) => s + this._getNumericField(i, ['Parcelles reçues (Brutes)', 'parcelles recues brutes', 'parcelles reçues']), 0);
             processed = data.reduce((s, i) => s + this._getNumericField(i, ['Parcelles post traitées (Sans Doublons et topoplogie correcte)', 'parcelles post traitee', 'parcelles post traitees']), 0);
             individualJoined = data.reduce((s, i) => s + this._getNumericField(i, ['Parcelles individuelles Jointes', 'parcelles individuelles jointes']), 0);
@@ -185,49 +230,82 @@ class DataAggregationService {
             noJoin = data.reduce((s, i) => s + this._getNumericField(i, ['Parcelles sans jointure', 'parcelles sans jointure']), 0);
             returned = data.reduce((s, i) => s + this._getNumericField(i, ['Parcelles retournées aux topos', 'parcelles retournees aux topos']), 0);
         }
+        
+        // Ensure non-negative values
+        received = Math.max(0, received);
+        processed = Math.max(0, processed);
+        individualJoined = Math.max(0, individualJoined);
+        collectiveJoined = Math.max(0, collectiveJoined);
+        noJoin = Math.max(0, noJoin);
+        returned = Math.max(0, returned);
+        
         const rate = received > 0 ? Math.min(Math.round((processed / received) * 100), 100) : 0;
         const joinRate = processed > 0 ? Math.round(((individualJoined + collectiveJoined) / processed) * 100) : 0;
         const status = rate >= 95 ? 'success' : (rate >= 80 ? 'warning' : 'danger');
         return { received, processed, individualJoined, collectiveJoined, noJoin, returned, rate, joinRate, status };
     }
 
-    getStatusFromPercentage(p) { if (p < 30) return 'danger'; if (p < 70) return 'warning'; return 'success'; }
+    /**
+     * Get status class from percentage value
+     * @param {number} p - Percentage value
+     * @returns {string} Status class name
+     */
+    getStatusFromPercentage(p) { 
+        const pct = Number(p) || 0;
+        if (pct < 30) return 'danger'; 
+        if (pct < 70) return 'warning'; 
+        return 'success'; 
+    }
 
+    /**
+     * Get default KPI values when data is unavailable
+     * @returns {Object} Default KPI structure
+     */
     getDefaultKPIs() {
-        return {
+        return Object.freeze({
             daily: { current: 0, target: 833, percentage: 0, gap: 0, status: 'danger' },
             weekly: { current: 0, target: 5829, percentage: 0, gap: 0, status: 'danger' },
             monthly: { current: 0, target: 60830, percentage: 0, gap: 0, status: 'danger' },
             quality: { sansErreur: 0, avecErreur: 0, total: 0, rate: 0, status: 'danger' },
             ctasf: { total: 0, retained: 0, toDeliberate: 0, deliberated: 0, rate: 0, deliberationRate: 0, status: 'danger' },
             processing: { received: 0, processed: 0, individualJoined: 0, collectiveJoined: 0, noJoin: 0, returned: 0, rate: 0, joinRate: 0, status: 'danger' }
-        };
+        });
     }
 
-    // Generic row-level filtering based on region / commune / timeframe
+    /**
+     * Apply filters to data rows
+     * @param {Array} rows - Data rows to filter
+     * @param {Object} filters - Filter criteria
+     * @param {string} datasetName - Name of the dataset for context
+     * @returns {Array} Filtered rows
+     */
     applyFilters(rows, filters = {}, datasetName = '') {
+        // Input validation
         if (!Array.isArray(rows) || !rows.length) return rows || [];
+        
         const { region, commune, timeframe } = filters;
         let result = rows;
 
         // Region filter (only if region column exists)
-        if (region) {
+        if (region && typeof region === 'string') {
             const regionKey = rows[0] && (('Région' in rows[0]) ? 'Région' : ('Region' in rows[0] ? 'Region' : ('region' in rows[0] ? 'region' : null)));
             if (regionKey) {
+                const normalizedRegion = String(region).toLowerCase().trim();
                 result = result.filter(r => {
                     const val = r[regionKey];
-                    return val ? String(val).toLowerCase() === String(region).toLowerCase() : false;
+                    return val ? String(val).toLowerCase().trim() === normalizedRegion : false;
                 });
             }
         }
 
         // Commune filter (only if commune column exists)
-        if (commune) {
+        if (commune && typeof commune === 'string') {
             const communeKey = rows[0] && (('Commune' in rows[0]) ? 'Commune' : ('commune' in rows[0] ? 'commune' : null));
             if (communeKey) {
+                const normalizedCommune = String(commune).toLowerCase().trim();
                 result = result.filter(r => {
                     const val = r[communeKey];
-                    return val ? String(val).toLowerCase() === String(commune).toLowerCase() : false;
+                    return val ? String(val).toLowerCase().trim() === normalizedCommune : false;
                 });
             }
         }
@@ -237,7 +315,7 @@ class DataAggregationService {
             const candidateDateKeys = ['Date', 'date', 'DATE'];
             const dateKey = candidateDateKeys.find(k => rows[0] && k in rows[0]);
             // Restrict timeframe filtering to known temporal datasets to avoid wiping dimension tables
-            const temporalLike = /yield|projection|follow-up|followup|phase|timeline|processing/i.test(datasetName);
+            const temporalLike = /yield|projection|follow-up|followup|phase|timeline|processing/i.test(String(datasetName));
             if (dateKey && temporalLike) {
                 const today = new Date();
                 const start = new Date(today);
@@ -280,9 +358,22 @@ class DataAggregationService {
         return result;
     }
 
-    // Trend helpers
+    /**
+     * Generate trend data for charts
+     * @param {Array} data - Raw data array
+     * @param {string} dateField - Name of date field
+     * @param {Array} valueFields - Names of value fields
+     * @param {number} days - Number of days to include
+     * @returns {Array} Trend data points
+     */
     generateTrendData(data, dateField, valueFields, days = 30) {
+        // Input validation
         if (!Array.isArray(data) || !data.length) return [];
+        if (!dateField || typeof dateField !== 'string') return [];
+        if (!Array.isArray(valueFields) || !valueFields.length) return [];
+        
+        // Limit days to reasonable range
+        const safeDays = Math.max(1, Math.min(365, Number(days) || 30));
 
         const dateMap = new Map();
 

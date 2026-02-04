@@ -1,51 +1,130 @@
 // Data Service for fetching and processing data from Google Sheets
+// Optimized for performance with stale-while-revalidate caching
 
 class DataService {
     constructor() {
         this.cache = new Map();
-        this.cacheExpiry = 5 * 60 * 1000; // 5 minutes
+        this.cacheExpiry = 3 * 60 * 1000; // 3 minutes - shorter for fresher data
+        this.staleMaxAge = 10 * 60 * 1000; // 10 minutes max stale age
+        this.pendingRequests = new Map(); // Prevent duplicate concurrent requests
+        this.backgroundRefreshes = new Set();
     }
 
-    // Fetch data from Google Sheets
-    async fetchCSV(url) {
+    // Fetch data from Google Sheets with stale-while-revalidate
+    async fetchCSV(url, forceRefresh = false) {
         try {
-            // Check cache first
-            if (this.cache.has(url)) {
+            // Check cache first (unless force refresh)
+            if (!forceRefresh && this.cache.has(url)) {
                 const cached = this.cache.get(url);
-                if (Date.now() - cached.timestamp < this.cacheExpiry) {
+                const age = Date.now() - cached.timestamp;
+                
+                // Fresh cache - return immediately
+                if (age < this.cacheExpiry) {
+                    return cached.data;
+                }
+                
+                // Stale but usable - return and refresh in background
+                if (age < this.staleMaxAge) {
+                    this._backgroundRefresh(url);
                     return cached.data;
                 }
             }
 
-            // Add timeout to fetch (10 seconds)
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 10000);
-            const response = await fetch(url, { signal: controller.signal });
-            clearTimeout(timeoutId);
-            if (!response.ok) {
-                throw new Error(`Network response was not ok: ${response.status}`);
+            // Check for pending request to same URL (deduplication)
+            if (this.pendingRequests.has(url)) {
+                return this.pendingRequests.get(url);
             }
 
-            const csvText = await response.text();
-            const data = UTILS.parseCSV(csvText);
-            // Log parsed row count for debugging
-            // console.debug(`fetchCSV: parsed ${Array.isArray(data) ? data.length : 0} rows from ${url}`);
+            // Create request promise
+            const requestPromise = (async () => {
+                // Add timeout to fetch (8 seconds - reduced for faster failure)
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 8000);
+                
+                try {
+                    // Add cache-busting parameter for fresh data
+                    const separator = url.includes('?') ? '&' : '?';
+                    const bustUrl = `${url}${separator}_t=${Date.now()}`;
+                    
+                    const response = await fetch(bustUrl, { 
+                        signal: controller.signal,
+                        cache: 'no-store' // Bypass browser cache for fresh data
+                    });
+                    clearTimeout(timeoutId);
+                    
+                    if (!response.ok) {
+                        throw new Error(`Network response was not ok: ${response.status}`);
+                    }
 
-            // Update cache
-            this.cache.set(url, {
-                data,
-                timestamp: Date.now()
-            });
+                    const csvText = await response.text();
+                    const data = UTILS.parseCSV(csvText);
 
-            return data;
+                    // Update cache
+                    this.cache.set(url, {
+                        data,
+                        timestamp: Date.now()
+                    });
+
+                    return data;
+                } finally {
+                    clearTimeout(timeoutId);
+                    this.pendingRequests.delete(url);
+                }
+            })();
+
+            // Store pending request
+            this.pendingRequests.set(url, requestPromise);
+            
+            return requestPromise;
         } catch (error) {
-            // Suppressed CSV fetch error log (parsing-related)
+            this.pendingRequests.delete(url);
             throw error;
         }
     }
 
+    // Background refresh for stale-while-revalidate
+    async _backgroundRefresh(url) {
+        if (this.backgroundRefreshes.has(url)) return;
+        
+        this.backgroundRefreshes.add(url);
+        try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 8000);
+            
+            const separator = url.includes('?') ? '&' : '?';
+            const bustUrl = `${url}${separator}_t=${Date.now()}`;
+            
+            const response = await fetch(bustUrl, { 
+                signal: controller.signal,
+                cache: 'no-store'
+            });
+            clearTimeout(timeoutId);
+            
+            if (response.ok) {
+                const csvText = await response.text();
+                const data = UTILS.parseCSV(csvText);
+                this.cache.set(url, { data, timestamp: Date.now() });
+            }
+        } catch (e) {
+            // Silent fail - stale data is still being used
+        } finally {
+            this.backgroundRefreshes.delete(url);
+        }
+    }
+
+    // Clear all cached data
+    clearCache() {
+        this.cache.clear();
+        this.backgroundRefreshes.clear();
+    }
+
     // Fetch all needed data in parallel
-    async getAllData() {
+    async getAllData(forceRefresh = false) {
+        // Clear cache if force refresh
+        if (forceRefresh) {
+            this.clearCache();
+        }
+
         const errors = [];
         const data = {};
         const fetchPromises = [];
@@ -56,13 +135,13 @@ class DataService {
         for (const [key, sheet] of Object.entries(GOOGLE_SHEETS)) {
             // Use the explicit configured name when available, otherwise fallback to the config key
             sheetNames.push(sheet.name || key);
-            fetchPromises.push(this.fetchCSV(sheet.url));
+            fetchPromises.push(this.fetchCSV(sheet.url, forceRefresh));
         }
 
         // Add monitoring sheets to fetch
         for (const [key, sheet] of Object.entries(MONITORING_SHEETS)) {
             sheetNames.push(sheet.name || key);
-            fetchPromises.push(this.fetchCSV(sheet.url));
+            fetchPromises.push(this.fetchCSV(sheet.url, forceRefresh));
         }
 
         // Wait for all fetches to complete with Promise.allSettled for resilience

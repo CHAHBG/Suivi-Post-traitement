@@ -33,16 +33,53 @@ class EnhancedDashboard {
         this.autoRefreshEnabled = true;
         this.autoRefreshInterval = 5 * 60 * 1000; // 5 minutes
 
+        // Performance: debounced refresh for filter changes
+        this._debouncedRefresh = this._debounce(() => {
+            this.refreshDashboard(false);
+        }, 150);
+
+        // Performance: throttled table update
+        this._throttledTableUpdate = this._throttle((data) => {
+            this.populateDataTables(data);
+        }, 200);
+
         // Ensure loading overlay is visible at start
         const loadingOverlay = document.getElementById('loadingOverlay');
         if (loadingOverlay) {
             loadingOverlay.style.display = 'flex';
         }
 
-        // Set a timeout to hide loading overlay after 8 seconds (failsafe)
+        // Set a timeout to hide loading overlay after 6 seconds (reduced failsafe)
         setTimeout(() => {
             this.showLoading(false);
-        }, 8000);
+        }, 6000);
+    }
+
+    /**
+     * Simple debounce implementation
+     * @private
+     */
+    _debounce(fn, wait) {
+        let timeout;
+        return (...args) => {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => fn.apply(this, args), wait);
+        };
+    }
+
+    /**
+     * Simple throttle implementation
+     * @private
+     */
+    _throttle(fn, limit) {
+        let inThrottle = false;
+        return (...args) => {
+            if (!inThrottle) {
+                fn.apply(this, args);
+                inThrottle = true;
+                setTimeout(() => inThrottle = false, limit);
+            }
+        };
     }
 
     /**
@@ -84,8 +121,9 @@ class EnhancedDashboard {
 
     /**
      * Load data and update dashboard components
+     * @param {boolean} forceRefresh - Bypass cache and get fresh data
      */
-    async loadData() {
+    async loadData(forceRefresh = false) {
         try {
             // For development/testing, use mock data
             // In production, fetch from Google Sheets
@@ -126,8 +164,12 @@ class EnhancedDashboard {
                         const sheetsToFetch = Array.isArray(cfg.sheets) ? cfg.sheets : [];
                         const spreadsheetId = cfg.spreadsheetId || '';
 
-                        // Pass apiKey when available to let the service prefer the Values API over CSV export
-                        const options = { apiKey: cfg.apiKey || null, useCaching: true };
+                        // Pass forceRefresh to bypass cache when manually refreshing
+                        const options = { 
+                            apiKey: cfg.apiKey || null, 
+                            useCaching: !forceRefresh,
+                            forceRefresh: forceRefresh 
+                        };
 
                         if (!spreadsheetId || sheetsToFetch.length === 0) {
                             // console.warn('enhancedGoogleSheetsService config incomplete, falling back to dataService');
@@ -803,24 +845,30 @@ class EnhancedDashboard {
             });
         });
 
-        // Region filter change
+        // Region filter change - use debounced refresh for instant feel
         const regionFilter = document.getElementById('regionFilter');
         if (regionFilter) {
             regionFilter.addEventListener('change', () => {
                 this.currentFilters.region = regionFilter.value;
-                this.refreshDashboard();
+                // Instant visual feedback
+                regionFilter.classList.add('filter-updating');
+                this._debouncedRefresh();
+                setTimeout(() => regionFilter.classList.remove('filter-updating'), 300);
             });
         }
 
 
-        // Time filter change
+        // Time filter change - use debounced refresh for instant feel
         const timeFilter = document.getElementById('timeFilter');
         if (timeFilter) {
             timeFilter.addEventListener('change', () => {
                 this.currentFilters.timeframe = timeFilter.value;
-                this.refreshDashboard();
-                // Refresh tables immediately on filter change
-                this.populateDataTables(this.filterData(this.rawData));
+                // Instant visual feedback
+                timeFilter.classList.add('filter-updating');
+                this._debouncedRefresh();
+                // Refresh tables with throttling
+                this._throttledTableUpdate(this.filterData(this.rawData));
+                setTimeout(() => timeFilter.classList.remove('filter-updating'), 300);
             });
         }
 
@@ -851,22 +899,23 @@ class EnhancedDashboard {
     }
 
     /**
-     * Manually refresh the dashboard
+     * Manually refresh the dashboard - forces fresh data from Google Sheets
      */
     async manualRefresh() {
         try {
             this.showLoading(true);
-            // console.log('Manual refresh triggered');
 
-            // Clear Google Sheets cache to get fresh data
+            // Clear ALL cache and force fresh fetch
             const googleService = window.enhancedGoogleSheetsService || window.googleSheetsService;
-            if (googleService) {
+            if (googleService && googleService.clearAllCache) {
+                googleService.clearAllCache();
+            } else if (googleService && googleService.clearCache) {
                 const config = googleService.getPROCASSEFConfig();
                 googleService.clearCache(config.spreadsheetId);
             }
 
-            // Force a full reload from the source (Sheets) so the user gets the latest data
-            await this.loadData();
+            // Force fresh data load
+            await this.loadData(true); // Pass forceRefresh flag
             this.showSuccess('Données actualisées');
 
         } catch (error) {
@@ -874,6 +923,23 @@ class EnhancedDashboard {
             this.showError('Erreur lors de l\'actualisation');
         } finally {
             this.showLoading(false);
+        }
+    }
+
+    /**
+     * Callback for background data refresh (called by GoogleSheetsService)
+     * Updates dashboard with fresh data without showing loading overlay
+     * @param {string} key - Cache key that was refreshed
+     * @param {*} freshData - New data
+     */
+    onBackgroundDataRefresh(key, freshData) {
+        // Silently update if we have fresh data
+        if (freshData && this.isInitialized) {
+            console.info('Background data refresh completed for:', key);
+            // Queue a lightweight dashboard update
+            requestAnimationFrame(() => {
+                this.refreshDashboard(true); // Treat as auto-refresh (no loading overlay)
+            });
         }
     }
 
@@ -1221,6 +1287,7 @@ class EnhancedDashboard {
 
     /**
      * Populate detailed data tables for all sections
+     * Optimized with document fragments and progressive rendering
      */
     populateDataTables(data) {
         if (!data) return;
@@ -1245,100 +1312,92 @@ class EnhancedDashboard {
             return UTILS.formatDate(val);
         };
 
+        // Optimized table render using document fragment
+        const renderTable = (tbodyId, rows, renderRow, maxRows = 150) => {
+            const tbody = document.getElementById(tbodyId);
+            if (!tbody) return;
+            
+            const fragment = document.createDocumentFragment();
+            const limitedRows = rows.slice(0, maxRows);
+            
+            limitedRows.forEach(r => {
+                const tr = renderRow(r);
+                if (tr) fragment.appendChild(tr);
+            });
+            
+            // Single DOM operation
+            tbody.innerHTML = '';
+            tbody.appendChild(fragment);
+        };
+
         // Yields table
         try {
-            const tbody = document.getElementById('yieldsTableBody');
-            if (tbody) {
-                const rows = (data['Yields Projections'] || []).slice(0, 200);
-                tbody.innerHTML = '';
-                rows.forEach(r => {
-                    const tr = document.createElement('tr');
-                    tr.innerHTML = `
-                        <td>${fmtDMY(get(r, ['Date', 'date']))}</td>
-                        <td>${get(r, ['Région', 'Region', 'region'])}</td>
-                        <td>${get(r, ['Commune', 'commune'])}</td>
-                        <td>${get(r, ['Nombre de levées', 'Nombre de Levees', 'Nombre de levees', 'levées', 'levees'])}</td>
-                        <td></td>
-                    `;
-                    tbody.appendChild(tr);
-                });
-            }
+            renderTable('yieldsTableBody', data['Yields Projections'] || [], (r) => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${fmtDMY(get(r, ['Date', 'date']))}</td>
+                    <td>${get(r, ['Région', 'Region', 'region'])}</td>
+                    <td>${get(r, ['Commune', 'commune'])}</td>
+                    <td>${get(r, ['Nombre de levées', 'Nombre de Levees', 'Nombre de levees', 'levées', 'levees'])}</td>
+                    <td></td>
+                `;
+                return tr;
+            });
         } catch (e) { console.warn('Yields table render error', e); }
 
         // Public Display Follow-up table
         try {
-            const tbody = document.getElementById('displayTableBody');
-            if (tbody) {
-                const rows = (data['Public Display Follow-up'] || []).slice(0, 200);
-                tbody.innerHTML = '';
-                rows.forEach(r => {
-                    const tr = document.createElement('tr');
-                    tr.innerHTML = `
-                        <td>${fmtDMY(get(r, ['Date', 'date']))}</td>
-                        <td>${get(r, ['Région', 'Region', 'region'])}</td>
-                        <td>${get(r, ['Commune', 'commune'])}</td>
-                        <td>${get(r, ['Nombre de parcelles affichées sans erreurs'])}</td>
-                        <td>${get(r, ['Nombre Parcelles avec erreur'])}</td>
-                        <td>${get(r, ['Motif retour', 'Motif'])}</td>
-                    `;
-                    tbody.appendChild(tr);
-                });
-            }
+            renderTable('displayTableBody', data['Public Display Follow-up'] || [], (r) => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${fmtDMY(get(r, ['Date', 'date']))}</td>
+                    <td>${get(r, ['Région', 'Region', 'region'])}</td>
+                    <td>${get(r, ['Commune', 'commune'])}</td>
+                    <td>${get(r, ['Nombre de parcelles affichées sans erreurs'])}</td>
+                    <td>${get(r, ['Nombre Parcelles avec erreur'])}</td>
+                    <td>${get(r, ['Motif retour', 'Motif'])}</td>
+                `;
+                return tr;
+            });
         } catch (e) { console.warn('Display table render error', e); }
 
         // CTASF Follow-up table
         try {
-            const tbody = document.getElementById('ctasfTableBody');
-            if (tbody) {
-                const rows = (data['CTASF Follow-up'] || []).slice(0, 200);
-                tbody.innerHTML = '';
-                rows.forEach(r => {
-                    const tr = document.createElement('tr');
-                    tr.innerHTML = `
-                        <td>${fmtDMY(get(r, ['Date', 'date']))}</td>
-                        <td>${get(r, ['Région', 'Region', 'region'])}</td>
-                        <td>${get(r, ['Commune', 'commune'])}</td>
-                        <td>${get(r, ['Nombre parcelles emmenées au CTASF'])}</td>
-                        <td>${get(r, ['Nombre parcelles retenues CTASF'])}</td>
-                        <td>${get(r, ['Nombre parcelles à délibérer', 'Nombre parcelles a deliberer'])}</td>
-                        <td>${get(r, ['Nombre parcelles délibérées', 'Nombre parcelles deliberees'])}</td>
-                    `;
-                    tbody.appendChild(tr);
-                });
-            }
+            renderTable('ctasfTableBody', data['CTASF Follow-up'] || [], (r) => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${fmtDMY(get(r, ['Date', 'date']))}</td>
+                    <td>${get(r, ['Région', 'Region', 'region'])}</td>
+                    <td>${get(r, ['Commune', 'commune'])}</td>
+                    <td>${get(r, ['Nombre parcelles emmenées au CTASF'])}</td>
+                    <td>${get(r, ['Nombre parcelles retenues CTASF'])}</td>
+                    <td>${get(r, ['Nombre parcelles à délibérer', 'Nombre parcelles a deliberer'])}</td>
+                    <td>${get(r, ['Nombre parcelles délibérées', 'Nombre parcelles deliberees'])}</td>
+                `;
+                return tr;
+            });
         } catch (e) { console.warn('CTASF table render error', e); }
 
         // Post Process Follow-up table
         try {
-            const tbody = document.getElementById('processingTableBody');
-            if (tbody) {
-                const sheetData = data['Post Process Follow-up'] || data['Post Process Follow up'] || data['postProcessFollowup'] || [];
-                // console.info(`[DEBUG populateDataTables] Post Process table: found ${sheetData.length} rows`);
-                if (sheetData.length > 0) {
-                    // console.info(`[DEBUG populateDataTables] Sample row:`, sheetData[0]);
-                    // console.info(`[DEBUG populateDataTables] Sample row keys:`, Object.keys(sheetData[0]));
-                }
-                const rows = sheetData.slice(0, 200);
-                tbody.innerHTML = '';
-                rows.forEach(r => {
-                    const tr = document.createElement('tr');
-                    tr.innerHTML = `
-                        <td>${fmtDMY(get(r, ['Date', 'date']))}</td>
-                        <td>${get(r, ['PrenonTopo', 'Prenom Topo', 'PrenomTopo'])}</td>
-                        <td>${get(r, ['NomTopp', 'Nom Topo', 'NomTopo'])}</td>
-                        <td>${get(r, ['Commune', 'commune'])}</td>
-                        <td>${get(r, ['Zone', 'zone'])}</td>
-                        <td>${get(r, ['Village', 'village'])}</td>
-                        <td>${get(r, ['Parcelles Brutes  par topo', 'Parcelles Brutes par topo'])}</td>
-                        <td>${get(r, ['Parcelles validees par Topo', 'Parcelles validées par Topo'])}</td>
-                        <td>${get(r, ['Parcelles Total Validee Equipe A', 'Total Equipe A'])}</td>
-                        <td>${get(r, ['Parcelles Total Validee Equipe B', 'Total Equipe B'])}</td>
-                        <td>${get(r, ['Geomaticien', 'Géomaticien', 'geomaticien'])}</td>
-                    `;
-                    tbody.appendChild(tr);
-                });
-                // console.info(`[DEBUG populateDataTables] Post Process table populated with ${rows.length} rows`);
-            }
+            const sheetData = data['Post Process Follow-up'] || data['Post Process Follow up'] || data['postProcessFollowup'] || [];
+            renderTable('processingTableBody', sheetData, (r) => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${fmtDMY(get(r, ['Date', 'date']))}</td>
+                    <td>${get(r, ['PrenonTopo', 'Prenom Topo', 'PrenomTopo'])}</td>
+                    <td>${get(r, ['NomTopp', 'Nom Topo', 'NomTopo'])}</td>
+                    <td>${get(r, ['Commune', 'commune'])}</td>
+                    <td>${get(r, ['Zone', 'zone'])}</td>
+                    <td>${get(r, ['Village', 'village'])}</td>
+                    <td>${get(r, ['Parcelles Brutes  par topo', 'Parcelles Brutes par topo'])}</td>
+                    <td>${get(r, ['Parcelles validees par Topo', 'Parcelles validées par Topo'])}</td>
+                    <td>${get(r, ['Parcelles Total Validee Equipe A', 'Total Equipe A'])}</td>
+                    <td>${get(r, ['Parcelles Total Validee Equipe B', 'Total Equipe B'])}</td>
+                    <td>${get(r, ['Geomaticien', 'Géomaticien', 'geomaticien'])}</td>
+                `;
+                return tr;
+            });
         } catch (e) { console.warn('Processing table render error', e); }
     }
 

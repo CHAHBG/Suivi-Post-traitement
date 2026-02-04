@@ -30,10 +30,10 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="manifest" href="/manifest.webmanifest">
     <meta name="theme-color" content="#4f46e5">
-    <!-- Minimal Content Security Policy (meta fallback) - recommend setting on server for production -->
-    <!-- CSP: allow HTTPS-hosted fonts and data URIs (keeps policy permissive for CDNs; tighten on server if possible) -->
+    <!-- Content Security Policy (meta fallback) - server headers take precedence -->
+    <!-- Note: 'unsafe-eval' removed to prevent eval() injection attacks -->
     <meta http-equiv="Content-Security-Policy"
-        content="default-src 'self' https:; script-src 'self' https: 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: https:; connect-src 'self' https: https://docs.google.com; font-src 'self' https: data:;">
+        content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://cdn.sheetjs.com https://www.googletagmanager.com 'unsafe-inline'; style-src 'self' https://cdnjs.cloudflare.com 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://docs.google.com https://sheets.googleapis.com https://*.google.com https://www.google-analytics.com; font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com data:; base-uri 'self'; form-action 'self';">
 
     <!-- JavaScript Libraries -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
@@ -1077,14 +1077,20 @@
         }
     </script>
 
+    <!-- Security Utilities (load first) -->
+    <script src="js/securityUtils.js?v=1.0"></script>
+    
+    <!-- Performance Optimization Utilities -->
+    <script src="js/performanceOptimizer.js?v=1.0"></script>
+    
     <!-- Core Libraries -->
     <script src="js/localization.js?v=3.1"></script>
     <script src="js/config.js?v=3.2"></script>
 
     <!-- Services -->
     <script src="js/dataService.js?v=3.1"></script>
-    <script src="js/chartService.js?v=3.1"></script>
-    <script src="js/enhancedGoogleSheetsService.js?v=3.1"></script>
+    <script src="js/chartService.js?v=3.2"></script>
+    <script src="js/enhancedGoogleSheetsService.js?v=3.2"></script>
 
     <!-- Dashboard Components -->
     <script src="js/dataAggregation.js?v=3.2"></script>

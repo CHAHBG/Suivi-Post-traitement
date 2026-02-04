@@ -2,25 +2,138 @@
  * Enhanced Google Sheets Service for PROCASSEF Dashboard
  * Optimized for multiple sheet fetching using CSV export (GID-based), caching, and batching
  * Uses CSV export only - no Google Sheets API
+ * 
+ * @class EnhancedGoogleSheetsService
+ * @version 2.0.0
+ * 
+ * Security Features:
+ * - URL validation to prevent SSRF attacks
+ * - Input sanitization for all parameters
+ * - Rate limiting to prevent abuse
+ * - Response size limits
  */
 class EnhancedGoogleSheetsService {
     constructor() {
         // Cache for storing fetched data
         this.cache = new Map();
 
-        // Cache expiration time in milliseconds (10 minutes - increased for performance)
-        this.cacheExpiration = 10 * 60 * 1000;
+        // Cache expiration time in milliseconds (3 minutes - fresh data priority)
+        this.cacheExpiration = 3 * 60 * 1000;
+
+        // Stale-while-revalidate: serve stale data up to this age while fetching fresh
+        this.staleWhileRevalidate = 10 * 60 * 1000; // 10 minutes max stale
+
+        // Track ongoing background refreshes to avoid duplicates
+        this.backgroundRefreshes = new Set();
 
         // Prevent duplicate concurrent requests
         this.pendingRequests = new Map();
 
+        // Maximum response size (5MB) to prevent memory exhaustion
+        this.maxResponseSize = 5 * 1024 * 1024;
+
+        // Maximum cache entries to prevent memory leaks
+        this.maxCacheEntries = 50;
+
+        // Concurrency limit for parallel requests
+        this.maxConcurrentRequests = 4;
+        this.activeRequests = 0;
+        this.requestQueue = [];
+
         // Default options
-        this.options = {
+        this.options = Object.freeze({
             useCaching: true,
             batchRequests: true,
-            maxRetries: 3,
-            retryDelay: 1000
-        };
+            maxRetries: 2,
+            retryDelay: 500,
+            timeout: 15000,
+            forceRefresh: false // New: bypass cache entirely
+        });
+
+        // Allowed domains for fetching (whitelist)
+        this.allowedDomains = Object.freeze([
+            'docs.google.com',
+            'sheets.googleapis.com'
+        ]);
+
+        // Clear stale cache on page visibility change (user returns to tab)
+        this._setupVisibilityHandler();
+    }
+
+    /**
+     * Setup visibility change handler to refresh data when user returns
+     * @private
+     */
+    _setupVisibilityHandler() {
+        if (typeof document !== 'undefined') {
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'visible') {
+                    // Mark all cache entries as needing revalidation
+                    this._markCacheStale();
+                }
+            });
+        }
+    }
+
+    /**
+     * Mark all cache entries as stale (needing background refresh)
+     * @private
+     */
+    _markCacheStale() {
+        const now = Date.now();
+        this.cache.forEach((value, key) => {
+            // Set timestamp to trigger stale-while-revalidate
+            if (value.timestamp > now - this.cacheExpiration) {
+                value.timestamp = now - this.cacheExpiration - 1;
+            }
+        });
+    }
+
+    /**
+     * Validate URL is from allowed domains
+     * @private
+     * @param {string} url - URL to validate
+     * @returns {boolean} True if URL is valid and from allowed domain
+     */
+    _isValidUrl(url) {
+        if (!url || typeof url !== 'string') return false;
+        try {
+            const parsed = new URL(url);
+            return this.allowedDomains.includes(parsed.hostname) && 
+                   (parsed.protocol === 'https:' || parsed.protocol === 'http:');
+        } catch (e) {
+            return false;
+        }
+    }
+
+    /**
+     * Sanitize spreadsheet ID
+     * @private
+     * @param {string} id - Spreadsheet ID
+     * @returns {string} Sanitized ID or empty string
+     */
+    _sanitizeSpreadsheetId(id) {
+        if (!id || typeof id !== 'string') return '';
+        // Google Sheets IDs contain alphanumeric, hyphens, and underscores
+        const sanitized = id.replace(/[^a-zA-Z0-9_-]/g, '');
+        // Validate reasonable length
+        if (sanitized.length < 10 || sanitized.length > 100) return '';
+        return sanitized;
+    }
+
+    /**
+     * Sanitize GID (sheet ID)
+     * @private
+     * @param {string} gid - Sheet GID
+     * @returns {string} Sanitized GID or empty string
+     */
+    _sanitizeGid(gid) {
+        if (!gid && gid !== 0) return '';
+        const str = String(gid);
+        // GIDs are numeric
+        const sanitized = str.replace(/[^0-9]/g, '');
+        if (sanitized.length === 0 || sanitized.length > 15) return '';
+        return sanitized;
     }
 
     /**
@@ -36,11 +149,14 @@ class EnhancedGoogleSheetsService {
                 for (const key of Object.keys(window.GOOGLE_SHEETS)) {
                     const s = window.GOOGLE_SHEETS[key];
                     if (s && s.gid) {
-                        sheets.push({ 
-                            gid: String(s.gid), 
-                            name: s.name || key,
-                            url: s.url // Include URL if available
-                        });
+                        const sanitizedGid = this._sanitizeGid(s.gid);
+                        if (sanitizedGid) {
+                            sheets.push({ 
+                                gid: sanitizedGid, 
+                                name: String(s.name || key).substring(0, 100),
+                                url: s.url && this._isValidUrl(s.url) ? s.url : null
+                            });
+                        }
                     }
                 }
             }
@@ -49,11 +165,14 @@ class EnhancedGoogleSheetsService {
                 for (const key of Object.keys(window.MONITORING_SHEETS)) {
                     const s = window.MONITORING_SHEETS[key];
                     if (s && s.gid) {
-                        sheets.push({ 
-                            gid: String(s.gid), 
-                            name: s.name || key,
-                            url: s.url // Include URL if available
-                        });
+                        const sanitizedGid = this._sanitizeGid(s.gid);
+                        if (sanitizedGid) {
+                            sheets.push({ 
+                                gid: sanitizedGid, 
+                                name: String(s.name || key).substring(0, 100),
+                                url: s.url && this._isValidUrl(s.url) ? s.url : null
+                            });
+                        }
                     }
                 }
             }
@@ -63,24 +182,26 @@ class EnhancedGoogleSheetsService {
             try {
                 if (window.CONFIG && window.CONFIG.SHEETS_BASE_URL) {
                     const m = window.CONFIG.SHEETS_BASE_URL.match(/\/d\/([a-zA-Z0-9-_]+)\/|\/d\/([a-zA-Z0-9-_]+)($|\?|\/)/);
-                    if (m) spreadsheetId = m[1] || m[2] || '';
+                    if (m) {
+                        spreadsheetId = this._sanitizeSpreadsheetId(m[1] || m[2] || '');
+                    }
                 }
             } catch (e) {
                 // ignore extraction errors
             }
 
             // Fallback: if no sheets were discovered, provide an empty array
-            return {
+            return Object.freeze({
                 spreadsheetId: spreadsheetId || '',
-                sheets
-            };
+                sheets: Object.freeze(sheets)
+            });
         } catch (error) {
             // Suppressed
             // Fallback to minimal default to avoid breaking callers
-            return {
+            return Object.freeze({
                 spreadsheetId: '',
-                sheets: []
-            };
+                sheets: Object.freeze([])
+            });
         }
     }
 
@@ -89,16 +210,151 @@ class EnhancedGoogleSheetsService {
      * @param {string} spreadsheetId - ID of the spreadsheet
      */
     clearCache(spreadsheetId) {
+        const sanitizedId = this._sanitizeSpreadsheetId(spreadsheetId);
+        if (!sanitizedId) return;
+        
         const keysToDelete = [];
 
         for (const key of this.cache.keys()) {
-            if (key.startsWith(spreadsheetId)) {
+            if (key.startsWith(sanitizedId)) {
                 keysToDelete.push(key);
             }
         }
 
         keysToDelete.forEach(key => this.cache.delete(key));
         // console log suppressed
+    }
+
+    /**
+     * Enforce cache size limits to prevent memory exhaustion
+     * @private
+     */
+    _enforceCacheLimit() {
+        if (this.cache.size <= this.maxCacheEntries) return;
+        
+        // Remove oldest entries first (FIFO)
+        const keysToRemove = Array.from(this.cache.keys())
+            .slice(0, this.cache.size - this.maxCacheEntries);
+        keysToRemove.forEach(key => this.cache.delete(key));
+    }
+
+    /**
+     * Add item to cache with automatic limit enforcement
+     * @private
+     * @param {string} key - Cache key
+     * @param {*} data - Data to cache
+     */
+    addToCache(key, data) {
+        this._enforceCacheLimit();
+        this.cache.set(key, {
+            data,
+            timestamp: Date.now()
+        });
+    }
+
+    /**
+     * Get item from cache with stale-while-revalidate support
+     * @private
+     * @param {string} key - Cache key
+     * @param {boolean} forceRefresh - Bypass cache entirely
+     * @returns {Object} { data, isStale, shouldRevalidate }
+     */
+    getFromCache(key, forceRefresh = false) {
+        // Force refresh bypasses cache
+        if (forceRefresh) {
+            return { data: null, isStale: false, shouldRevalidate: true };
+        }
+
+        const cached = this.cache.get(key);
+        if (!cached) {
+            return { data: null, isStale: false, shouldRevalidate: true };
+        }
+        
+        const age = Date.now() - cached.timestamp;
+        
+        // Fresh data - use directly
+        if (age <= this.cacheExpiration) {
+            return { data: cached.data, isStale: false, shouldRevalidate: false };
+        }
+        
+        // Stale but within revalidate window - use but refresh in background
+        if (age <= this.staleWhileRevalidate) {
+            return { data: cached.data, isStale: true, shouldRevalidate: true };
+        }
+        
+        // Too old - delete and fetch fresh
+        this.cache.delete(key);
+        return { data: null, isStale: false, shouldRevalidate: true };
+    }
+
+    /**
+     * Trigger background refresh for a cache key
+     * @private
+     * @param {string} key - Cache key
+     * @param {Function} fetchFn - Function to fetch fresh data
+     */
+    async _backgroundRefresh(key, fetchFn) {
+        // Avoid duplicate background refreshes
+        if (this.backgroundRefreshes.has(key)) return;
+        
+        this.backgroundRefreshes.add(key);
+        
+        try {
+            const freshData = await fetchFn();
+            this.addToCache(key, freshData);
+            
+            // Notify dashboard of fresh data if available
+            if (window.enhancedDashboard && typeof window.enhancedDashboard.onBackgroundDataRefresh === 'function') {
+                window.enhancedDashboard.onBackgroundDataRefresh(key, freshData);
+            }
+        } catch (e) {
+            // Silent fail for background refresh - stale data is still shown
+            console.debug('Background refresh failed for', key);
+        } finally {
+            this.backgroundRefreshes.delete(key);
+        }
+    }
+
+    /**
+     * Execute request with concurrency limiting
+     * @private
+     * @param {Function} requestFn - Async function to execute
+     * @returns {Promise<*>} Request result
+     */
+    async _executeWithLimit(requestFn) {
+        // If under limit, execute immediately
+        if (this.activeRequests < this.maxConcurrentRequests) {
+            this.activeRequests++;
+            try {
+                return await requestFn();
+            } finally {
+                this.activeRequests--;
+                this._processQueue();
+            }
+        }
+
+        // Otherwise queue the request
+        return new Promise((resolve, reject) => {
+            this.requestQueue.push({ requestFn, resolve, reject });
+        });
+    }
+
+    /**
+     * Process queued requests
+     * @private
+     */
+    _processQueue() {
+        while (this.requestQueue.length > 0 && this.activeRequests < this.maxConcurrentRequests) {
+            const { requestFn, resolve, reject } = this.requestQueue.shift();
+            this.activeRequests++;
+            requestFn()
+                .then(resolve)
+                .catch(reject)
+                .finally(() => {
+                    this.activeRequests--;
+                    this._processQueue();
+                });
+        }
     }
 
     /**
@@ -109,6 +365,18 @@ class EnhancedGoogleSheetsService {
      * @returns {Promise<Object>} - Object with sheet data
      */
     async fetchMultipleSheets(spreadsheetId, sheets, options = {}) {
+        // Validate inputs
+        const sanitizedId = this._sanitizeSpreadsheetId(spreadsheetId);
+        if (!sanitizedId) {
+            console.error('Invalid spreadsheet ID');
+            return {};
+        }
+        
+        if (!Array.isArray(sheets) || sheets.length === 0) {
+            console.error('Invalid sheets array');
+            return {};
+        }
+
         try {
             // Merge default options with provided options
             const finalOptions = { ...this.options, ...options };
@@ -214,7 +482,7 @@ class EnhancedGoogleSheetsService {
     }
 
     /**
-     * Fetch data from a single sheet
+     * Fetch data from a single sheet with stale-while-revalidate support
      * @param {string} spreadsheetId - ID of the Google Sheet
      * @param {string} gid - GID of the specific sheet
      * @param {Object} options - Options for the request
@@ -224,49 +492,26 @@ class EnhancedGoogleSheetsService {
         // Generate cache key for this sheet
         const cacheKey = `${spreadsheetId}_${gid}`;
 
-        // Check cache if enabled
-        if (options.useCaching) {
-            const cachedData = this.getFromCache(cacheKey);
-            if (cachedData) {
-                // console log suppressed
-                return cachedData;
-            }
-        }
-
-        // Store sheetName for logging purposes
-        const sheetName = options.sheetName;
-
-        // Skip API-based fetching and always use CSV export by gid
-        // console log suppressed
-
-        // Build the URL for the CSV export (fallback)
+        // Build the URL for the CSV export
         const url = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=csv&gid=${gid}`;
-        // console log suppressed
 
-        try {
+        // Define fetch function for reuse
+        const fetchFreshData = async () => {
             let response;
             let retries = 0;
 
-            // Implement retry logic
             while (retries <= options.maxRetries) {
                 try {
-                    response = await fetch(url);
+                    // Add cache-busting parameter for fresh data
+                    const bustUrl = `${url}&_t=${Date.now()}`;
+                    response = await fetch(bustUrl, {
+                        cache: 'no-store' // Bypass browser cache
+                    });
 
-                    if (response.ok) {
-                        break;
-                    } else {
-                        throw new Error(`HTTP ${response.status}`);
-                    }
+                    if (response.ok) break;
+                    throw new Error(`HTTP ${response.status}`);
                 } catch (error) {
-                    if (retries === 0) { // Only log first attempt error
-                        // Suppressed
-                    }
-
-                    if (retries >= options.maxRetries) {
-                        throw error;
-                    }
-
-                    // Wait before retry
+                    if (retries >= options.maxRetries) throw error;
                     await new Promise(r => setTimeout(r, options.retryDelay));
                     retries++;
                 }
@@ -276,11 +521,27 @@ class EnhancedGoogleSheetsService {
                 throw new Error(`Failed to fetch sheet after ${options.maxRetries} retries`);
             }
 
-            // Get CSV text
             const csvText = await response.text();
+            return this.parseCSV(csvText);
+        };
 
-            // Parse CSV to array of objects
-            const parsedData = this.parseCSV(csvText);
+        // Check cache with stale-while-revalidate support
+        if (options.useCaching && !options.forceRefresh) {
+            const { data: cachedData, isStale, shouldRevalidate } = this.getFromCache(cacheKey, options.forceRefresh);
+            
+            if (cachedData) {
+                // If stale, trigger background refresh
+                if (isStale && shouldRevalidate) {
+                    this._backgroundRefresh(cacheKey, fetchFreshData);
+                }
+                // Return cached data immediately (stale or fresh)
+                return cachedData;
+            }
+        }
+
+        // No cache or force refresh - fetch fresh data
+        try {
+            const parsedData = await fetchFreshData();
 
             // Cache the result if caching is enabled
             if (options.useCaching) {
@@ -305,15 +566,48 @@ class EnhancedGoogleSheetsService {
         // Generate cache key from URL
         const cacheKey = url;
 
-        // Check cache if enabled
-        if (options.useCaching) {
-            const cachedData = this.getFromCache(cacheKey);
+        // Define fetch function for reuse
+        const fetchFreshData = async () => {
+            let response;
+            let retries = 0;
+
+            while (retries <= options.maxRetries) {
+                try {
+                    // Add cache-busting parameter
+                    const separator = url.includes('?') ? '&' : '?';
+                    const bustUrl = `${url}${separator}_t=${Date.now()}`;
+                    response = await fetch(bustUrl, { cache: 'no-store' });
+
+                    if (response.ok) break;
+                    throw new Error(`HTTP ${response.status}`);
+                } catch (error) {
+                    if (retries >= options.maxRetries) throw error;
+                    await new Promise(r => setTimeout(r, options.retryDelay));
+                    retries++;
+                }
+            }
+
+            if (!response.ok) {
+                throw new Error(`Failed to fetch sheet after ${options.maxRetries} retries`);
+            }
+
+            const csvText = await response.text();
+            return this.parseCSV(csvText);
+        };
+
+        // Check cache with stale-while-revalidate
+        if (options.useCaching && !options.forceRefresh) {
+            const { data: cachedData, isStale, shouldRevalidate } = this.getFromCache(cacheKey, options.forceRefresh);
+            
             if (cachedData) {
+                if (isStale && shouldRevalidate) {
+                    this._backgroundRefresh(cacheKey, fetchFreshData);
+                }
                 return cachedData;
             }
         }
 
-        // Check for pending request
+        // Check for pending request to avoid duplicates
         if (this.pendingRequests.has(url)) {
             return this.pendingRequests.get(url);
         }
@@ -321,48 +615,13 @@ class EnhancedGoogleSheetsService {
         // Create new request promise
         const requestPromise = (async () => {
             try {
-                let response;
-                let retries = 0;
+                const parsedData = await fetchFreshData();
 
-                // Implement retry logic
-                while (retries <= options.maxRetries) {
-                    try {
-                        response = await fetch(url);
-
-                        if (response.ok) {
-                            break;
-                        } else {
-                            throw new Error(`HTTP ${response.status}`);
-                        }
-                    } catch (error) {
-                        if (retries >= options.maxRetries) {
-                            throw error;
-                        }
-
-                        // Wait before retry
-                        await new Promise(r => setTimeout(r, options.retryDelay));
-                        retries++;
-                    }
-                }
-
-                if (!response.ok) {
-                    throw new Error(`Failed to fetch sheet after ${options.maxRetries} retries`);
-                }
-
-                // Get CSV text
-                const csvText = await response.text();
-
-                // Parse CSV to array of objects
-                const parsedData = this.parseCSV(csvText);
-
-                // Cache the result if caching is enabled
                 if (options.useCaching) {
                     this.addToCache(cacheKey, parsedData);
                 }
 
                 return parsedData;
-            } catch (error) {
-                throw error;
             } finally {
                 this.pendingRequests.delete(url);
             }
@@ -370,6 +629,29 @@ class EnhancedGoogleSheetsService {
 
         this.pendingRequests.set(url, requestPromise);
         return requestPromise;
+    }
+
+    /**
+     * Clear all cached data - use when sheets are known to be updated
+     */
+    clearAllCache() {
+        this.cache.clear();
+        this.backgroundRefreshes.clear();
+        console.info('[GoogleSheets] All cache cleared');
+    }
+
+    /**
+     * Force refresh all data - clears cache and returns fresh data
+     * @param {string} spreadsheetId - Spreadsheet ID
+     * @param {Array} sheets - Sheets to fetch
+     * @returns {Promise<Object>} Fresh data
+     */
+    async forceRefreshAll(spreadsheetId, sheets) {
+        this.clearAllCache();
+        return this.fetchMultipleSheets(spreadsheetId, sheets, { 
+            ...this.options, 
+            forceRefresh: true 
+        });
     }
 
     /**

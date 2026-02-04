@@ -346,31 +346,61 @@ const CHART_CONFIGS = {
     }
 };
 
-// Utility functions
+/**
+ * Utility functions for data formatting, parsing, and validation
+ * @namespace UTILS
+ */
 const UTILS = {
-    // Format numbers with French locale
+    /**
+     * Format numbers with French locale (space as thousands separator)
+     * @param {number} num - Number to format
+     * @returns {string} Formatted number string
+     */
     formatNumber: (num) => {
+        // Input validation
+        if (num === null || num === undefined || isNaN(num)) {
+            return '0';
+        }
+        // Prevent extremely large numbers that could cause issues
+        const safeNum = Math.max(-1e15, Math.min(1e15, Number(num)));
         return new Intl.NumberFormat('fr-FR', {
             minimumFractionDigits: 0,
             maximumFractionDigits: 2
-        }).format(num);
+        }).format(safeNum);
     },
 
-    // Format percentage
+    /**
+     * Format percentage with French locale
+     * @param {number} num - Number to format as percentage (0-100 scale)
+     * @returns {string} Formatted percentage string
+     */
     formatPercentage: (num) => {
+        // Input validation
+        if (num === null || num === undefined || isNaN(num)) {
+            return '0%';
+        }
+        // Clamp to reasonable range
+        const safeNum = Math.max(-1000, Math.min(1000, Number(num)));
         return new Intl.NumberFormat('fr-FR', {
             style: 'percent',
             minimumFractionDigits: 1,
             maximumFractionDigits: 1
-        }).format(num / 100);
+        }).format(safeNum / 100);
     },
 
-    // Robust day-first date parser returning a real Date or null
+    /**
+     * Robust day-first date parser returning a real Date or null
+     * Handles multiple date formats: DD/MM/YYYY, French month names, ISO, etc.
+     * @param {*} val - Value to parse as date
+     * @returns {Date|null} Parsed Date object or null if invalid
+     */
     parseDateDMY: (val) => {
         if (!val && val !== 0) return null;
         // If it's already a Date
         if (val instanceof Date && !isNaN(val)) return val;
-        const str = String(val).trim();
+        
+        // Security: Limit input length to prevent ReDoS attacks
+        const str = String(val).trim().substring(0, 100);
 
         // French month names mapping (full and abbreviated)
         const frenchMonths = {

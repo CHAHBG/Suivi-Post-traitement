@@ -1160,3 +1160,165 @@ canvas {
     border-radius: 4px;
     overflow: hidden;
 }
+
+/* ========================================
+   Performance Optimization Styles
+   ======================================== */
+
+/* Filter updating state - instant visual feedback */
+.filter-updating {
+    opacity: 0.7;
+    pointer-events: none;
+    transition: opacity 0.15s ease;
+}
+
+/* Skeleton loading animation */
+@keyframes skeleton-shimmer {
+    0% { background-position: -200px 0; }
+    100% { background-position: calc(200px + 100%) 0; }
+}
+
+.skeleton-loading {
+    position: relative;
+    overflow: hidden;
+}
+
+.skeleton-loading::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(90deg, 
+        var(--bg-surface) 0%, 
+        var(--border-subtle) 50%, 
+        var(--bg-surface) 100%);
+    background-size: 200px 100%;
+    animation: skeleton-shimmer 1.2s infinite;
+}
+
+/* Skeleton card placeholder */
+.skeleton-card {
+    padding: 1rem;
+}
+
+.skeleton-line {
+    border-radius: 4px;
+}
+
+/* Optimized transitions - GPU accelerated */
+.chart-container canvas,
+.stat-card,
+.kpi-card,
+.card {
+    will-change: transform, opacity;
+    transform: translateZ(0);
+}
+
+/* Reduce motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+    
+    .skeleton-loading::after {
+        animation: none;
+        background: var(--border-subtle);
+    }
+}
+
+/* Lazy-loaded content fade in */
+.lazy-fade-in {
+    animation: fadeInSmooth 0.3s ease forwards;
+}
+
+@keyframes fadeInSmooth {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Loading overlay improvements */
+#loadingOverlay {
+    backdrop-filter: blur(4px);
+    transition: opacity 0.2s ease;
+}
+
+#loadingOverlay.fade-out {
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* Table row virtualization helper */
+.table-virtualized {
+    contain: content;
+}
+
+.table-virtualized tbody {
+    display: block;
+    overflow-y: auto;
+    max-height: 400px;
+}
+
+.table-virtualized thead,
+.table-virtualized tbody tr {
+    display: table;
+    width: 100%;
+    table-layout: fixed;
+}
+
+/* Fast scroll shadow indicators */
+.scroll-shadow-top {
+    box-shadow: inset 0 8px 8px -8px rgba(0, 0, 0, 0.15);
+}
+
+.scroll-shadow-bottom {
+    box-shadow: inset 0 -8px 8px -8px rgba(0, 0, 0, 0.15);
+}
+
+/* Chart loading placeholder */
+.chart-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 200px;
+    background: var(--bg-surface);
+    border-radius: var(--radius-md);
+}
+
+.chart-loading::after {
+    content: '';
+    width: 32px;
+    height: 32px;
+    border: 3px solid var(--border-subtle);
+    border-top-color: var(--color-primary);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Instant hover states */
+.btn-instant-hover {
+    transition: background-color 0.1s, transform 0.1s;
+}
+
+.btn-instant-hover:hover {
+    transform: translateY(-1px);
+}
+
+.btn-instant-hover:active {
+    transform: translateY(0);
+}
