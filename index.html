@@ -1005,21 +1005,18 @@
             try {
                 setTimeout(hideLoadingOverlay, 5000);
 
-                // Wait for scripts to load
-                setTimeout(async () => {
-                    console.log('Initializing PROCASSEF Dashboard...');
-                    // Make sure EnhancedDashboard is available
-                    if (typeof EnhancedDashboard === 'undefined') {
-                        console.error('EnhancedDashboard class not found! Check script loading order.');
-                        return;
-                    }
+                console.log('Initializing PROCASSEF Dashboard...');
+                // With `defer` script loading, EnhancedDashboard should be ready by DOMContentLoaded.
+                if (typeof EnhancedDashboard === 'undefined') {
+                    console.error('EnhancedDashboard class not found! Check script loading order.');
+                    return;
+                }
 
-                    window.dashboard = new EnhancedDashboard();
-                    await window.dashboard.initialize();
-                    window.dashboardInitialized = true;
-                    console.log('Dashboard ready!');
-                    hideLoadingOverlay();
-                }, 500); // Increased timeout to ensure all scripts are loaded
+                window.dashboard = new EnhancedDashboard();
+                await window.dashboard.initialize();
+                window.dashboardInitialized = true;
+                console.log('Dashboard ready!');
+                hideLoadingOverlay();
             } catch (error) {
                 console.error('Error initializing dashboard:', error);
                 hideLoadingOverlay();

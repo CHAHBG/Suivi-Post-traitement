@@ -9,7 +9,7 @@
  * 
  * @version 2.0.0
  */
-const CACHE_VERSION = 'v2.1.0';
+const CACHE_VERSION = 'v2.1.1';
 const STATIC_CACHE = `static-${CACHE_VERSION}`;
 const DYNAMIC_CACHE = `dynamic-${CACHE_VERSION}`;
 
@@ -122,12 +122,16 @@ self.addEventListener('fetch', (event) => {
     return; // Invalid URL
   }
 
-  // Security: Only cache same-origin or trusted external requests
-  if (!isTrustedDomain(url)) {
-    return; // Let browser handle untrusted domains
+  // Important: do not intercept cross-origin requests.
+  // This avoids CSP connect-src violations caused by SW-initiated fetches
+  // for CDN styles/scripts/fonts, and lets the browser handle them normally.
+  if (url.origin !== self.location.origin) {
+    return;
   }
 
-  // Cache-first strategy for static assets
+  // Security: only handle same-origin requests (cross-origin already returned above)
+
+  // Cache-first strategy for static assets (same-origin only)
   if (isStaticAsset(request)) {
     event.respondWith(
       caches.match(request).then(cached => {
@@ -145,21 +149,19 @@ self.addEventListener('fetch', (event) => {
   }
 
   // Network-first strategy for dynamic data (same-origin only)
-  if (url.origin === self.location.origin) {
-    event.respondWith(
-      fetch(request, { cache: 'no-store' })
-        .then(response => {
-          if (response.ok) {
-            const clone = response.clone();
-            caches.open(DYNAMIC_CACHE).then(cache => {
-              cache.put(request, clone);
-              // Limit dynamic cache size
-              limitCacheSize(DYNAMIC_CACHE, MAX_DYNAMIC_CACHE_ENTRIES);
-            });
-          }
-          return response;
-        })
-        .catch(() => caches.match(request))
-    );
-  }
+  event.respondWith(
+    fetch(request, { cache: 'no-store' })
+      .then(response => {
+        if (response.ok) {
+          const clone = response.clone();
+          caches.open(DYNAMIC_CACHE).then(cache => {
+            cache.put(request, clone);
+            // Limit dynamic cache size
+            limitCacheSize(DYNAMIC_CACHE, MAX_DYNAMIC_CACHE_ENTRIES);
+          });
+        }
+        return response;
+      })
+      .catch(() => caches.match(request))
+  );
 });
