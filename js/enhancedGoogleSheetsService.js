@@ -437,39 +437,37 @@ class EnhancedGoogleSheetsService {
      */
     async batchFetchSheets(spreadsheetId, sheets, options) {
         try {
-            // Prepare all fetch promises
+            // Prepare all fetch promises, but run them through the concurrency limiter.
+            // This prevents Google export endpoints from responding with intermittent 400s under load.
             const fetchPromises = sheets.map(sheet => {
-                return new Promise(async (resolve) => {
-                    try {
-                        // Ensure we only use CSV by removing any API key options
-                        const csvOptions = {
-                            ...options,
-                            sheetName: sheet.name
-                        };
-                        delete csvOptions.apiKey;
+                return this._executeWithLimit(async () => {
+                    // Ensure we only use CSV by removing any API key options
+                    const csvOptions = {
+                        ...options,
+                        sheetName: sheet.name
+                    };
+                    delete csvOptions.apiKey;
 
-                        // If sheet has a custom URL, use it directly
-                        let sheetData;
-                        if (sheet.url) {
-                            sheetData = await this.fetchSheetByURL(sheet.url, csvOptions);
-                        } else {
-                            sheetData = await this.fetchSheet(
-                                spreadsheetId,
-                                sheet.gid,
-                                csvOptions
-                            );
-                        }
-                        resolve({ name: sheet.name, data: sheetData });
-                    } catch (error) {
-                        if (typeof window !== 'undefined' && window.DEBUG_SHEETS) {
-                            console.error(`[GoogleSheets] Failed to fetch "${sheet.name}":`, error);
-                        }
-                        resolve({ name: sheet.name, data: [] });
+                    // If sheet has a custom URL, use it directly
+                    let sheetData;
+                    if (sheet.url) {
+                        sheetData = await this.fetchSheetByURL(sheet.url, csvOptions);
+                    } else {
+                        sheetData = await this.fetchSheet(
+                            spreadsheetId,
+                            sheet.gid,
+                            csvOptions
+                        );
                     }
+                    return { name: sheet.name, data: sheetData };
+                }).catch((error) => {
+                    if (typeof window !== 'undefined' && window.DEBUG_SHEETS) {
+                        console.error(`[GoogleSheets] Failed to fetch "${sheet.name}":`, error);
+                    }
+                    return { name: sheet.name, data: [] };
                 });
             });
 
-            // Execute all fetch promises in parallel
             const results = await Promise.all(fetchPromises);
 
             // Combine results into a single object
@@ -502,6 +500,7 @@ class EnhancedGoogleSheetsService {
 
         // Build the URL for the CSV export
         const url = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=csv&gid=${gid}`;
+        const gvizUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:csv&gid=${gid}`;
 
         // Define fetch function for reuse
         const fetchFreshData = async () => {
@@ -514,6 +513,15 @@ class EnhancedGoogleSheetsService {
                     response = await fetch(url, {
                         cache: 'no-store' // Bypass browser cache
                     });
+
+                    // Fallback: Google export occasionally returns 400 via redirected googleusercontent URLs.
+                    // Try gviz endpoint once before burning retries/delay.
+                    if (!response.ok && response.status === 400) {
+                        const alt = await fetch(gvizUrl, { cache: 'no-store' });
+                        if (alt.ok) {
+                            response = alt;
+                        }
+                    }
 
                     if (response.ok) break;
                     throw new Error(`HTTP ${response.status}`);
@@ -579,6 +587,17 @@ class EnhancedGoogleSheetsService {
             let retries = 0;
             const debug = (typeof window !== 'undefined' && window.DEBUG_SHEETS);
 
+            // If this is a standard docs export URL, prepare a stable gviz fallback.
+            let gvizUrl = null;
+            try {
+                const match = String(url).match(/https:\/\/docs\.google\.com\/spreadsheets\/d\/([^/]+)\/export\?[^#]*gid=(\d+)/i);
+                if (match && match[1] && match[2]) {
+                    gvizUrl = `https://docs.google.com/spreadsheets/d/${match[1]}/gviz/tq?tqx=out:csv&gid=${match[2]}`;
+                }
+            } catch (_) {
+                gvizUrl = null;
+            }
+
             while (retries <= options.maxRetries) {
                 try {
                     // Avoid adding extra query params: some Google export redirects can reject them.
@@ -586,6 +605,13 @@ class EnhancedGoogleSheetsService {
                         console.log(`[GoogleSheets] Fetching: ${options.sheetName || 'unknown'} from ${url.substring(0, 80)}...`);
                     }
                     response = await fetch(url, { cache: 'no-store' });
+
+                    if (!response.ok && response.status === 400 && gvizUrl) {
+                        const alt = await fetch(gvizUrl, { cache: 'no-store' });
+                        if (alt.ok) {
+                            response = alt;
+                        }
+                    }
 
                     if (response.ok) break;
                     throw new Error(`HTTP ${response.status}`);
