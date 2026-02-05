@@ -199,6 +199,24 @@ class EnhancedDashboard {
                         const fetchedCore = await googleService.fetchMultipleSheets(spreadsheetId, coreSheets, options);
                         data = fetchedCore || {};
 
+                        // If critical sheets are empty, retry once with forceRefresh.
+                        // This prevents "all zeros" screens caused by transient HTML/redirect responses being cached.
+                        const critical = ['Daily Levee Source', 'Overview Metrics', 'Commune Analysis', 'Post Process Follow-up'];
+                        const isEmpty = (name) => !Array.isArray(data[name]) || data[name].length === 0;
+                        const criticalEmptyCount = critical.reduce((acc, n) => acc + (isEmpty(n) ? 1 : 0), 0);
+
+                        if (!forceRefresh && criticalEmptyCount >= 2) {
+                            try {
+                                const retryOptions = { ...options, useCaching: false, forceRefresh: true };
+                                const retry = await googleService.fetchMultipleSheets(spreadsheetId, coreSheets, retryOptions);
+                                if (retry && typeof retry === 'object') {
+                                    data = retry;
+                                }
+                            } catch (_) {
+                                // ignore retry errors
+                            }
+                        }
+
                         if (backgroundSheets.length) {
                             // Background fetch for non-critical sheets (do not block rendering)
                             Promise.resolve().then(async () => {

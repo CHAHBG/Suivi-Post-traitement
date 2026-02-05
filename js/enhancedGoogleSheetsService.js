@@ -269,6 +269,12 @@ class EnhancedGoogleSheetsService {
         if (!cached) {
             return { data: null, isStale: false, shouldRevalidate: true };
         }
+
+        // If we cached an empty array (often caused by a transient HTML/redirect response),
+        // treat it as a cache miss so we don't get stuck showing 0 KPIs/charts.
+        if (Array.isArray(cached.data) && cached.data.length === 0) {
+            return { data: null, isStale: false, shouldRevalidate: true };
+        }
         
         const age = Date.now() - cached.timestamp;
         

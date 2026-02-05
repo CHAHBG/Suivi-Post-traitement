@@ -17,16 +17,21 @@ class DataService {
             if (!forceRefresh && this.cache.has(url)) {
                 const cached = this.cache.get(url);
                 const age = Date.now() - cached.timestamp;
-                
-                // Fresh cache - return immediately
-                if (age < this.cacheExpiry) {
-                    return cached.data;
-                }
-                
-                // Stale but usable - return and refresh in background
-                if (age < this.staleMaxAge) {
-                    this._backgroundRefresh(url);
-                    return cached.data;
+
+                // Empty cached data is usually a transient fetch/parse failure; refetch instead of serving empties.
+                if (Array.isArray(cached.data) && cached.data.length === 0) {
+                    // behave like cache miss
+                } else {
+                    // Fresh cache - return immediately
+                    if (age < this.cacheExpiry) {
+                        return cached.data;
+                    }
+                    
+                    // Stale but usable - return and refresh in background
+                    if (age < this.staleMaxAge) {
+                        this._backgroundRefresh(url);
+                        return cached.data;
+                    }
                 }
             }
 

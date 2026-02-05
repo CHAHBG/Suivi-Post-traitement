@@ -1698,7 +1698,9 @@ class ChartService {
 
         try {
             const postProcessSheet = this.findSheet('Post Process Follow-up', rawData) || [];
-            const yieldsSheet = this.findSheet('Yields Projections', rawData) || this.findSheet('Daily Levee Source', rawData) || [];
+            // Prefer actual daily yields for "Prochain Lot" (current week sum).
+            // Projections sheets often don't have the right date/levees columns.
+            const yieldsSheet = this.findSheet('Daily Levee Source', rawData) || this.findSheet('Yields Projections', rawData) || [];
 
             // console.info(`[calculateEfficiencyKPIs] Found ${postProcessSheet.length} post-process rows, ${yieldsSheet.length} yields rows`);
 
@@ -1745,10 +1747,28 @@ class ChartService {
             saturday.setDate(monday.getDate() + 5); // Lundi + 5 jours = Samedi
             saturday.setHours(23, 59, 59, 999);
 
+            const getDateRaw = (row) => {
+                if (!row || typeof row !== 'object') return null;
+                // Try common exact headers first
+                const direct = row['Date'] ?? row['date'] ?? row['Jour'] ?? row['jour'] ?? row['DATE'];
+                if (direct !== undefined && direct !== null && String(direct).trim() !== '') return direct;
+
+                // Fallback: find any key that looks like a date/day column
+                for (const k of Object.keys(row)) {
+                    const nk = String(k).toLowerCase().replace(/[^a-z0-9àâäéèêëïîôùûüç]/gi, '');
+                    if (nk.includes('date') || nk.includes('jour')) {
+                        const v = row[k];
+                        if (v !== undefined && v !== null && String(v).trim() !== '') return v;
+                    }
+                }
+                return null;
+            };
+
             yieldsSheet.forEach(row => {
+                const dateRaw = getDateRaw(row);
                 const dateObj = window.dataAggregationService ?
-                    window.dataAggregationService.parseDate(row['Date'] || row['date']) :
-                    new Date(row['Date'] || row['date']);
+                    window.dataAggregationService.parseDate(dateRaw) :
+                    new Date(dateRaw);
 
                 if (dateObj && !isNaN(dateObj)) {
                     dateObj.setHours(0, 0, 0, 0);
@@ -1758,7 +1778,13 @@ class ChartService {
                             'Nombre de levées',
                             'nombre de levees',
                             'nombre de levées',
-                            'Nombre de levees'
+                            'Nombre de levees',
+                            'Levees',
+                            'Levées',
+                            'levées',
+                            'levees',
+                            'levee',
+                            'levée'
                         ]) || 0;
                         weeklyYields += levees;
                     }
