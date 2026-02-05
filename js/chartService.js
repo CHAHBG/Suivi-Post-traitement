@@ -1732,21 +1732,6 @@ class ChartService {
             // Calcul du nombre de parcelles à transmettre pour le prochain lot
             // Somme des levées du lundi au samedi de la semaine en cours
             let weeklyYields = 0;
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-
-            // Trouver le lundi de la semaine en cours
-            const dayOfWeek = today.getDay(); // 0 = dimanche, 1 = lundi, etc.
-            const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Si dimanche, remonter de 6 jours
-            const monday = new Date(today);
-            monday.setDate(today.getDate() - daysFromMonday);
-            monday.setHours(0, 0, 0, 0);
-
-            // Samedi de la semaine en cours
-            const saturday = new Date(monday);
-            saturday.setDate(monday.getDate() + 5); // Lundi + 5 jours = Samedi
-            saturday.setHours(23, 59, 59, 999);
-
             const getDateRaw = (row) => {
                 if (!row || typeof row !== 'object') return null;
                 // Try common exact headers first
@@ -1763,6 +1748,41 @@ class ChartService {
                 }
                 return null;
             };
+
+            // Anchor the "current week" to the latest available data date.
+            // This avoids showing 0 when the sheet data is delayed.
+            let today = null;
+            try {
+                for (const row of yieldsSheet) {
+                    const dateRaw = getDateRaw(row);
+                    const pd = window.dataAggregationService ?
+                        window.dataAggregationService.parseDate(dateRaw) :
+                        new Date(dateRaw);
+                    if (pd && !isNaN(pd)) {
+                        if (!today || pd > today) today = pd;
+                    }
+                }
+            } catch (_) {
+                // ignore and fall back
+            }
+
+            if (!today || isNaN(today)) {
+                today = new Date();
+            }
+            today = new Date(today);
+            today.setHours(0, 0, 0, 0);
+
+            // Trouver le lundi de la semaine de référence
+            const dayOfWeek = today.getDay(); // 0 = dimanche, 1 = lundi, etc.
+            const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Si dimanche, remonter de 6 jours
+            const monday = new Date(today);
+            monday.setDate(today.getDate() - daysFromMonday);
+            monday.setHours(0, 0, 0, 0);
+
+            // Samedi de la semaine de référence
+            const saturday = new Date(monday);
+            saturday.setDate(monday.getDate() + 5); // Lundi + 5 jours = Samedi
+            saturday.setHours(23, 59, 59, 999);
 
             yieldsSheet.forEach(row => {
                 const dateRaw = getDateRaw(row);

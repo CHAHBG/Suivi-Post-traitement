@@ -9,7 +9,7 @@
  * 
  * @version 2.0.0
  */
-const CACHE_VERSION = 'v2.1.3';
+const CACHE_VERSION = 'v2.1.4';
 const STATIC_CACHE = `static-${CACHE_VERSION}`;
 const DYNAMIC_CACHE = `dynamic-${CACHE_VERSION}`;
 
