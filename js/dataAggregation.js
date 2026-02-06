@@ -859,9 +859,6 @@ class DataAggregationService {
                 const daysElapsed = Math.max(1, Math.ceil((referenceDate - projectStart) / msPerDay));
                 const daysRemaining = Math.max(0, Math.ceil((deadlineDate - referenceDate) / msPerDay));
 
-                const remainingToGoal = Math.max(0, leveeGoal - currentTotal);
-                const requiredDailyRate = daysRemaining > 0 ? (remainingToGoal / daysRemaining) : (remainingToGoal > 0 ? remainingToGoal : 0);
-
                 // 6. Calculate Current Daily Average
                 // Primary: use historical total / days elapsed
                 // Fallback: use weekly.current / 6 (working days) or daily.current if historical data unavailable
@@ -873,7 +870,15 @@ class DataAggregationService {
                     const dailyCurrent = daily.current || 0;
                     // Prefer weekly average (more stable), fallback to daily
                     currentDailyAvg = weeklyCurrent > 0 ? (weeklyCurrent / 6) : dailyCurrent;
+                    
+                    // Also estimate currentTotal if it's 0 but we have a daily rate
+                    if (currentTotal === 0 && currentDailyAvg > 0) {
+                        currentTotal = Math.round(currentDailyAvg * daysElapsed);
+                    }
                 }
+
+                const remainingToGoal = Math.max(0, leveeGoal - currentTotal);
+                const requiredDailyRate = daysRemaining > 0 ? (remainingToGoal / daysRemaining) : (remainingToGoal > 0 ? remainingToGoal : 0);
 
                 // 6.5. Calculate Estimated Completion Date (date when goal will be reached)
                 let estimatedCompletionDate = null;
