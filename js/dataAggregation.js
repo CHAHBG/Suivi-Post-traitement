@@ -941,7 +941,6 @@ class DataAggregationService {
                 const remainingTo75k = Math.max(0, goal75k - currentPostProcessed);
 
                 // Weekly yields (Prochain Lot) - based on current week's performance
-                const weeklyCurrent = weekly.current || 0;
                 // dailyRate based on current week (6 days worked per week as per context)
                 const currentDailyRateFor75k = weeklyCurrent > 0 ? (weeklyCurrent / 6) : (currentDailyAvg > 0 ? currentDailyAvg : 1);
 
