@@ -860,25 +860,27 @@ class DataAggregationService {
                 const daysRemaining = Math.max(0, Math.ceil((deadlineDate - referenceDate) / msPerDay));
 
                 // 6. Calculate Current Daily Average
+                // Get weekly and daily values from already calculated KPIs
+                const weeklyCurrent = weekly.current || 0;
+                const dailyCurrent = daily.current || 0;
+                
                 // Primary: use historical total / days elapsed
                 // Fallback: use weekly.current / 6 (working days) or daily.current if historical data unavailable
-                let currentDailyAvg = daysElapsed > 0 ? (currentTotal / daysElapsed) : 0;
+                let currentDailyAvg = daysElapsed > 0 && currentTotal > 0 ? (currentTotal / daysElapsed) : 0;
                 
                 // If historical average is 0, use recent data as fallback
                 if (currentDailyAvg === 0) {
-                    const weeklyCurrent = weekly.current || 0;
-                    const dailyCurrent = daily.current || 0;
                     // Prefer weekly average (more stable), fallback to daily
-                    currentDailyAvg = weeklyCurrent > 0 ? (weeklyCurrent / 6) : dailyCurrent;
-                    
-                    // Also estimate currentTotal if it's 0 but we have a daily rate
-                    if (currentTotal === 0 && currentDailyAvg > 0) {
-                        currentTotal = Math.round(currentDailyAvg * daysElapsed);
-                    }
+                    currentDailyAvg = weeklyCurrent > 0 ? Math.round(weeklyCurrent / 6) : dailyCurrent;
+                }
+                
+                // Also estimate currentTotal if it's 0 but we have a daily rate
+                if (currentTotal === 0 && currentDailyAvg > 0) {
+                    currentTotal = Math.round(currentDailyAvg * daysElapsed);
                 }
 
                 const remainingToGoal = Math.max(0, leveeGoal - currentTotal);
-                const requiredDailyRate = daysRemaining > 0 ? (remainingToGoal / daysRemaining) : (remainingToGoal > 0 ? remainingToGoal : 0);
+                const requiredDailyRate = daysRemaining > 0 ? Math.round(remainingToGoal / daysRemaining) : (remainingToGoal > 0 ? remainingToGoal : 0);
 
                 // 6.5. Calculate Estimated Completion Date (date when goal will be reached)
                 let estimatedCompletionDate = null;
