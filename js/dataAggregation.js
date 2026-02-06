@@ -814,13 +814,22 @@ class DataAggregationService {
                     const val = this._getNumericField(lastRow, ['Total', 'total', 'Valeur', 'Value']);
                     if (val > 0) {
                         currentTotal = val;
-                        // Try to get date from sheet to check freshness, but default to 'now'
-                        // console.log('Using Total-Moyenne sheet for Total:', currentTotal);
                     }
+                    console.log('[Forecast Debug] tmSheet rows:', tmSheet.length, 'lastRow keys:', Object.keys(lastRow), 'Total val:', val);
+                } else {
+                    console.log('[Forecast Debug] tmSheet is empty or missing');
                 }
 
                 // Fallback: calculate from yields if Total-Moyenne failed
                 if (currentTotal === 0) {
+                    console.log('[Forecast Debug] yieldsSheet rows:', yieldsSheet.length, 'projectStart:', projectStart, 'referenceDate:', referenceDate);
+                    
+                    // Log first row to see field names
+                    if (yieldsSheet.length > 0) {
+                        console.log('[Forecast Debug] yieldsSheet first row keys:', Object.keys(yieldsSheet[0]));
+                        console.log('[Forecast Debug] yieldsSheet first row:', JSON.stringify(yieldsSheet[0]).substring(0, 500));
+                    }
+                    
                     const relevantData = yieldsSheet.filter(r => {
                         const pd = this.parseDate(r['Date'] || r['date']);
                         if (!pd || isNaN(pd)) return false;
@@ -828,11 +837,13 @@ class DataAggregationService {
                         return pNoon >= projectStart && pNoon <= referenceDate; // Data up to the reference date
                     });
 
+                    console.log('[Forecast Debug] relevantData rows after date filter:', relevantData.length);
+
                     currentTotal = relevantData.reduce((sum, row) => {
                         const val = this._getNumericField(row, ['Nombre de levées', 'Nombre de Levées', 'nombre de levées', 'nombre de levees', 'levées', 'levees']);
                         return sum + val;
                     }, 0);
-                    // console.log('Calculated Total from Yields:', currentTotal);
+                    console.log('[Forecast Debug] currentTotal from yields:', currentTotal);
                 }
 
                 // ---- Monthly target override ----
@@ -878,6 +889,11 @@ class DataAggregationService {
                 if (currentTotal === 0 && currentDailyAvg > 0) {
                     currentTotal = Math.round(currentDailyAvg * daysElapsed);
                 }
+
+                console.log('[Forecast Debug] FINAL VALUES:', {
+                    currentTotal, currentDailyAvg, daysElapsed, daysRemaining,
+                    weeklyCurrent, dailyCurrent, referenceDate: referenceDate.toISOString()
+                });
 
                 const remainingToGoal = Math.max(0, leveeGoal - currentTotal);
                 const requiredDailyRate = daysRemaining > 0 ? Math.round(remainingToGoal / daysRemaining) : (remainingToGoal > 0 ? remainingToGoal : 0);
