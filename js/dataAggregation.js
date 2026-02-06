@@ -807,34 +807,43 @@ class DataAggregationService {
                 let dataStart = null;
 
                 // Try using the robustly found tmSheet
+                // The sheet has 'Metric' and 'Value' columns — find the row where Metric matches "Total"
                 if (tmSheet && tmSheet.length > 0) {
-                    // Assume the last row with valid data is the current status
-                    // Sort by date if possible, else take last
-                    const lastRow = tmSheet[tmSheet.length - 1];
-                    const val = this._getNumericField(lastRow, ['Total', 'total', 'Valeur', 'Value']);
-                    if (val > 0) {
-                        currentTotal = val;
+                    for (const row of tmSheet) {
+                        const metric = String(row['Metric'] || row['metric'] || '').trim().toLowerCase();
+                        if (metric === 'total' || metric === 'total levées' || metric === 'total levees') {
+                            const val = this._getNumericField(row, ['Value', 'value', 'Valeur', 'valeur']);
+                            if (val >= 100) {  // Sanity check: total parcels should be at least in the hundreds
+                                currentTotal = val;
+                                break;
+                            }
+                        }
                     }
-                    console.log('[Forecast Debug] tmSheet rows:', tmSheet.length, 'lastRow keys:', Object.keys(lastRow), 'Total val:', val);
-                } else {
-                    console.log('[Forecast Debug] tmSheet is empty or missing');
+                    // Fallback: if no "Total" metric row found, try last row but only if value is large enough
+                    if (currentTotal === 0) {
+                        const lastRow = tmSheet[tmSheet.length - 1];
+                        const val = this._getNumericField(lastRow, ['Total', 'total']);
+                        if (val >= 100) {
+                            currentTotal = val;
+                        }
+                    }
+                    console.log('[Forecast Debug] tmSheet rows:', tmSheet.length, 'currentTotal from tmSheet:', currentTotal);
                 }
 
                 // Fallback: calculate from yields if Total-Moyenne failed
                 if (currentTotal === 0) {
-                    console.log('[Forecast Debug] yieldsSheet rows:', yieldsSheet.length, 'projectStart:', projectStart, 'referenceDate:', referenceDate);
+                    console.log('[Forecast Debug] Calculating total from yieldsSheet. rows:', yieldsSheet.length);
                     
                     // Log first row to see field names
                     if (yieldsSheet.length > 0) {
                         console.log('[Forecast Debug] yieldsSheet first row keys:', Object.keys(yieldsSheet[0]));
-                        console.log('[Forecast Debug] yieldsSheet first row:', JSON.stringify(yieldsSheet[0]).substring(0, 500));
                     }
                     
                     const relevantData = yieldsSheet.filter(r => {
                         const pd = this.parseDate(r['Date'] || r['date']);
                         if (!pd || isNaN(pd)) return false;
                         const pNoon = new Date(pd.getFullYear(), pd.getMonth(), pd.getDate(), 12, 0, 0, 0);
-                        return pNoon >= projectStart && pNoon <= referenceDate; // Data up to the reference date
+                        return pNoon >= projectStart && pNoon <= referenceDate;
                     });
 
                     console.log('[Forecast Debug] relevantData rows after date filter:', relevantData.length);
@@ -843,7 +852,7 @@ class DataAggregationService {
                         const val = this._getNumericField(row, ['Nombre de levées', 'Nombre de Levées', 'nombre de levées', 'nombre de levees', 'levées', 'levees']);
                         return sum + val;
                     }, 0);
-                    console.log('[Forecast Debug] currentTotal from yields:', currentTotal);
+                    console.log('[Forecast Debug] currentTotal from yields sum:', currentTotal);
                 }
 
                 // ---- Monthly target override ----
