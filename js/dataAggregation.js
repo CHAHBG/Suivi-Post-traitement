@@ -863,7 +863,17 @@ class DataAggregationService {
                 const requiredDailyRate = daysRemaining > 0 ? (remainingToGoal / daysRemaining) : (remainingToGoal > 0 ? remainingToGoal : 0);
 
                 // 6. Calculate Current Daily Average
-                const currentDailyAvg = daysElapsed > 0 ? (currentTotal / daysElapsed) : 0;
+                // Primary: use historical total / days elapsed
+                // Fallback: use weekly.current / 6 (working days) or daily.current if historical data unavailable
+                let currentDailyAvg = daysElapsed > 0 ? (currentTotal / daysElapsed) : 0;
+                
+                // If historical average is 0, use recent data as fallback
+                if (currentDailyAvg === 0) {
+                    const weeklyCurrent = weekly.current || 0;
+                    const dailyCurrent = daily.current || 0;
+                    // Prefer weekly average (more stable), fallback to daily
+                    currentDailyAvg = weeklyCurrent > 0 ? (weeklyCurrent / 6) : dailyCurrent;
+                }
 
                 // 6.5. Calculate Estimated Completion Date (date when goal will be reached)
                 let estimatedCompletionDate = null;
