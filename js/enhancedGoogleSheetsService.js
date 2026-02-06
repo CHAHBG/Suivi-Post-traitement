@@ -587,14 +587,34 @@ class EnhancedGoogleSheetsService {
             let retries = 0;
             const debug = (typeof window !== 'undefined' && window.DEBUG_SHEETS);
 
-            // If this is a standard docs export URL, prepare a stable gviz fallback.
+            // Prepare fallback URLs for the common export formats.
+            // Some redirected googleusercontent export URLs can return 400; retry via docs.google.com.
+            let altExportUrl = null;
             let gvizUrl = null;
             try {
-                const match = String(url).match(/https:\/\/docs\.google\.com\/spreadsheets\/d\/([^/]+)\/export\?[^#]*gid=(\d+)/i);
+                const rawUrl = String(url);
+
+                // Standard docs export URL
+                let match = rawUrl.match(/https:\/\/docs\.google\.com\/spreadsheets\/d\/([^/]+)\/export\?[^#]*gid=(\d+)/i);
                 if (match && match[1] && match[2]) {
-                    gvizUrl = `https://docs.google.com/spreadsheets/d/${match[1]}/gviz/tq?tqx=out:csv&gid=${match[2]}`;
+                    const spreadsheetId = match[1];
+                    const gid = match[2];
+                    altExportUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=csv&gid=${gid}`;
+                    gvizUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:csv&gid=${gid}`;
+                }
+
+                // Redirected googleusercontent export URL
+                if (!gvizUrl) {
+                    match = rawUrl.match(/\/\*\/([^?/#]+)\?[^#]*gid=(\d+)/i);
+                    if (match && match[1] && match[2]) {
+                        const spreadsheetId = match[1];
+                        const gid = match[2];
+                        altExportUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=csv&gid=${gid}`;
+                        gvizUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:csv&gid=${gid}`;
+                    }
                 }
             } catch (_) {
+                altExportUrl = null;
                 gvizUrl = null;
             }
 
@@ -606,10 +626,19 @@ class EnhancedGoogleSheetsService {
                     }
                     response = await fetch(url, { cache: 'no-store' });
 
-                    if (!response.ok && response.status === 400 && gvizUrl) {
-                        const alt = await fetch(gvizUrl, { cache: 'no-store' });
-                        if (alt.ok) {
-                            response = alt;
+                    if (!response.ok && response.status === 400) {
+                        if (altExportUrl && altExportUrl !== url) {
+                            const alt = await fetch(altExportUrl, { cache: 'no-store' });
+                            if (alt.ok) {
+                                response = alt;
+                            }
+                        }
+
+                        if (!response.ok && gvizUrl) {
+                            const alt = await fetch(gvizUrl, { cache: 'no-store' });
+                            if (alt.ok) {
+                                response = alt;
+                            }
                         }
                     }
 
