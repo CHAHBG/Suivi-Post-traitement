@@ -9,7 +9,7 @@
  * 
  * @version 2.0.0
  */
-const CACHE_VERSION = 'v2.1.5';
+const CACHE_VERSION = 'v2.1.6';
 const STATIC_CACHE = `static-${CACHE_VERSION}`;
 const DYNAMIC_CACHE = `dynamic-${CACHE_VERSION}`;
 
@@ -66,8 +66,8 @@ self.addEventListener('activate', (event) => {
  * @returns {boolean} True if trusted
  */
 function isTrustedDomain(url) {
-  return url.origin === self.location.origin || 
-         TRUSTED_EXTERNAL_DOMAINS.includes(url.hostname);
+  return url.origin === self.location.origin ||
+    TRUSTED_EXTERNAL_DOMAINS.includes(url.hostname);
 }
 
 /**
@@ -78,10 +78,10 @@ function isTrustedDomain(url) {
 function isStaticAsset(request) {
   const url = new URL(request.url);
   return request.destination === 'style' ||
-         request.destination === 'script' ||
-         request.destination === 'font' ||
-         request.destination === 'image' ||
-         url.pathname.match(/\.(css|js|woff2?|ttf|png|jpg|jpeg|svg|webp)$/);
+    request.destination === 'script' ||
+    request.destination === 'font' ||
+    request.destination === 'image' ||
+    url.pathname.match(/\.(css|js|woff2?|ttf|png|jpg|jpeg|svg|webp)$/);
 }
 
 /**
@@ -110,7 +110,7 @@ async function limitCacheSize(cacheName, maxEntries) {
  */
 self.addEventListener('fetch', (event) => {
   const { request } = event;
-  
+
   // Only handle GET requests
   if (request.method !== 'GET') return;
 
